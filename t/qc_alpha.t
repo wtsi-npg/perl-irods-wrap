@@ -157,4 +157,4 @@ system("rm -f pipeline_summary.log pipeline_summary.tex");
 print "\tTest dataset Alpha finished.\n";
 
 my $duration = time() - $start;
-print "QC test finished.  Duration: $duration s\n";
+print "QC test Alpha finished.  Duration: $duration s\n";

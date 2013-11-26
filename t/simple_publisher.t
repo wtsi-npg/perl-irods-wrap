@@ -4,6 +4,6 @@ use utf8;
 use strict;
 use warnings;
 
-use WTSI::NPG::iRODSTest;;
+use WTSI::NPG::SimplePublisherTest;
 
 Test::Class->runtests;

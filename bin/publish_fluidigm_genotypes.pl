@@ -8,15 +8,17 @@ use strict;
 use warnings;
 use Cwd qw(abs_path);
 use DateTime;
-use File::Basename;
-use File::Find;
 use Getopt::Long;
 use Log::Log4perl;
 use Log::Log4perl::Level;
 use Pod::Usage;
 
-use WTSI::NPG::Genotyping::Database::Sequenom;
-use WTSI::NPG::Genotyping::Sequenom::Publisher;
+use WTSI::NPG::Genotyping::Fluidigm::ExportFile;
+use WTSI::NPG::Genotyping::Fluidigm::Publisher;
+use WTSI::NPG::Genotyping::Fluidigm::ResultSet;
+use WTSI::NPG::Utilities qw(collect_files
+                            collect_dirs
+                            modified_between);
 
 my $embedded_conf = q(
    log4perl.logger.npg.irods.publish = ERROR, A1
@@ -27,35 +29,37 @@ my $embedded_conf = q(
    log4perl.appender.A1.layout.ConversionPattern = %d %p %m %n
 );
 
-our $DEFAULT_INI = $ENV{HOME} . "/.npg/genotyping.ini";
 our $DEFAULT_DAYS = 7;
 
 run() unless caller();
-
 sub run {
-  my $config;
   my $days;
   my $days_ago;
   my $debug;
   my $log4perl_config;
   my $publish_dest;
+  my $source;
   my $verbose;
 
-  GetOptions('config=s'    => \$config,
-             'days=i'      => \$days,
+  GetOptions('days=i'      => \$days,
              'days-ago=i'  => \$days_ago,
              'debug'       => \$debug,
              'dest=s'      => \$publish_dest,
              'help'        => sub { pod2usage(-verbose => 2, -exitval => 0) },
              'logconf=s'   => \$log4perl_config,
+             'source=s'    => \$source,
              'verbose'     => \$verbose);
+
+  unless ($source) {
+    pod2usage(-msg => "A --source argument is required\n",
+              -exitval => 2);
+  }
 
   unless ($publish_dest) {
     pod2usage(-msg => "A --dest argument is required\n",
               -exitval => 2);
   }
 
-  $config ||= $DEFAULT_INI;
   $days ||= $DEFAULT_DAYS;
   $days_ago ||= 0;
 
@@ -77,7 +81,7 @@ sub run {
     }
   }
 
-  my $now = DateTime->now;
+  my $now = DateTime->now();
   my $end;
   if ($days_ago > 0) {
     $end = DateTime->from_epoch
@@ -88,46 +92,44 @@ sub run {
   }
 
   my $begin = DateTime->from_epoch
-    (epoch => $end->epoch)->subtract(days => $days);
+    (epoch => $end->epoch())->subtract(days => $days);
 
-   my $sqdb = WTSI::NPG::Genotyping::Database::Sequenom->new
-     (name    => 'mspec2',
-      inifile => $config)->connect(RaiseError => 1);
+  my $dir_test = modified_between($begin->epoch(), $end->epoch());
+  my $dir_regex = qr{^[0-9]{10}$}msxi;
+  my $source_dir = abs_path($source);
+  my $relative_depth = 2;
 
-  $log->info("Publishing from '", $sqdb->name, "' to '$publish_dest' ",
-             "Sequenom results finished between ",
+  $log->info("Publishing from '$source_dir' to '$publish_dest' Fluidigm ",
+             " results finished between ",
              $begin->iso8601, " and ", $end->iso8601);
 
-  my $plate_names = $sqdb->find_finished_plate_names($begin, $end);
-  $log->debug("Found ", scalar @$plate_names, " finished plates");
+  foreach my $dir (collect_dirs($source_dir, $dir_test, $relative_depth,
+                                $dir_regex)) {
 
-  foreach my $plate_name (@$plate_names) {
-    my $publisher = WTSI::NPG::Genotyping::Sequenom::Publisher->new
-    (publication_time => $now,
-     plate_name       => $plate_name,
-     sequenom_db      => $sqdb,
-     logger           => $log);
+    my $resultset = WTSI::NPG::Genotyping::Fluidigm::ResultSet->new
+      (directory => $dir);
+
+    my $publisher = WTSI::NPG::Genotyping::Fluidigm::Publisher->new
+      (publication_time => $now,
+       resultset        => $resultset,
+       logger           => $log);
+    $publisher->irods->logger($log);
 
     $publisher->publish($publish_dest);
   }
-
-  return 0;
 }
-
 
 __END__
 
 =head1 NAME
 
-publish_sequenom_genotypes
+publish_fluidigm_genotypes
 
 =head1 SYNOPSIS
 
 
 Options:
 
-  --config      Load database configuration from a user-defined .ini file.
-                Optional, defaults to $HOME/.npg/genotyping.ini
   --days-ago    The number of days ago that the publication window ends.
                 Optional, defaults to zero (the current day).
   --days        The number of days in the publication window, ending at
@@ -137,31 +139,16 @@ Options:
   --dest        The data destination root collection in iRODS.
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
+  --source      The root directory to search for sample data.
   --verbose     Print messages while processing. Optional.
 
 =head1 DESCRIPTION
 
-Searches for finished Sequenom plates that have been modified within
-the n days prior to a specific time and creates a CSV file of results
-for each well. Any results identified are published to iRODS with
-metadata obtained from the Sequenom LIMS.
-
-The CSV files contain the following information as columns, identified
-by a header row:
-
-  ALLELE
-  ASSAY_ID
-  CHIP
-  CUSTOMER
-  EXPERIMENT
-  GENOTYPE_ID
-  HEIGHT
-  MASS
-  PLATE
-  PROJECT
-  SAMPLE_ID
-  STATUS
-  WELL_POSITION
+Searches a directory recursively for Fluidigm result directories that
+have been modified within the n days prior to a specific time.
+(N.B. limits search to 1 level of directories.) Any files identified
+are published to iRODS with metadata obtained from the exported CSV
+file contained in each directory.
 
 =head1 METHODS
 

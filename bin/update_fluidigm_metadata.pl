@@ -12,7 +12,7 @@ use Log::Log4perl::Level;
 use Pod::Usage;
 
 use WTSI::NPG::Database::Warehouse;
-use WTSI::NPG::Genotyping::Infinium::InfiniumDataObject;
+use WTSI::NPG::Genotyping::Fluidigm::AssayDataObject;
 use WTSI::NPG::iRODS;
 
 my $embedded_conf = q(
@@ -27,6 +27,8 @@ my $embedded_conf = q(
 our $DEFAULT_INI = $ENV{HOME} . "/.npg/genotyping.ini";
 our $DEFAULT_DAYS = 4;
 
+my $log;
+
 run() unless caller();
 
 sub run {
@@ -34,6 +36,7 @@ sub run {
   my $debug;
   my $log4perl_config;
   my $publish_dest;
+  my $type;
   my $verbose;
   my @filter_key;
   my @filter_value;
@@ -63,8 +66,6 @@ sub run {
     push @filter, [pop @filter_key, pop @filter_value];
   }
 
-  my $log;
-
   if ($log4perl_config) {
     Log::Log4perl::init($log4perl_config);
     $log = Log::Log4perl->get_logger('npg.irods.publish');
@@ -86,23 +87,24 @@ sub run {
      inifile =>  $config)->connect(RaiseError           => 1,
                                    mysql_enable_utf8    => 1,
                                    mysql_auto_reconnect => 1);
-  my $irods = WTSI::NPG::iRODS->new(logger => $log);
 
-  my @infinium_data =
+  my $irods = WTSI::NPG::iRODS->new(logger => $log);
+  my @fluidigm_data =
     $irods->find_objects_by_meta($publish_dest,
-                                 [infinium_plate => '%', 'like'],
-                                 [infinium_well  => '%', 'like'],
+                                 [fluidigm_plate => '%', 'like'],
+                                 [fluidigm_well  => '%', 'like'],
+                                 [type           => 'csv'],
                                  @filter);
-  my $total = scalar @infinium_data;
+  my $total = scalar @fluidigm_data;
   my $updated = 0;
 
   $log->info("Updating metadata on $total data objects in '$publish_dest'");
 
-  foreach my $data_object (@infinium_data) {
+  foreach my $data_object (@fluidigm_data) {
     eval {
-      my $ido = WTSI::NPG::Genotyping::Infinium::InfiniumDataObject->new
+      my $fdo = WTSI::NPG::Genotyping::Fluidigm::AssayDataObject->new
         ($irods, $data_object);
-      $ido->update_secondary_metadata($ssdb);
+      $fdo->update_secondary_metadata($ssdb);
       ++$updated;
     };
 
@@ -118,12 +120,11 @@ sub run {
              "'$publish_dest'");
 }
 
-
 __END__
 
 =head1 NAME
 
-update_infinium_metadata
+update_fluidigm_metadata
 
 =head1 SYNOPSIS
 
@@ -141,9 +142,9 @@ Options:
 
 =head1 DESCRIPTION
 
-Searches for published Infinium genotyping experimental data in iRODS,
-identifies the Infinium plate from which it came by means of the
-infinium_plate and infinium_well metadata and adds relevant sample
+Searches for published Fluidigm genotyping experimental data in iRODS,
+identifies the Fluidigm plate from which it came by means of the
+fluidigm_plate and fluidigm_well metadata and adds relevant sample
 metadata taken from the Sequencescape warehouse. If the new metadata
 include study information, this is used to set access rights for the
 data in iRODS.

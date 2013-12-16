@@ -13,17 +13,13 @@ use Log::Log4perl;
 use Log::Log4perl::Level;
 use Pod::Usage;
 
-use WTSI::NPG::Utilities qw(user_session_log);
-use WTSI::NPG::Publication qw(get_wtsi_uri
-                              get_publisher_uri
-                              get_publisher_name);
-use WTSI::NPG::Genotyping::Publication qw(publish_analysis_directory);
-
 use WTSI::NPG::Genotyping::Database::Pipeline;
+use WTSI::NPG::Genotyping::Infinium::AnalysisPublisher;
+use WTSI::NPG::Utilities qw(user_session_log);
 
 my $uid = `whoami`;
 chomp($uid);
-my $session_log = user_session_log($uid, 'publish_analysis_data');
+my $session_log = user_session_log($uid, 'publish_infinium_analysis');
 
 my $embedded_conf = "
    log4perl.logger.npg.irods.publish = ERROR, A1, A2
@@ -46,7 +42,7 @@ our $DEFAULT_INI = $ENV{HOME} . "/.npg/genotyping.ini";
 run() unless caller();
 
 sub run {
-  my $archive_pattern;
+  my $archive_root;
   my $config;
   my $dbfile;
   my $debug;
@@ -56,7 +52,7 @@ sub run {
   my $source;
   my $verbose;
 
-  GetOptions('archive=s' => \$archive_pattern,
+  GetOptions('archive=s' => \$archive_root,
              'config=s'  => \$config,
              'dbfile=s'  => \$dbfile,
              'debug'     => \$debug,
@@ -79,6 +75,14 @@ sub run {
               -exitval => 3);
   }
 
+  if ($config && ! -e $config) {
+    pod2usage(-msg => "The config file '$config' does not exist\n",
+              -exitval => 4);
+  }
+  if ($dbfile && ! -e $dbfile) {
+    pod2usage(-msg => "The database file '$dbfile' does not exist\n",
+              -exitval => 4);
+  }
   unless (-e $source) {
     pod2usage(-msg => "No such source as '$source'\n",
               -exitval => 4);
@@ -88,7 +92,6 @@ sub run {
               -exitval => 4);
   }
 
-  $archive_pattern ||= $WTSI::NPG::Genotyping::Publication::DEFAULT_SAMPLE_ARCHIVE;
   $config ||= $DEFAULT_INI;
 
   my $log;
@@ -114,26 +117,28 @@ sub run {
   $log->debug("Using $db using config from $config");
 
   my $pipedb = WTSI::NPG::Genotyping::Database::Pipeline->new
-    (name => 'pipeline',
+    (name    => 'pipeline',
      inifile => $config,
-     dbfile => $dbfile)->connect
-       (RaiseError => 1,
+     dbfile  => $dbfile)->connect
+       (RaiseError     => 1,
         sqlite_unicode => 1,
-        on_connect_do => 'PRAGMA foreign_keys = ON');
+        on_connect_do  => 'PRAGMA foreign_keys = ON');
 
-  my $now = DateTime->now();
-  my $creator_uri = get_wtsi_uri();
-  my $publisher_uri = get_publisher_uri($uid);
-  my $name = get_publisher_name($publisher_uri);
+  my $now = DateTime->now;
 
-  $log->info("Publishing from '$source' to '$publish_dest' using ",
-             "sample archive '$archive_pattern'");
+  $log->info("Publishing from '$source' to '$publish_dest'");
+  my @publisher_args = (analysis_directory => $source,
+                        pipe_db            => $pipedb,
+                        publication_time   => $now,
+                        run_name           => $run_name);
+  if ($archive_root) {
+    push @publisher_args, (sample_archive => $archive_root);
+  }
 
-  my $analysis_uuid = publish_analysis_directory($source, $creator_uri,
-                                                 $publish_dest, $publisher_uri,
-                                                 $pipedb, $run_name,
-                                                 $archive_pattern,
-                                                 $now);
+  my $publisher = WTSI::NPG::Genotyping::Infinium::AnalysisPublisher->new
+    (@publisher_args);
+  my $analysis_uuid = $publisher->publish($publish_dest);
+
   if (defined $analysis_uuid) {
     print "New analysis UUID: ", $analysis_uuid, "\n";
   }
@@ -149,11 +154,11 @@ __END__
 
 =head1 NAME
 
-publish_analysis_data
+publish_infinium_analysis
 
 =head1 SYNOPSIS
 
-publish_analysis_data [--config <database .ini file>] \
+publish_infinium_analysis [--config <database .ini file>] \
    [--dbfile <SQLite file>] --run <pipeline run name> \
    --source <directory> --dest <irods collection> [--verbose]
 

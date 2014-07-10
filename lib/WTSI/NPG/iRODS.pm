@@ -39,9 +39,9 @@ has 'lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::Lister->new
-       (environment => $self->environment,
+       (arguments   => ['--unbuffered', '--acl', '--contents'],
+        environment => $self->environment,
         max_size    => 1024 * 1204,
-        arguments   => ['--acl'],
         logger      => $self->logger)->start;
    });
 
@@ -54,7 +54,8 @@ has 'meta_lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::MetaLister->new
-       (environment => $self->environment,
+       (arguments   => ['--unbuffered', '--avu'],
+        environment => $self->environment,
         logger      => $self->logger)->start;
    });
 
@@ -67,7 +68,7 @@ has 'meta_adder' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--operation', 'add'],
+       (arguments   => ['--unbuffered', '--operation', 'add'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -81,7 +82,7 @@ has 'meta_remover' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--operation', 'rem'],
+       (arguments   => ['--unbuffered', '--operation', 'rem'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -95,7 +96,8 @@ has 'acl_modifier' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::ACLModifier->new
-       (environment => $self->environment,
+       (arguments   => [ '--unbuffered'],
+        environment => $self->environment,
         logger      => $self->logger)->start;
    });
 

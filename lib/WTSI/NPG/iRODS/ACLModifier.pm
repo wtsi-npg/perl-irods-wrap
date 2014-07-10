@@ -9,7 +9,7 @@ use Moose;
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
-has '+executable' => (default => 'json-chmod');
+has '+executable' => (default => 'baton-chmod');
 
 around [qw(chmod_object chmod_collection)] => sub {
   my ($orig, $self, @args) = @_;

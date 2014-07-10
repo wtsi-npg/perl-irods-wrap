@@ -40,13 +40,10 @@ sub communicate {
 sub validate_response {
   my ($self, $response) = @_;
 
-  # Valid responses are a HashRef or an ArrayRef (in the event of
-  # listing a collection).
-
+  # The ony valid response is a HashRef
   my $rtype = ref $response;
-  unless ($rtype eq 'HASH' or $rtype eq 'ARRAY') {
-    $self->logconfess("Failed to get a HashRef or ArrayRef response; ",
-                      "got $rtype");
+  unless ($rtype eq 'HASH') {
+    $self->logconfess("Failed to get a HashRef response; got $rtype");
   }
 
   return $self;

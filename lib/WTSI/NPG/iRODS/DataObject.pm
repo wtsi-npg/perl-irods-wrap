@@ -255,17 +255,15 @@ sub supersede_avus {
         # There were some differences
         my $old_units_str = defined $old_units ? "'$old_units'" : 'undef';
         $self->debug("Superseding AVU (removing) ",
-                     "{'$old_attribute', '$old_value', ",
-                     "$old_units_str} on '", $self->str, "' ",
-                     "[$num_processed / $num_matching]");
+                     "{'$old_attribute', '$old_value', $old_units_str} on '",
+                     $self->str, "' [$num_processed / $num_matching]");
 
         $self->remove_avu($old_attribute, $old_value, $old_units);
 
         my $units_str = defined $units ? "'$units'" : 'undef';
         $self->debug("Superseding with AVU (now adding) ",
-                     "{'$attribute', '$value', ",
-                     "$units_str} on '", $self->str, "' ",
-                     "[$num_processed / $num_matching]");
+                     "{'$attribute', '$value', $units_str} on '",
+                     $self->str, "' [$num_processed / $num_matching]");
 
         if ($self->get_avu($attribute, $value, $units)) {
           $self->debug("The superseding AVU ",
@@ -274,9 +272,9 @@ sub supersede_avus {
                        $self->str, "' [$num_processed / $num_matching]");
         }
         else {
-          $self->debug("Superseding with AVU {'$attribute', '$value', ",
-                       "$units_str} on '", $self->str, "' ",
-                       "[$num_processed / $num_matching]");
+          $self->debug("Superseding with AVU ",
+                       "{'$attribute', '$value', $units_str} on '",
+                       $self->str, "' [$num_processed / $num_matching]");
           $self->add_avu($attribute, $value, $units);
         }
       }

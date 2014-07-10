@@ -8,7 +8,7 @@ use Moose;
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
-has '+executable' => (default => 'json-list');
+has '+executable' => (default => 'baton-list');
 
  # iRODS error code for non-existence
 our $ITEM_DOES_NOT_EXIST = -310000;
@@ -100,11 +100,11 @@ sub get_collection_acl {
   my @acl;
   if ($collection_specs) {
     my $collection_spec = shift @$collection_specs;
-    my $acl = $self->_to_acl($collection_spec);
 
+    my $acl = $self->_to_acl($collection_spec);
     $self->debug("ACL of '$collection' is ", $self->_to_acl_str($acl));
 
-    @acl = @$acl;
+    push @acl, @$acl;
   }
 
   return @acl;
@@ -144,23 +144,29 @@ sub _list_collection {
 
   my $spec = {collection => $collection};
   my $response = $self->communicate($spec);
-  my @paths;
+  $self->validate_response($response);
+  # $self->report_error($response);
 
-  if (ref $response eq 'HASH') {
-    if (exists $response->{error}) {
-      if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
-        # Continue to return empty list
-      }
-      else {
-        $self->report_error($response);
-      }
-    }
+  my @all_specs;
+
+  if ($response->{error} &&
+      $response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+    # Return empty @all_specs;
   }
   else {
     my @object_specs;
     my @collection_specs;
 
-    foreach my $path (@$response) {
+    if (!exists $response->{contents}) {
+      $self->logconfess('The returned path spec did not have ',
+                        'a "contents" key: ',
+                        JSON->new->utf8->encode($response));
+    }
+
+    my @contents = @{delete $response->{contents}};
+    push @collection_specs, $response;
+
+    foreach my $path (@contents) {
       if (exists $path->{data_object}) {
         push @object_specs, $path;
       }
@@ -169,10 +175,10 @@ sub _list_collection {
       }
     }
 
-    @paths = (\@object_specs, \@collection_specs);
+    @all_specs = (\@object_specs, \@collection_specs);
   }
 
-  return @paths;
+  return @all_specs;
 }
 
 # Return two arrays of path specs, given a collection path to recurse

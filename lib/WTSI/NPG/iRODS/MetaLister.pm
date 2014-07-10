@@ -7,7 +7,7 @@ use Moose;
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
-has '+executable' => (default => 'json-metalist');
+has '+executable' => (default => 'baton-list');
 
 around [qw(list_collection_meta list_object_meta)] => sub {
   my ($orig, $self, @args) = @_;

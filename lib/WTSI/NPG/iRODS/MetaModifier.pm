@@ -8,17 +8,7 @@ use Moose;
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
-our $META_ADD_OP = 'add';
-our $META_REM_OP = 'rem';
-
-has 'operation' =>
-  (is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-   lazy     => 1,
-   default  => $META_ADD_OP);
-
-has '+executable' => (default => 'json-metamod');
+has '+executable' => (default => 'baton-metamod');
 
 around [qw(modify_object_meta)] => sub {
   my ($orig, $self, @args) = @_;

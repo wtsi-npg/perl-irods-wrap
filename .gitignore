@@ -1,0 +1,6 @@
+blib
+_build
+MYMETA.json
+MYMETA.yml
+*.log
+*~

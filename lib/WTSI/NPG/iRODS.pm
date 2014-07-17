@@ -10,13 +10,45 @@ use JSON;
 use List::AllUtils qw(any);
 use Moose;
 
+use WTSI::NPG::Runnable;
+use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::Lister;
 use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
-use WTSI::NPG::iRODS::ACLModifier;
-use WTSI::NPG::Runnable;
+use WTSI::NPG::iRODS::MetaSearcher;
 
-with 'WTSI::NPG::Loggable';
+with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotation';
+
+our $REQUIRED_BATON_VERSION = '0.10.0';
+
+our $ICD         = 'icd';
+our $ICHKSUM     = 'ichksum';
+our $ICP         = 'icp';
+our $IGET        = 'iget';
+our $IGROUPADMIN = 'igroupadmin';
+our $IMKDIR      = 'imkdir';
+our $IMV         = 'imv';
+our $IPUT        = 'iput';
+our $IPWD        = 'ipwd';
+our $IRM         = 'irm';
+our $MD5SUM      = 'md5sum';
+
+our $GROUP_PREFIX = 'ss_';
+
+our @VALID_PERMISSIONS = qw(null read write own);
+
+has 'strict_baton_version' =>
+  (is       => 'ro',
+   isa      => 'Bool',
+   required => 1,
+   default  => 0);
+
+has 'required_baton_version' =>
+  (is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+   init_arg => undef,
+   default  => $REQUIRED_BATON_VERSION);
 
 has 'environment' =>
   (is       => 'ro',
@@ -87,6 +119,36 @@ has 'meta_remover' =>
         logger      => $self->logger)->start;
    });
 
+has 'coll_searcher' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::MetaSearcher->new
+       (arguments   => ['--unbuffered', '--coll'],
+        max_size    => 1024 * 1204,
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+has 'obj_searcher' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::MetaSearcher->new
+       (arguments   => ['--unbuffered', '--obj'],
+        max_size    => 1024 * 1204,
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
 has 'acl_modifier' =>
   (is         => 'ro',
    isa      => 'WTSI::NPG::iRODS::ACLModifier',
@@ -101,22 +163,28 @@ has 'acl_modifier' =>
         logger      => $self->logger)->start;
    });
 
-our $IGROUPADMIN = 'igroupadmin';
-our $ICD     = 'icd';
-our $ICHKSUM = 'ichksum';
-our $ICP     = 'icp';
-our $IGET    = 'iget';
-our $IMETA   = 'imeta';
-our $IMKDIR  = 'imkdir';
-our $IMV     = 'imv';
-our $IPUT    = 'iput';
-our $IRM     = 'irm';
-our $IPWD    = 'ipwd';
-our $MD5SUM  = 'md5sum';
+sub BUILD {
+  my ($self) = @_;
 
-our $GROUP_PREFIX = 'ss_';
+  my ($installed_baton_version) = WTSI::NPG::Runnable->new
+    (executable  => 'baton-list',
+     arguments   => ['--version'],
+     environment => $self->environment,
+     logger      => $self->logger)->run->split_stdout;
 
-our @VALID_PERMISSIONS = qw(null read write own);
+  unless ($installed_baton_version eq $self->required_baton_version) {
+    my $msg = sprintf("The installed baton release version %s is " .
+                      "not supported by this wrapper (requires version %s )",
+                      $installed_baton_version, $self->required_baton_version);
+
+    if ($self->strict_baton_version) {
+      $self->logdie($msg);
+    }
+    else {
+      $self->warn($msg);
+    }
+  }
+}
 
 around 'working_collection' => sub {
   my ($orig, $self, @args) = @_;
@@ -750,31 +818,29 @@ sub find_collections_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
-  my @query = $self->_make_imeta_query(@query_specs);
 
-  my @args = ('-z', $zone, 'qu', '-C', @query);
-  my @raw_results = WTSI::NPG::Runnable->new
-    (executable  => $IMETA,
-     arguments   => \@args,
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+  my @avu_specs;
+  foreach my $query_spec (@query_specs) {
+    my ($attribute, $value, $operator) = @$query_spec;
 
-  my @results;
-  foreach my $row (@raw_results) {
-    if ($row =~ m{^----$}) {
-      next;
+    my $spec = {attribute => $attribute,
+                value     => $value};
+    if ($operator) {
+      $spec->{operator} = $operator;
     }
-    elsif ($row =~ m{^collection:\s(\S*)}) {
-      my $coll = $1;
 
-      $self->debug("Found collection (to filter by '$root') '$coll'");
-
-      push @results, $coll;
-    }
+    push @avu_specs, $spec;
   }
 
-  # imeta doesn't permit filtering by path, natively.
-  return grep { /^$root/ } @results;
+  my $results = $self->coll_searcher->search($zone, @avu_specs);
+  $self->debug("Found ", scalar @$results,
+               "collections (to filter by '$root')");
+
+  my @sorted = sort { $a cmp $b } @$results;
+  $self->debug("Sorted ", scalar @sorted,
+               " collections (to filter by '$root')");
+
+  return grep { /^$root/ } @sorted;
 }
 
 =head2 list_object
@@ -1223,48 +1289,25 @@ sub find_objects_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
-  my @query = $self->_make_imeta_query(@query_specs);
 
-  my @args = ('-z', $zone, 'qu', '-d', @query);
-  my @raw_results = WTSI::NPG::Runnable->new
-    (executable  => $IMETA,
-     arguments   => \@args,
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+  my @avu_specs;
+  foreach my $query_spec (@query_specs) {
+    my ($attribute, $value, $operator) = @$query_spec;
 
-  my @results;
-  my $coll;
-  my $obj;
-
-  foreach my $row (@raw_results) {
-    if ($row =~ m{^----$}) {
-      next;
+    my $spec = {attribute => $attribute,
+                value     => $value};
+    if ($operator) {
+      $spec->{operator} = $operator;
     }
-    elsif ($row =~ m{^collection:\s(\S*)}) {
-      $coll = $1;
-    }
-    elsif ($row =~ m{^dataObj:\s(\S*)}) {
-      $obj = $1;
 
-      unless ($coll) {
-        $self->logconfess("Failed to parse imeta output; missing collection ",
-                          "got object '$obj'");
-      }
-
-      push @results, ["$coll", "$obj"];
-      undef $coll;
-      undef $row;
-    }
+    push @avu_specs, $spec;
   }
 
-  $self->debug("Found ", scalar @results, " objects (to filter by '$root')");
-
-  my @sorted = map  { $_->[0] . '/' . $_->[1] }
-               sort { $a->[1] cmp $b->[1] } @results;
-
+  my $results = $self->obj_searcher->search($zone, @avu_specs);
+  $self->debug("Found ", scalar @$results, " objects (to filter by '$root')");
+  my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");
 
-  # imeta doesn't permit filtering by path, natively.
   return grep { /^$root/ } @sorted;
 }
 
@@ -1320,7 +1363,8 @@ sub validate_checksum_metadata {
   my ($self, $object) = @_;
 
   my $identical = 0;
-  my @md5 = grep { $_->{attribute} eq 'md5' } $self->get_object_meta($object);
+  my $key = $self->file_md5_attr;
+  my @md5 = grep { $_->{attribute} eq $key } $self->get_object_meta($object);
 
   unless (@md5) {
     $self->logconfess("Failed to validate MD5 metadata for '$object' ",
@@ -1428,53 +1472,6 @@ sub _meta_exists {
     return grep { $_->{attribute} eq $attribute &&
                   $_->{value}     eq $value} @$current_meta;
   }
-}
-
-sub _make_imeta_query {
-  my ($self, @query_specs) = @_;
-
-  scalar @query_specs or
-    $self->logconfess('At least one query_spec argument is required');
-
-  my @query_clauses;
-  my $i = 0;
-  foreach my $spec (@query_specs) {
-    unless (ref $spec eq 'ARRAY') {
-      $self->logconfess("The query_spec '$spec' was not an array reference");
-    }
-
-    my ($attribute, $value, $operator) = @$spec;
-    if (defined $operator) {
-      unless ($operator eq '='    ||
-              $operator eq 'like' ||
-              $operator eq '<'    ||
-              $operator eq '>') {
-        $self->logconfess("Invalid query operator '$operator' in query spec ",
-                         "[$attribute, $value, $operator]");
-      }
-    }
-    else {
-      $operator = '=';
-    }
-
-    unless (defined $value) {
-      $self->logconfess("Invalid query value 'undef' in query spec ",
-                        "[$attribute, undef, $operator]");
-    }
-    if ($value eq '') {
-      $self->logconfess("Invalid query value '$value' in query spec ",
-                        "[$attribute, $value, $operator]");
-    }
-
-    if ($i > 0) {
-      push(@query_clauses, 'and')
-    }
-    $i++;
-
-    push(@query_clauses, $attribute, $operator, $value);
-  }
-
-  return @query_clauses;
 }
 
 __PACKAGE__->meta->make_immutable;

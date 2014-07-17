@@ -60,6 +60,26 @@ sub report_error {
   return $self;
 }
 
+sub path_spec_str {
+  my ($self, $path_spec) = @_;
+
+  defined $path_spec or
+    $self->logconfess('A defined path_spec argument is required');
+
+  ref $path_spec eq 'HASH' or
+    $self->logconfess('A HashRef path_spec argument is required');
+
+  exists $path_spec->{collection} or
+    $self->logconfess('The path_spec argument did not have a "collection" key');
+
+  my $path = $path_spec->{collection};
+  if (exists $path_spec->{data_object}) {
+    $path = $path . '/' . $path_spec->{data_object};
+  }
+
+  return $path;
+}
+
 __PACKAGE__->meta->make_immutable;
 
 no Moose;

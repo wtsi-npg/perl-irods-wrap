@@ -7,3 +7,13 @@ client programs in a Perl API.
 The clients wrapped are the iRODS icommand programs
 (https://wiki.irods.org/index.php/icommands) and baton programs
 (https://github.com/wtsi-npg/baton).
+
+Dependencies:
+
+iRODS   https://github.com/irods/irods-legacy
+
+        Versions 3.2, 3.3 or 3.3.1
+
+baton   https://github.com/wtsi-npg/baton
+
+        Version 0.10.0

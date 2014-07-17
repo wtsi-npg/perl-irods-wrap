@@ -40,7 +40,7 @@ sub list_object {
     }
   }
   else {
-    $path = $self->_to_path_str($response);
+    $path = $self->path_spec_str($response);
   }
 
   return $path;
@@ -61,8 +61,8 @@ sub list_collection {
 
   my @paths;
   if ($obj_specs and $coll_specs) {
-    my @data_objects = map { $self->_to_path_str($_) } @$obj_specs;
-    my @collections  = map { $self->_to_path_str($_) } @$coll_specs;
+    my @data_objects = map { $self->path_spec_str($_) } @$obj_specs;
+    my @collections  = map { $self->path_spec_str($_) } @$coll_specs;
     @paths = (\@data_objects, \@collections);
   }
 
@@ -195,7 +195,7 @@ sub _list_collection_recur {
   my @all_coll_specs = ($this_coll);
 
   foreach my $sub_coll (@coll_specs) {
-    my $path = $self->_to_path_str($sub_coll);
+    my $path = $self->path_spec_str($sub_coll);
     $self->debug("Recursing into sub-collection '$path'");
 
     my ($sub_obj_specs, $sub_coll_specs) = $self->_list_collection_recur($path);
@@ -204,26 +204,6 @@ sub _list_collection_recur {
   }
 
   return (\@all_obj_specs, \@all_coll_specs);
-}
-
-sub _to_path_str {
-  my ($self, $path_spec) = @_;
-
-  defined $path_spec or
-    $self->logconfess('A defined path_spec argument is required');
-
-  ref $path_spec eq 'HASH' or
-    $self->logconfess('A HashRef path_spec argument is required');
-
-  exists $path_spec->{collection} or
-    $self->logconfess('The path_spec argument did not have a "collection" key');
-
-  my $path = $path_spec->{collection};
-  if (exists $path_spec->{data_object}) {
-    $path = $path . '/' . $path_spec->{data_object};
-  }
-
-  return $path;
 }
 
 sub _to_acl {

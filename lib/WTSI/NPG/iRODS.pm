@@ -41,7 +41,7 @@ has 'strict_baton_version' =>
   (is       => 'ro',
    isa      => 'Bool',
    required => 1,
-   default  => 0);
+   default  => 1);
 
 has 'required_baton_version' =>
   (is       => 'ro',

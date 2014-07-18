@@ -16,6 +16,7 @@ lib/WTSI/NPG/iRODS/GroupAdmin.pm
 lib/WTSI/NPG/iRODS/Lister.pm
 lib/WTSI/NPG/iRODS/MetaLister.pm
 lib/WTSI/NPG/iRODS/MetaModifier.pm
+lib/WTSI/NPG/iRODS/MetaSearcher.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Version.pm
@@ -58,6 +59,4 @@ t/lib/WTSI/NPG/CacheableTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODSTest.pm
-t/lib/WTSI/NPG/PublisherTest.pm
-t/lib/WTSI/NPG/SimplePublisherTest.pm
 t/lib/WTSI/NPG/UtilitiesTest.pm

@@ -856,6 +856,8 @@ sub find_collections_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
+  # baton >= 0.10.0 uses paths as per-query zone hints
+  my $zone_path = "/$zone";
 
   my @avu_specs;
   foreach my $query_spec (@query_specs) {
@@ -870,7 +872,7 @@ sub find_collections_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->coll_searcher->search($zone, @avu_specs);
+  my $results = $self->coll_searcher->search($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results,
                "collections (to filter by '$root')");
 
@@ -1360,6 +1362,8 @@ sub find_objects_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
+  # baton >= 0.10.0 uses paths as per-query zone hints
+  my $zone_path = "/$zone";
 
   my @avu_specs;
   foreach my $query_spec (@query_specs) {
@@ -1374,7 +1378,7 @@ sub find_objects_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->obj_searcher->search($zone, @avu_specs);
+  my $results = $self->obj_searcher->search($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results, " objects (to filter by '$root')");
   my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");

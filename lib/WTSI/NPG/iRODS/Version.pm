@@ -1,5 +1,5 @@
 
-package WTSI::NPG::Version;
+package WTSI::NPG::iRODS::Version;
 
 use strict;
 use warnings;

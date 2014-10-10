@@ -563,6 +563,44 @@ sub move_collection {
   return $target;
 }
 
+=head2 get_collection
+
+  Arg [1]    : iRODS collection name
+  Arg [2]    : Local directory path
+
+  Example    : $irods->get_collection('/my/path/foo', '.')
+  Description: Fetch a collection and contents, recursively and return
+               the path of the local copy.
+  Returntype : Str
+
+=cut
+
+sub get_collection {
+  my ($self, $source, $target) = @_;
+
+  defined $source or
+    $self->logconfess('A defined source (collection) argument is required');
+  defined $target or
+    $self->logconfess('A defined target (directory) argument is required');
+
+  $source eq '' and
+    $self->logconfess('A non-empty source (collection) argument is required');
+  $target eq '' and
+    $self->logconfess('A non-empty target (directory) argument is required');
+
+  $source = File::Spec->canonpath($source);
+  $source = $self->_ensure_absolute_path($source);
+  $target = File::Spec->canonpath($target);
+  $self->debug("Getting from '$source' to '$target'");
+
+  my @args = ('-r', '-f', $source, $target);
+  WTSI::NPG::Runnable->new(executable  => $IGET,
+                           arguments   => \@args,
+                           environment => $self->environment,
+                           logger      => $self->logger)->run;
+  return $self;
+}
+
 =head2 remove_collection
 
   Arg [1]    : iRODS collection name
@@ -818,6 +856,8 @@ sub find_collections_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
+  # baton >= 0.10.0 uses paths as per-query zone hints
+  my $zone_path = "/$zone";
 
   my @avu_specs;
   foreach my $query_spec (@query_specs) {
@@ -832,7 +872,7 @@ sub find_collections_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->coll_searcher->search($zone, @avu_specs);
+  my $results = $self->coll_searcher->search($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results,
                "collections (to filter by '$root')");
 
@@ -1026,6 +1066,39 @@ sub move_object {
                            environment => $self->environment,
                            logger      => $self->logger)->run;
   return $target
+}
+
+=head2 get_object
+
+  Arg [1]    : iRODS data object name
+  Arg [2]    : Local file path
+
+  Example    : $irods->get_object('/my/path/lorem.txt', 'lorem.txt')
+  Description: Fetch a data object and return the path of the local copy.
+  Returntype : Str
+
+=cut
+
+sub get_object {
+  my ($self, $source, $target) = @_;
+
+  defined $source or
+    $self->logconfess('A defined source (data object) argument is required');
+  defined $target or
+    $self->logconfess('A defined target (file) argument is required');
+
+  $source eq '' and
+    $self->logconfess('A non-empty source (data object) argument is required');
+  $target eq '' and
+    $self->logconfess('A non-empty target (file) argument is required');
+
+  my @args = ('-f', '-T', $source, $target);
+  my $runnable = WTSI::NPG::Runnable->new
+    (executable  => $IGET,
+     arguments   => \@args,
+     logger      => $self->logger)->run;
+
+  return $target;
 }
 
 =head2 remove_object
@@ -1289,6 +1362,8 @@ sub find_objects_by_meta {
   $root = $self->_ensure_absolute_path($root);
 
   my $zone = $self->find_zone_name($root);
+  # baton >= 0.10.0 uses paths as per-query zone hints
+  my $zone_path = "/$zone";
 
   my @avu_specs;
   foreach my $query_spec (@query_specs) {
@@ -1303,7 +1378,7 @@ sub find_objects_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->obj_searcher->search($zone, @avu_specs);
+  my $results = $self->obj_searcher->search($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results, " objects (to filter by '$root')");
   my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");

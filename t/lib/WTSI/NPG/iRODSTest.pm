@@ -12,7 +12,7 @@ use List::AllUtils qw(all any none);
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 172;
+use Test::More tests => 174;
 use Test::Exception;
 
 use Log::Log4perl;
@@ -498,7 +498,7 @@ sub list_object : Test(4) {
 
   is($irods->list_object($lorem_object), $lorem_object);
 
-  my $lorem =  "$irods_tmp_coll/irods/lorem.txt";
+  my $lorem = "$irods_tmp_coll/irods/lorem.txt";
   is($irods->list_object($lorem), $lorem);
 
   ok(!$irods->list_object('no_object_exists'),
@@ -506,6 +506,28 @@ sub list_object : Test(4) {
 
   dies_ok { $irods->list_object }
     'Failed to list an undefined object';
+}
+
+sub read_object : Test(2) {
+  my $irods = WTSI::NPG::iRODS->new;
+
+  my $lorem_file = "$data_path/lorem.txt";
+  my $lorem_object = "$irods_tmp_coll/lorem.txt";
+  $irods->add_object($lorem_file, $lorem_object);
+
+  my $content = $irods->read_object($lorem_object);
+  ok($content, 'Read some object content');
+
+  my $expected = '';
+  {
+    local $/ = undef;
+    open my $fin, "<:encoding(utf8)", $lorem_file or die "Failed to open $!";
+    $expected = <$fin>;
+    close $fin;
+  };
+
+  ok(Unicode::Collate->new->eq($content, $expected),
+     'Read expected object contents') or diag explain $content;
 }
 
 sub add_object : Test(3) {
@@ -826,11 +848,12 @@ sub slurp_object : Test(1) {
   my $data = $irods->slurp_object($test_object);
 
   my $original = '';
-  open my $fin, '<:encoding(utf-8)', $test_file or die "Failed to open $!\n";
-  while (<$fin>) {
-    $original .= $_;
+  {
+    local $/ = undef;
+    open my $fin, '<:encoding(utf-8)', $test_file or die "Failed to open $!\n";
+    $original = <$fin>;
+    close $fin;
   }
-  close $fin;
 
   ok(Unicode::Collate->new->eq($data, $original), 'Slurped copy is identical');
 }

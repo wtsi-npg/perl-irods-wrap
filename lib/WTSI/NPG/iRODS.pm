@@ -12,6 +12,7 @@ use Moose;
 
 use WTSI::NPG::Runnable;
 use WTSI::NPG::iRODS::ACLModifier;
+use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
 use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
@@ -19,7 +20,7 @@ use WTSI::NPG::iRODS::MetaSearcher;
 
 with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotation';
 
-our $REQUIRED_BATON_VERSION = '0.10.0';
+our $REQUIRED_BATON_VERSION = '0.11.0';
 
 our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
@@ -162,6 +163,23 @@ has 'acl_modifier' =>
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
+
+
+has 'obj_reader' =>
+  (is         => 'ro',
+   isa      => 'WTSI::NPG::iRODS::DataObjectReader',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::DataObjectReader->new
+       (arguments   => [ '--unbuffered'],
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+
 
 sub BUILD {
   my ($self) = @_;
@@ -908,6 +926,24 @@ sub list_object {
   return $self->lister->list_object($object);
 }
 
+
+sub read_object {
+  my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq '' and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_absolute_path($object);
+  $self->debug("Reading object '$object'");
+
+  return $self->obj_reader->read_object($object);
+}
+
+
+
 =head2 add_object
 
   Arg [1]    : Name of file to add to iRODs
@@ -1140,14 +1176,7 @@ sub slurp_object {
 
   $self->debug("Slurping object '$target'");
 
-  my $runnable = WTSI::NPG::Runnable->new
-    (executable  => $IGET,
-     arguments   => [$target, '-'],
-     logger      => $self->logger)->run;
-
-  my $copy = decode('UTF-8', ${$runnable->stdout}, Encode::FB_CROAK);
-
-  return $copy;
+  return $self->read_object($target);
 }
 
 sub get_object_permissions {

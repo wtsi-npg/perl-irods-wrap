@@ -18,20 +18,26 @@ before_install:
 
 install:
   - cpanm --quiet --notest Cache::MemoryCache
+  - cpanm --quiet --notest IO::Pty
+  - cpanm --quiet --notest IPC::Run
   - cpanm --quiet --notest Log::Log4perl
   - cpanm --quiet --notest Moose
+  - cpanm --quiet --notest Readonly
+  - cpanm --quiet --notest Set::Scalar
+  - cpanm --quiet --notest Test::Class
 
 before_script:
   - wget -q https://github.com/wtsi-npg/irods-legacy/releases/download/3.3.1-travis-bc85aa/irods.tar.gz -O /tmp/irods.tar.gz
   - tar xfz /tmp/irods.tar.gz
   - source $TRAVIS_BUILD_DIR/travis_linux_env.sh
+  - echo "iRODS home is " $IRODS_HOME
   - wget -q https://github.com/akheron/jansson/archive/v2.6.tar.gz -O /tmp/jansson-2.6.tar.gz
   - tar xfz /tmp/jansson-2.6.tar.gz -C /tmp
   - cd /tmp/jansson-2.6 ; autoreconf -fi ; ./configure ; make ; sudo make install
   - sudo ldconfig
-  - wget -q https://github.com/wtsi-npg/baton/releases/download/0.11.1/baton-0.11.1.tar.gz -O /tmp/baton-0.11.1.tar.gz
-  - tar xfz /tmp/baton-0.11.1.tar.gz -C /tmp
-  - cd /tmp/baton-0.11.1 ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
+  - wget -q https://github.com/wtsi-npg/baton/releases/download/0.12.0/baton-0.12.0.tar.gz -O /tmp/baton-0.12.0.tar.gz
+  - tar xfz /tmp/baton-0.12.0.tar.gz -C /tmp
+  - cd /tmp/baton-0.12.0 ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
   - sudo ldconfig
   - cd $TRAVIS_BUILD_DIR
   - export PATH=$PATH:$IRODS_HOME/clients/icommands/bin
@@ -42,7 +48,8 @@ before_script:
   - $TRAVIS_BUILD_DIR/irodscontrol istart ; sleep 10
   - echo irods | script -q -c "iinit" > /dev/null
   - ienv
-  - ils
+  - iadmin mkgroup ss_0
+  - iadmin mkgroup ss_10
 
 script:
   - perl Build.PL

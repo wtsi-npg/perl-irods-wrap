@@ -54,8 +54,22 @@ before_script:
 
 script:
   - perl Build.PL
+  - ./Build manifest
   - ./Build clean
   - ./Build test
 
 after_script:
   - $TRAVIS_BUILD_DIR/irodscontrol istop
+
+after_success:
+  - ./Build dist
+  - export DIST_FILE=$(ls WTSI-NPG-iRODS-*.tar.gz)
+
+deploy:
+  provider: releases
+  api-key: $GH_OAUTH
+  file: $DIST_FILE
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true

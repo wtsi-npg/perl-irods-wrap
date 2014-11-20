@@ -8,6 +8,7 @@ addons:
 
 env:
   global:
+    - secure: dgdJ8qPPOxaYaARF+/R6TeW1Mwf8QvtCivD0/+UaaPuBF4dGQD8WV72iT/TCyjf/B5cO0s5YQf7rqQ/y4jiQMmYOFx/r84qVlQYsamwZAqz7hz5twAOdRRPj93jo31QjNVH7Y55c6kR4LSS10xM+AnBHel3cdjI3e/ela+Hrh1M=
     - PGVERSION="9.3"
     - BATON_VERSION="0.12.1"
     - CK_DEFAULT_TIMEOUT=10
@@ -54,7 +55,6 @@ before_script:
 
 script:
   - perl Build.PL
-  - ./Build manifest
   - ./Build clean
   - ./Build test
 

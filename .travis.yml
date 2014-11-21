@@ -8,7 +8,7 @@ addons:
 
 env:
   global:
-    - secure: dgdJ8qPPOxaYaARF+/R6TeW1Mwf8QvtCivD0/+UaaPuBF4dGQD8WV72iT/TCyjf/B5cO0s5YQf7rqQ/y4jiQMmYOFx/r84qVlQYsamwZAqz7hz5twAOdRRPj93jo31QjNVH7Y55c6kR4LSS10xM+AnBHel3cdjI3e/ela+Hrh1M=
+    - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
     - PGVERSION="9.3"
     - BATON_VERSION="0.12.1"
     - CK_DEFAULT_TIMEOUT=10

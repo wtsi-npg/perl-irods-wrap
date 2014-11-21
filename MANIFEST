@@ -1,3 +1,4 @@
+.travis.yml
 bin/populate_wtsi_irods_groups.pl
 Build.PL
 Build.pm
@@ -12,6 +13,7 @@ lib/WTSI/NPG/iRODS/ACLModifier.pm
 lib/WTSI/NPG/iRODS/Collection.pm
 lib/WTSI/NPG/iRODS/Communicator.pm
 lib/WTSI/NPG/iRODS/DataObject.pm
+lib/WTSI/NPG/iRODS/DataObjectReader.pm
 lib/WTSI/NPG/iRODS/GroupAdmin.pm
 lib/WTSI/NPG/iRODS/Lister.pm
 lib/WTSI/NPG/iRODS/MetaLister.pm
@@ -26,6 +28,8 @@ lib/WTSI/NPG/Runnable.pm
 lib/WTSI/NPG/Startable.pm
 lib/WTSI/NPG/Utilities/IO.pm
 MANIFEST			This list of files
+META.json
+META.yml
 README
 t/cacheable.t
 t/irods.t

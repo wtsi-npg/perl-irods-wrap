@@ -8,7 +8,9 @@ addons:
 
 env:
   global:
+    - secure: dgdJ8qPPOxaYaARF+/R6TeW1Mwf8QvtCivD0/+UaaPuBF4dGQD8WV72iT/TCyjf/B5cO0s5YQf7rqQ/y4jiQMmYOFx/r84qVlQYsamwZAqz7hz5twAOdRRPj93jo31QjNVH7Y55c6kR4LSS10xM+AnBHel3cdjI3e/ela+Hrh1M=
     - PGVERSION="9.3"
+    - BATON_VERSION="0.12.1"
     - CK_DEFAULT_TIMEOUT=10
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
 
@@ -35,9 +37,9 @@ before_script:
   - tar xfz /tmp/jansson-2.6.tar.gz -C /tmp
   - cd /tmp/jansson-2.6 ; autoreconf -fi ; ./configure ; make ; sudo make install
   - sudo ldconfig
-  - wget -q https://github.com/wtsi-npg/baton/releases/download/0.12.0/baton-0.12.0.tar.gz -O /tmp/baton-0.12.0.tar.gz
-  - tar xfz /tmp/baton-0.12.0.tar.gz -C /tmp
-  - cd /tmp/baton-0.12.0 ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
+  - wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
+  - tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
+  - cd /tmp/baton-${BATON_VERSION} ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
   - sudo ldconfig
   - cd $TRAVIS_BUILD_DIR
   - export PATH=$PATH:$IRODS_HOME/clients/icommands/bin
@@ -58,3 +60,16 @@ script:
 
 after_script:
   - $TRAVIS_BUILD_DIR/irodscontrol istop
+
+after_success:
+  - ./Build dist
+  - export DIST_FILE=$(ls WTSI-NPG-iRODS-*.tar.gz)
+
+deploy:
+  provider: releases
+  api-key: $GH_OAUTH
+  file: $DIST_FILE
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true

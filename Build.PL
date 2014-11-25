@@ -35,7 +35,7 @@ my $build = Build->new
                           'Readonly'              => '>= 1.04',
                           'Set::Scalar'           => '>= 1.26',
                           'URI'                   => '>= 1.60',
-                          'WTSI::DNAP::Utilities' => '>= 0.3.0'
+                          'WTSI::DNAP::Utilities' => '>= 0.3.1'
                          });
 
 $build->create_build_script;

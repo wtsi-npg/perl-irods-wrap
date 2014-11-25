@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::MetaModifier;
 
 use File::Spec;

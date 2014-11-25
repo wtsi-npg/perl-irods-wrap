@@ -1,11 +1,9 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Communicator;
 
 use Moose;
 
-with 'WTSI::NPG::Startable', 'WTSI::NPG::JSONCodec';
+with 'WTSI::DNAP::Utilities::Startable', 'WTSI::DNAP::Utilities::JSONCodec';
 
 sub communicate {
   my ($self, $spec) = @_;

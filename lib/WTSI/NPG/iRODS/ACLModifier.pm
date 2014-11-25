@@ -1,10 +1,7 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::ACLModifier;
 
 use File::Spec;
-use JSON;
 use Moose;
 
 extends 'WTSI::NPG::iRODS::Communicator';

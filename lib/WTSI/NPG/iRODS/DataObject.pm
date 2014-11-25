@@ -1,9 +1,6 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::DataObject;
 
-use JSON;
 use File::Spec;
 use Moose;
 use Set::Scalar;
@@ -394,7 +391,7 @@ sub json {
               data_object => $self->data_object,
               avus        => $self->metadata};
 
-  return JSON->new->utf8->encode($spec);
+  return $self->encode($spec);
 }
 
 sub slurp {

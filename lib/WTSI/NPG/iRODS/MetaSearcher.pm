@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::MetaSearcher;
 
 use File::Spec;
@@ -70,4 +68,3 @@ __PACKAGE__->meta->make_immutable;
 no Moose;
 
 1;
-

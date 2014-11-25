@@ -1,4 +1,3 @@
-use utf8;
 
 package Build;
 
@@ -14,7 +13,6 @@ use base 'Module::Build';
 
 our $DEFAULT_VERSION = '0.0.0';
 our $VERSION_FILE    = 'blib/lib/WTSI/NPG/iRODS/Version.pm';
-
 
 # Git version code courtesy of Marina Gourtovaia <mg8@sanger.ac.uk>
 sub git_tag {

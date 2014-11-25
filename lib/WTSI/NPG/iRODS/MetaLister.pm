@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::MetaLister;
 
 use Moose;
@@ -68,7 +66,7 @@ sub _list_path_meta {
 
   if (!exists $response->{avus}) {
     $self->logconfess('The returned path spec did not have an "avus" key: ',
-                      JSON->new->utf8->encode($response));
+                      $self->encode($response));
   }
 
   return @{$response->{avus}};

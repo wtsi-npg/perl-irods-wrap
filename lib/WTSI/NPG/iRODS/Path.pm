@@ -1,15 +1,13 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Path;
 
-use JSON;
 use File::Spec;
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
 
-with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotatable';
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotatable',
+  'WTSI::DNAP::Utilities::JSONCodec';
 
 has 'collection' =>
   (is        => 'ro',
@@ -186,7 +184,7 @@ sub meta_str {
 sub meta_json {
   my ($self) = @_;
 
-  return JSON->new->utf8->encode($self->metadata);
+  return $self->encode($self->metadata);
 }
 
 no Moose;

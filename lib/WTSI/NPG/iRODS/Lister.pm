@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Lister;
 
 use File::Spec;
@@ -159,8 +157,7 @@ sub _list_collection {
 
     if (!exists $response->{contents}) {
       $self->logconfess('The returned path spec did not have ',
-                        'a "contents" key: ',
-                        JSON->new->utf8->encode($response));
+                        'a "contents" key: ', $self->encode($response));
     }
 
     my @contents = @{delete $response->{contents}};
@@ -239,7 +236,6 @@ sub _to_acl_str {
 
   return '[' . join(', ', @strs) . ']' ;
 }
-
 
 __PACKAGE__->meta->make_immutable;
 

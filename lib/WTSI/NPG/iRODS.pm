@@ -1,4 +1,3 @@
-use utf8;
 
 package WTSI::NPG::iRODS;
 
@@ -6,11 +5,11 @@ use Encode qw(decode);
 use English;
 use File::Basename qw(basename);
 use File::Spec;
-use JSON;
 use List::AllUtils qw(any);
 use Moose;
 
-use WTSI::NPG::Runnable;
+use WTSI::DNAP::Utilities::Runnable;
+
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -18,10 +17,11 @@ use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
 use WTSI::NPG::iRODS::MetaSearcher;
 
-with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotation';
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $REQUIRED_BATON_VERSION = '0.11.0';
 
+our $IADMIN      = 'iadmin';
 our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
@@ -184,7 +184,7 @@ has 'obj_reader' =>
 sub BUILD {
   my ($self) = @_;
 
-  my ($installed_baton_version) = WTSI::NPG::Runnable->new
+  my ($installed_baton_version) = WTSI::DNAP::Utilities::Runnable->new
     (executable  => 'baton-list',
      arguments   => ['--version'],
      environment => $self->environment,
@@ -216,14 +216,14 @@ around 'working_collection' => sub {
     $collection = $self->_ensure_absolute_path($collection);
     $self->debug("Changing working_collection to '$collection'");
 
-    WTSI::NPG::Runnable->new(executable  => $ICD,
-                             arguments   => [$collection],
-                             environment => $self->environment,
-                             logger      => $self->logger)->run;
+    WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
+                                         arguments   => [$collection],
+                                         environment => $self->environment,
+                                         logger      => $self->logger)->run;
     $self->$orig($collection);
   }
   elsif (!$self->has_working_collection) {
-    my ($wc) = WTSI::NPG::Runnable->new
+    my ($wc) = WTSI::DNAP::Utilities::Runnable->new
       (executable  => $IPWD,
        environment => $self->environment,
        logger      => $self->logger)->run->split_stdout;
@@ -321,7 +321,7 @@ sub make_group_name {
 sub list_groups {
   my ($self, @args) = @_;
 
-  my @groups = WTSI::NPG::Runnable->new
+  my @groups = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGROUPADMIN,
      arguments   => ['lg'],
      environment => $self->environment,
@@ -341,7 +341,7 @@ sub list_groups {
 sub group_exists {
   my ($self, $name) = @_;
 
-  return grep { /^$name$/ } $self->list_groups;
+  return any { $_ eq $name } $self->list_groups;
 }
 
 =head2 add_group
@@ -362,10 +362,10 @@ sub add_group {
     $self->logconfess("Failed to create iRODS group '$name' because it exists");
   }
 
-  WTSI::NPG::Runnable->new(executable  => $IGROUPADMIN,
-                           arguments   => ['mkgroup', $name],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
+                                       arguments   => ['mkgroup', $name],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $name;
 }
 
@@ -383,15 +383,15 @@ sub add_group {
 sub remove_group {
   my ($self, $name) = @_;
 
-  unless (group_exists($name)) {
+  unless ($self->group_exists($name)) {
     $self->logconfess("Unable to remove group '$name' because ",
                       "it doesn't exist");
   }
 
-  WTSI::NPG::Runnable->new(executable  => $IGROUPADMIN,
-                           arguments   => ['rmgroup', $name],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
+                                       arguments   => ['rmgroup', $name],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $name;
 }
 
@@ -434,9 +434,9 @@ sub set_group_access {
 sub reset_working_collection {
   my ($self) = @_;
 
-  WTSI::NPG::Runnable->new(executable  => $ICD,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   $self->clear_working_collection;
 
   return $self;
@@ -496,10 +496,10 @@ sub add_collection {
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Adding collection '$collection'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMKDIR,
-                           arguments   => ['-p', $collection],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMKDIR,
+                                       arguments   => ['-p', $collection],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $collection;
 }
 
@@ -534,10 +534,10 @@ sub put_collection {
   $self->debug("Putting directory '$dir' into collection '$target'");
 
   my @args = ('-r', $dir, $target);
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => \@args,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
+                                       arguments   => \@args,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
 
   # FIXME - this is handling a case where the target collection exists
   return $target . '/' . basename($dir);
@@ -574,10 +574,10 @@ sub move_collection {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMV,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -612,10 +612,10 @@ sub get_collection {
   $self->debug("Getting from '$source' to '$target'");
 
   my @args = ('-r', '-f', $source, $target);
-  WTSI::NPG::Runnable->new(executable  => $IGET,
-                           arguments   => \@args,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IGET,
+                                       arguments   => \@args,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $self;
 }
 
@@ -643,10 +643,10 @@ sub remove_collection {
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Removing collection '$collection'");
 
-  WTSI::NPG::Runnable->new(executable  => $IRM,
-                           arguments   => ['-r', '-f', $collection],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
+                                       arguments   => ['-r', '-f', $collection],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $collection;
 }
 
@@ -677,7 +677,7 @@ sub set_collection_permissions {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   $self->debug("Setting permissions on '$collection' to ",
@@ -716,7 +716,7 @@ sub get_collection_groups {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   my @perms = $self->get_collection_permissions($collection);
@@ -971,10 +971,10 @@ sub add_object {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Adding '$file' as new object '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => ['-K', $file, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
+                                       arguments   => ['-K', $file, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -1005,10 +1005,11 @@ sub replace_object {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => ['-f', '-K', $file, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new
+      (executable  => $IPUT,
+       arguments   => ['-f', '-K', $file, $target],
+       environment => $self->environment,
+       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -1049,10 +1050,10 @@ sub copy_object {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Copying object from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $ICP,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICP,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
 
   $self->debug("Copying metadata from '$source' to '$target'");
 
@@ -1097,10 +1098,10 @@ sub move_object {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMV,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target
 }
 
@@ -1129,7 +1130,7 @@ sub get_object {
     $self->logconfess('A non-empty target (file) argument is required');
 
   my @args = ('-f', '-T', $source, $target);
-  my $runnable = WTSI::NPG::Runnable->new
+  my $runnable = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGET,
      arguments   => \@args,
      logger      => $self->logger)->run;
@@ -1158,10 +1159,10 @@ sub remove_object {
 
   $self->debug("Removing object '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IRM,
-                           arguments   => [$target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
+                                       arguments   => [$target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -1206,7 +1207,7 @@ sub set_object_permissions {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   $self->debug("Setting permissions on '$object' to '$perm_str' for '$owner'");
@@ -1242,7 +1243,7 @@ sub get_object_groups {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   my @perms = $self->get_object_permissions($object);
@@ -1437,7 +1438,7 @@ sub calculate_checksum {
 
   $object = $self->_ensure_absolute_path($object);
 
-  my @raw_checksum = WTSI::NPG::Runnable->new
+  my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $ICHKSUM,
      arguments   => ['-f', $object],
      environment => $self->environment,
@@ -1511,7 +1512,7 @@ sub md5sum {
   defined $file or $self->logconfess('A defined file argument is required');
   $file eq '' and $self->logconfess('A non-empty file argument is required');
 
-  my @result = WTSI::NPG::Runnable->new
+  my @result = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $MD5SUM,
      arguments   => [$file],
      environment => $self->environment,
@@ -1643,7 +1644,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

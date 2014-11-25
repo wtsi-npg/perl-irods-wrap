@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::DataObjectReader;
 
 use Moose;
@@ -54,7 +52,7 @@ sub read_object {
 
   if (!exists $response->{data}) {
     $self->logconfess('The returned path spec did not have a "data" key: ',
-                      JSON->new->utf8->encode($response));
+                      $self->encode($response));
   }
 
   return $response->{data};

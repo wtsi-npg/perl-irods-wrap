@@ -1,6 +1,4 @@
 
-use utf8;
-
 use strict;
 use warnings;
 
@@ -19,27 +17,25 @@ my $build = Build->new
    dist_version       => Build->git_tag,
    license            => 'gpl',
    configure_requires => {
-                          'Module::Build' => 0.42
+                          'Module::Build'         => '>= 0.42'
                          },
    test_requires      => {
-                          'TAP::Harness'    => '>= 3.30',
-                          'Test::Class'     => '>= 0.41',
-                          'Test::More'      => '>= 0.98',
-                          'Test::Exception' => '>= 0.32',
+                          'TAP::Harness'          => '>= 3.30',
+                          'Test::Class'           => '>= 0.41',
+                          'Test::More'            => '>= 0.98',
+                          'Test::Exception'       => '>= 0.32',
                          },
    requires =>           {
-                          'Carp'            => '>= 1.20',
-                          'Cache::Cache'    => '>= 1.06',
-                          'Encode'          => '>= 2.42',
-                          'File::Which'     => '>= 1.09',
-                          'IPC::Run'        => '>= 0.92',
-                          'JSON'            => '>= 2.61',
-                          'Log::Log4perl'   => '>= 1.42',
-                          'List::AllUtils'  => '>= 0.07',
-                          'Moose'           => '>= 2.1',
-                          'Readonly'        => '>= 1.04',
-                          'Set::Scalar'     => '>= 1.26',
-                          'URI'             => '>= 1.60'
+                          'Carp'                  => '>= 1.20',
+                          'Encode'                => '>= 2.42',
+                          'IO::Pty'               => '>= 1.10',
+                          'Log::Log4perl'         => '>= 1.42',
+                          'List::AllUtils'        => '>= 0.07',
+                          'Moose'                 => '>= 2.1',
+                          'Readonly'              => '>= 1.04',
+                          'Set::Scalar'           => '>= 1.26',
+                          'URI'                   => '>= 1.60',
+                          'WTSI::DNAP::Utilities' => '>= 0.3.0'
                          });
 
 $build->create_build_script;

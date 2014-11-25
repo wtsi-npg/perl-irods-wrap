@@ -1,9 +1,6 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Collection;
 
-use JSON;
 use File::Spec;
 use Moose;
 
@@ -132,7 +129,7 @@ sub remove_avu {
 
 =head2 get_contents
 
-  Arg [1]    : 
+  Arg [1]    :
 
   Example    : my ($objs, $cols) = $irods->get_contents($coll)
   Description: Return the contents of the collection as two arrayrefs,
@@ -268,7 +265,7 @@ sub json {
   my $spec = {collection => $self->collection,
               avus       => $self->metadata};
 
-  return JSON->new->utf8->encode($spec);
+  return $self->encode($spec);
 }
 
 __PACKAGE__->meta->make_immutable;

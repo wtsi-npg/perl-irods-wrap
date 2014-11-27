@@ -1,7 +1,11 @@
 
 package WTSI::NPG::Annotation;
 
+use strict;
+use warnings;
 use Moose::Role;
+
+our $VERSION = '';
 
 our %METADATA_ATTR =
   (sample_name             => 'sample',
@@ -46,7 +50,7 @@ __END__
 
 =head1 NAME
 
-Annotation - Metadata attribute names.
+WTSI::NPG::Annotation - Metadata attribute names.
 
 =head1 DESCRIPTION
 

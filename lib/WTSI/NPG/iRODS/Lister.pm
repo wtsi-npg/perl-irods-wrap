@@ -4,12 +4,17 @@ package WTSI::NPG::iRODS::Lister;
 use File::Spec;
 use Moose;
 
+our $VERSION = '';
+
 extends 'WTSI::NPG::iRODS::Communicator';
 
 has '+executable' => (default => 'baton-list');
 
- # iRODS error code for non-existence
+##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
+##no critic (ValuesAndExpressions::RequireNumberSeparators)
+# iRODS error code for non-existence
 our $ITEM_DOES_NOT_EXIST = -310000;
+##use critic
 
 around [qw(list_collection list_object
            get_collection_acl get_object_acl)] => sub {
@@ -114,7 +119,7 @@ sub _list_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object =~ m{^/} or
+  $object =~ m{^/}msx or
     $self->logconfess("An absolute object path argument is required: ",
                       "received '$object'");
 
@@ -135,7 +140,7 @@ sub _list_collection {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection =~ m{^/} or
+  $collection =~ m{^/}msx or
     $self->logconfess("An absolute collection path argument is required: ",
                       "received '$collection'");
   $collection = File::Spec->canonpath($collection);
@@ -231,7 +236,7 @@ sub _to_acl_str {
 
   my @strs;
   foreach my $elt (@$acl) {
-    push @strs, sprintf("%s:%s", $elt->{owner}, $elt->{level});
+    push @strs, sprintf "%s:%s", $elt->{owner}, $elt->{level};
   }
 
   return '[' . join(', ', @strs) . ']' ;
@@ -259,7 +264,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

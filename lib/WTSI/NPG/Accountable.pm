@@ -1,8 +1,12 @@
 
 package WTSI::NPG::Accountable;
 
+use strict;
+use warnings;
 use Moose::Role;
 use URI;
+
+our $VERSION = '';
 
 has 'accountee_uid' =>
   (is       => 'ro',
@@ -91,8 +95,8 @@ __END__
 
 =head1 NAME
 
-Accountable - a role which identifies an agent (the Accountee, a
-person or program) who carried out an operation.
+WTSI::NPG::Accountable - a role which identifies an agent (the
+Accountee, a person or program) who carried out an operation.
 
 =head1 DESCRIPTION
 
@@ -105,7 +109,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

@@ -7,6 +7,8 @@ use Set::Scalar;
 
 use WTSI::NPG::iRODS;
 
+our $VERSION = '';
+
 with 'WTSI::NPG::iRODS::Path';
 
 has 'data_object' =>
@@ -14,7 +16,7 @@ has 'data_object' =>
    isa       => 'Str',
    required  => 1,
    lazy      => 1,
-   default   => '.',
+   default   => q{.},
    predicate => 'has_data_object');
 
 # TODO: Add a check so that a DataObject cannot be built from a path
@@ -25,7 +27,7 @@ around BUILDARGS => sub {
   if (@args == 2 && ref $args[0] eq 'WTSI::NPG::iRODS') {
     my ($volume, $collection, $data_name) = File::Spec->splitpath($args[1]);
     $collection = File::Spec->canonpath($collection);
-    $collection ||= '.';
+    $collection ||= q{.};
 
     return $class->$orig(irods       => $args[0],
                          collection  => $collection,
@@ -201,6 +203,7 @@ sub remove_avu {
 
 =cut
 
+##no critic (Subroutines::ProhibitExcessComplexity)
 sub supersede_avus {
   my ($self, $attribute, $value, $units) = @_;
 
@@ -209,7 +212,7 @@ sub supersede_avus {
   defined $value or
     $self->logcroak("A defined value argument is required");
 
-  $self->debug("Superseding all '$attribute' metadata on '", $self->str, "'");
+  $self->debug("Superseding all '$attribute' metadata on '", $self->str, q{'});
 
   my @matching = $self->find_in_metadata($attribute);
   my $num_matching = scalar @matching;
@@ -253,16 +256,16 @@ sub supersede_avus {
         my $old_units_str = defined $old_units ? "'$old_units'" : 'undef';
         $self->debug("Superseding AVU (removing) ",
                      "{'$old_attribute', '$old_value', ",
-                     "$old_units_str} on '", $self->str, "' ",
-                     "[$num_processed / $num_matching]");
+                     "$old_units_str} on '", $self->str,
+                     "' [$num_processed / $num_matching]");
 
         $self->remove_avu($old_attribute, $old_value, $old_units);
 
         my $units_str = defined $units ? "'$units'" : 'undef';
         $self->debug("Superseding with AVU (now adding) ",
                      "{'$attribute', '$value', ",
-                     "$units_str} on '", $self->str, "' ",
-                     "[$num_processed / $num_matching]");
+                     "$units_str} on '", $self->str,
+                     "' [$num_processed / $num_matching]");
 
         if ($self->get_avu($attribute, $value, $units)) {
           $self->debug("The superseding AVU ",
@@ -272,8 +275,8 @@ sub supersede_avus {
         }
         else {
           $self->debug("Superseding with AVU {'$attribute', '$value', ",
-                       "$units_str} on '", $self->str, "' ",
-                       "[$num_processed / $num_matching]");
+                       "$units_str} on '", $self->str,
+                       "' [$num_processed / $num_matching]");
           $self->add_avu($attribute, $value, $units);
         }
       }
@@ -284,13 +287,14 @@ sub supersede_avus {
     my $units_str = defined $units ? "'$units'" : 'undef';
     $self->debug("Not superseding with AVU (none currently with this) ",
                  "attribute {'$attribute', '$value', $units_str} on '",
-                 $self->str, "'");
+                 $self->str, q{'});
 
     $self->add_avu($attribute, $value, $units);
   }
 
   return $self;
 }
+##use critic
 
 sub get_permissions {
   my ($self) = @_;
@@ -327,7 +331,7 @@ sub set_permissions {
 sub get_groups {
   my ($self, $level) = @_;
 
-  $self->irods->get_object_groups($self->str, $level);
+  return $self->irods->get_object_groups($self->str, $level);
 }
 
 sub update_group_permissions {
@@ -355,6 +359,8 @@ sub update_group_permissions {
   $self->set_permissions('null', @to_remove);
   $self->debug("Groups to add: [", join(', ', @to_add), "]");
   $self->set_permissions('read', @to_add);
+
+  return $self;
 }
 
 =head2 str
@@ -428,7 +434,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

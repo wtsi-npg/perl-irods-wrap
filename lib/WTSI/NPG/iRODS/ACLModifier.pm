@@ -4,6 +4,8 @@ package WTSI::NPG::iRODS::ACLModifier;
 use File::Spec;
 use Moose;
 
+our $VERSION = '';
+
 extends 'WTSI::NPG::iRODS::Communicator';
 
 has '+executable' => (default => 'baton-chmod');
@@ -29,7 +31,7 @@ sub chmod_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object =~ m{^/} or
+  $object =~ m{^/}msx or
       $self->logconfess("An absolute object path argument is required: ",
                         "received '$object'");
 
@@ -58,7 +60,7 @@ sub chmod_collection {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection =~ m{^/} or
+  $collection =~ m{^/}mxs or
       $self->logconfess("An absolute collection path argument is required: ",
                         "received '$collection'");
 

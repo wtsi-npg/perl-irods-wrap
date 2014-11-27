@@ -3,6 +3,8 @@ package WTSI::NPG::iRODS::MetaLister;
 
 use Moose;
 
+our $VERSION = '';
+
 extends 'WTSI::NPG::iRODS::Communicator';
 
 has '+executable' => (default => 'baton-list');
@@ -24,7 +26,7 @@ sub list_collection_meta {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection =~ m{^/} or
+  $collection =~ m{^/}msx or
     $self->logconfess("An absolute object path argument is required: ",
                       "received '$collection'");
 
@@ -41,7 +43,7 @@ sub list_object_meta {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object =~ m{^/} or
+  $object =~ m{^/}msx or
     $self->logconfess("An absolute object path argument is required: ",
                       "received '$object'");
 
@@ -94,7 +96,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

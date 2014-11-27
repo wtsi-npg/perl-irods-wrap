@@ -1,7 +1,6 @@
 .travis.yml
 bin/populate_wtsi_irods_groups.pl
 Build.PL
-Build.pm
 etc/log4perl_tests.conf
 lib/WTSI/NPG/Accountable.pm
 lib/WTSI/NPG/Annotatable.pm
@@ -22,6 +21,7 @@ lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Version.pm
 MANIFEST			This list of files
 README
+t/critic.t
 t/irods.t
 t/irods/collect_files/a/10.txt
 t/irods/collect_files/a/x/1.txt
@@ -52,3 +52,4 @@ t/irods_path_test/test_dir/test_file.txt
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODSTest.pm
+t/perlcriticrc

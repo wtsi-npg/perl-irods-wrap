@@ -1,7 +1,11 @@
 
 package WTSI::NPG::Annotatable;
 
+use strict;
+use warnings;
 use Moose::Role;
+
+our $VERSION = '';
 
 with 'WTSI::NPG::Annotation';
 
@@ -17,7 +21,7 @@ __END__
 
 =head1 NAME
 
-Annotatable - a role which provides annotation or metadata.
+WTSI::NPG::Annotatable - role which provides annotation or metadata.
 
 =head1 DESCRIPTION
 

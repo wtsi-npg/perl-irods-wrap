@@ -3,6 +3,8 @@ package WTSI::NPG::iRODS::DataObjectReader;
 
 use Moose;
 
+our $VERSION = '';
+
 extends 'WTSI::NPG::iRODS::Communicator';
 
 has '+executable' => (default => 'baton-get');
@@ -35,7 +37,7 @@ sub read_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object =~ m{^/} or
+  $object =~ m{^/}msx or
     $self->logconfess("An absolute object path argument is required: ",
                       "received '$object'");
 

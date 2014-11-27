@@ -2,6 +2,9 @@
 package WTSI::NPG::iRODS::Communicator;
 
 use Moose;
+use Try::Tiny;
+
+our $VERSION = '';
 
 with 'WTSI::DNAP::Utilities::Startable', 'WTSI::DNAP::Utilities::JSONCodec';
 
@@ -10,22 +13,20 @@ sub communicate {
 
   my $json = $self->encode($spec);
   ${$self->stdin} .= $json;
-  ${$self->stderr} = '';
+  ${$self->stderr} = q{};
 
   $self->debug("Sending JSON spec $json to ", $self->executable);
 
   my $response;
 
-  eval {
+  try {
     # baton sends JSON responses on a single line
-    $self->harness->pump until ${$self->stdout} =~ m{[\r\n]$};
+    $self->harness->pump until ${$self->stdout} =~ m{[\r\n]$}msx;
     $response = $self->decode(${$self->stdout});
-    ${$self->stdout} = '';
+    ${$self->stdout} = q{};
+  } catch {
+    $self->error("JSON parse error on: '", ${$self->stdout}, "': ", $_);
   };
-
-  if ($@) {
-    $self->error("JSON parse error on: '", ${$self->stdout}, "': ", $@);
-  }
 
   defined $response or
     $self->logconfess("Failed to get a response from JSON spec '$json'");
@@ -72,7 +73,7 @@ sub path_spec_str {
 
   my $path = $path_spec->{collection};
   if (exists $path_spec->{data_object}) {
-    $path = $path . '/' . $path_spec->{data_object};
+    $path = $path . q{/} . $path_spec->{data_object};
   }
 
   return $path;
@@ -88,7 +89,7 @@ __END__
 
 =head1 NAME
 
-WTSI::NPG::iRODS::Communicable
+WTSI::NPG::iRODS::Communicator
 
 =head1 DESCRIPTION
 

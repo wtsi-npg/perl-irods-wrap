@@ -1,7 +1,11 @@
 
 package WTSI::NPG::iRODS::Storable;
 
+use strict;
+use warnings;
 use Moose::Role;
+
+our $VERSION = '';
 
 has 'file_name' =>
   (is       => 'ro',
@@ -35,8 +39,7 @@ after 'BUILD' => sub {
 
   if ($self->file_name) {
     unless (-e $self->file_name) {
-      $self->logconfess("File ", $self->file_name,
-                        " is not present");
+      $self->logconfess("File ", $self->file_name, " is not present");
     }
   }
 };
@@ -62,8 +65,9 @@ __END__
 
 =head1 NAME
 
-WTSI::NPG::iRODS::Storable - A file which may be either local or
-stored in iRODS.
+WTSI::NPG::iRODS::Storable
+
+A file which may be either local or stored in iRODS.
 
 =head1 DESCRIPTION
 

@@ -4,17 +4,16 @@ use warnings;
 
 # These paths are propagated to @INC in the build script. The 't/lib'
 # directory is added because the Test::Class tests are there.
-use lib qw(. t/lib);
+use lib qw(lib t/lib);
 
-use Module::Build;
-use Build;
+use WTSI::DNAP::Utilities::Build;
 
-my $build = Build->new
+my $build = WTSI::DNAP::Utilities::Build->new
   (module_name        => 'WTSI::NPG::iRODS',
    dist_author        => ['David Jackson <dj3@sanger.ac.uk>',
                           'Keith James <kdj@sanger.ac.uk>'],
-   dist_abstract      => 'Perl iRods Client Wrapper Library',
-   dist_version       => Build->git_tag,
+   dist_abstract      => 'Perl iRODS Client Wrapper Library',
+   dist_version       => WTSI::DNAP::Utilities::Build->report_version,
    license            => 'gpl',
    configure_requires => {
                           'Module::Build'         => '>= 0.42'
@@ -34,8 +33,12 @@ my $build = Build->new
                           'Moose'                 => '>= 2.1',
                           'Readonly'              => '>= 1.04',
                           'Set::Scalar'           => '>= 1.26',
+                          'Try::Tiny'             => '>= 0.12',
                           'URI'                   => '>= 1.60',
-                          'WTSI::DNAP::Utilities' => '>= 0.3.1'
+                          'WTSI::DNAP::Utilities' => '>= 0.4.1'
+                         },
+   recommends =>         {
+                          'Net::LDAP'             => '0'
                          });
 
 $build->create_build_script;

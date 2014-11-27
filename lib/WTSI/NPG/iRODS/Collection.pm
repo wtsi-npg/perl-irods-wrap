@@ -1,14 +1,13 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Collection;
 
-use JSON;
 use File::Spec;
 use Moose;
 
 use WTSI::NPG::iRODS;
 use WTSI::NPG::iRODS::DataObject;
+
+our $VERSION = '';
 
 with 'WTSI::NPG::iRODS::Path';
 
@@ -132,7 +131,7 @@ sub remove_avu {
 
 =head2 get_contents
 
-  Arg [1]    : 
+  Arg [1]    :
 
   Example    : my ($objs, $cols) = $irods->get_contents($coll)
   Description: Return the contents of the collection as two arrayrefs,
@@ -197,7 +196,7 @@ sub set_permissions {
 sub get_groups {
   my ($self, $level) = @_;
 
-  $self->irods->get_collection_groups($self->str, $level);
+  return $self->irods->get_collection_groups($self->str, $level);
 }
 
 =head2 set_content_permissions
@@ -268,7 +267,7 @@ sub json {
   my $spec = {collection => $self->collection,
               avus       => $self->metadata};
 
-  return JSON->new->utf8->encode($spec);
+  return $self->encode($spec);
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -294,7 +293,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

@@ -1,9 +1,9 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::DataObjectReader;
 
 use Moose;
+
+our $VERSION = '';
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
@@ -37,7 +37,7 @@ sub read_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object =~ m{^/} or
+  $object =~ m{^/}msx or
     $self->logconfess("An absolute object path argument is required: ",
                       "received '$object'");
 
@@ -54,7 +54,7 @@ sub read_object {
 
   if (!exists $response->{data}) {
     $self->logconfess('The returned path spec did not have a "data" key: ',
-                      JSON->new->utf8->encode($response));
+                      $self->encode($response));
   }
 
   return $response->{data};

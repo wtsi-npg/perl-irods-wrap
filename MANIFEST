@@ -1,13 +1,10 @@
 .travis.yml
 bin/populate_wtsi_irods_groups.pl
 Build.PL
-Build.pm
 etc/log4perl_tests.conf
 lib/WTSI/NPG/Accountable.pm
 lib/WTSI/NPG/Annotatable.pm
 lib/WTSI/NPG/Annotation.pm
-lib/WTSI/NPG/Cacheable.pm
-lib/WTSI/NPG/Executable.pm
 lib/WTSI/NPG/iRODS.pm
 lib/WTSI/NPG/iRODS/ACLModifier.pm
 lib/WTSI/NPG/iRODS/Collection.pm
@@ -22,16 +19,9 @@ lib/WTSI/NPG/iRODS/MetaSearcher.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Version.pm
-lib/WTSI/NPG/JSONCodec.pm
-lib/WTSI/NPG/Loggable.pm
-lib/WTSI/NPG/Runnable.pm
-lib/WTSI/NPG/Startable.pm
-lib/WTSI/NPG/Utilities/IO.pm
 MANIFEST			This list of files
-META.json
-META.yml
 README
-t/cacheable.t
+t/critic.t
 t/irods.t
 t/irods/collect_files/a/10.txt
 t/irods/collect_files/a/x/1.txt
@@ -59,8 +49,7 @@ t/irods_path_test/test_dir/contents/b/y/2.txt
 t/irods_path_test/test_dir/contents/c/30.txt
 t/irods_path_test/test_dir/contents/c/z/3.txt
 t/irods_path_test/test_dir/test_file.txt
-t/lib/WTSI/NPG/CacheableTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODSTest.pm
-t/lib/WTSI/NPG/UtilitiesTest.pm
+t/perlcriticrc

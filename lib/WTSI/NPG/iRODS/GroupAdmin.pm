@@ -3,9 +3,11 @@ use Moose;
 use IPC::Run qw(start run);
 use File::Which qw(which);
 use Cwd qw(abs_path);
-use List::MoreUtils qw(any none);
+use List::AllUtils qw(any none);
 use Readonly;
 use Carp;
+
+our $VERSION = '';
 
 =head1 NAME
 
@@ -32,13 +34,13 @@ Readonly::Scalar our $IENV => q(ienv);
 has '_in' => (
   'is' => 'ro',
   'isa' => 'ScalarRef[Str]',
-  'default' => sub {my$t=q(); return \$t},
+  'default' => sub {my$t=q{}; return \$t},
 );
 
 has '_out' => (
   'is' => 'ro',
   'isa' => 'ScalarRef[Str]',
-  'default' => sub {my$t=q(); return \$t},
+  'default' => sub {my$t=q{}; return \$t},
 );
 
 
@@ -49,17 +51,17 @@ has '_harness' => (
 );
 
 sub _build__harness {
-                 my ($self) = @_;
-                 my $in_ref = $self->_in;
-                 ${$in_ref} = "\n"; #prevent initial hang - fetch the chicken...
-                 my $out_ref = $self->_out;
-                 # workaround Run::IPC caching : https://rt.cpan.org/Public/Bug/Display.html?id=57393
-                 my $cmd = which $IGROUPADMIN;
-                 if (not $cmd) { croak qq(Command '$IGROUPADMIN' not found)}
-                 my $h = start [abs_path $cmd], q(<pty<), $in_ref, q(>pty>), $out_ref;
-                 $self->_pump_until_prompt($h);
-                 ${$out_ref}=q();
-                 return $h;
+  my ($self) = @_;
+  my $in_ref = $self->_in;
+  ${$in_ref} = "\n"; #prevent initial hang - fetch the chicken...
+  my $out_ref = $self->_out;
+  # workaround Run::IPC caching : https://rt.cpan.org/Public/Bug/Display.html?id=57393
+  my $cmd = which $IGROUPADMIN;
+  if (not $cmd) { croak qq(Command '$IGROUPADMIN' not found)}
+  my $h = start [abs_path $cmd], q(<pty<), $in_ref, q(>pty>), $out_ref;
+  $self->_pump_until_prompt($h);
+  ${$out_ref}=q();
+  return $h;
 }
 
 sub _pump_until_prompt {
@@ -112,13 +114,13 @@ sub lg {
   my @results = $self->_push_pump_trim_split($in);
   if(defined $group){
     my $leadingtext = shift @results;
-    if( @results and not $leadingtext=~/\AMembers\ of\ group/smx) {
+    if( @results and not $leadingtext=~/\AMembers\sof\sgroup/smx) {
       croak qq(unexpected text: \"$leadingtext\");
     }
   }
-  if (@results==1 and $results[0]=~/\ANo\ rows\ found/smx ){
+  if (@results==1 and $results[0]=~/\ANo\srows\sfound/smx ){
     shift @results;
-    if (@results==0 and defined $group and not grep {$group eq $_} $self->lg){
+    if (@results==0 and defined $group and none {$group eq $_} $self->lg){
       croak qq(group "$group" does not exist);
     }
   }
@@ -233,7 +235,7 @@ Will honour iRODS related environment at time of object creation
 
 =item Cwd
 
-=item List::MoreUtils
+=item List::AllUtils
 
 =item Readonly
 
@@ -247,13 +249,13 @@ Will honour iRODS related environment at time of object creation
 
   In ad-hoc testing different numbers of results for the same query have been seen - but v rarely and not reproducibly!
 
-=head2 AUTHOR
+=head1 AUTHOR
 
 David K. Jackson <david.jackson@sanger.ac.uk>
 
 =head2 LICENSE AND COPYRIGHT
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General
@@ -266,5 +268,3 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 =cut
-                                                                                                                                                                                                                           1317,1        Bot
-

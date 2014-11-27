@@ -1,10 +1,10 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::MetaSearcher;
 
 use File::Spec;
 use Moose;
+
+our $VERSION = '';
 
 extends 'WTSI::NPG::iRODS::Communicator';
 
@@ -30,13 +30,13 @@ sub search {
   my $i = 0;
   foreach my $avu (@avus) {
     unless (ref $avu eq 'HASH') {
-      $self->logconfess('A query AVU must be a HashRef: AVU #$i was not');
+      $self->logconfess("A query AVU must be a HashRef: AVU #$i was not");
     }
     unless ($avu->{attribute}) {
-      $self->logconfess('A query AVU must have an attribute: AVU #$i did not');
+      $self->logconfess("A query AVU must have an attribute: AVU #$i did not");
     }
     unless ($avu->{value}) {
-      $self->logconfess('A query AVU must have a value: AVU #$i did not');
+      $self->logconfess("A query AVU must have a value: AVU #$i did not");
     }
     $i++;
   }
@@ -70,4 +70,3 @@ __PACKAGE__->meta->make_immutable;
 no Moose;
 
 1;
-

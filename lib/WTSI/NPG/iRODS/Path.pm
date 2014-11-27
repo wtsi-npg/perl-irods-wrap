@@ -1,22 +1,22 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::Path;
 
-use JSON;
 use File::Spec;
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
 
-with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotatable';
+our $VERSION = '';
+
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotatable',
+  'WTSI::DNAP::Utilities::JSONCodec';
 
 has 'collection' =>
   (is        => 'ro',
    isa       => 'Str',
    required  => 1,
    lazy      => 1,
-   default   => '.',
+   default   => q{.},
    predicate => 'has_collection');
 
 has 'irods' =>
@@ -46,6 +46,8 @@ sub BUILD {
 
   # Make our logger be the iRODS logger by default
   $self->logger($self->irods->logger);
+
+  return $self;
 }
 
 around 'metadata' => sub {
@@ -82,17 +84,17 @@ sub get_avu {
       $avu = $exists[0];
     }
     else {
-      $value ||= '';
-      $units ||= '';
+      $value ||= q{};
+      $units ||= q{};
 
       my $fn = sub {
-        my $avu = shift;
+        my $elt = shift;
 
-        my $a = defined $avu->{attribute} ? $avu->{attribute} : 'undef';
-        my $v = defined $avu->{value}     ? $avu->{value}     : 'undef';
-        my $u = defined $avu->{units}     ? $avu->{units}     : 'undef';
+        my $a = defined $avu->{attribute} ? $elt->{attribute} : 'undef';
+        my $v = defined $avu->{value}     ? $elt->{value}     : 'undef';
+        my $u = defined $avu->{units}     ? $elt->{units}     : 'undef';
 
-        return sprintf("{'%s', '%s', '%s'}", $a, $v, $u);
+        return sprintf "{'%s', '%s', '%s'}", $a, $v, $u;
       };
 
       my $matched = join ", ", map { $fn->($_) } @exists;
@@ -161,7 +163,7 @@ sub expected_groups {
   foreach my $avu (@ss_study_avus) {
     my $study_id = $avu->{value};
     my $group = $self->irods->make_group_name($study_id);
-    push(@groups, $group);
+    push @groups, $group;
   }
 
   return @groups;
@@ -186,7 +188,7 @@ sub meta_str {
 sub meta_json {
   my ($self) = @_;
 
-  return JSON->new->utf8->encode($self->metadata);
+  return $self->encode($self->metadata);
 }
 
 no Moose;
@@ -211,7 +213,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

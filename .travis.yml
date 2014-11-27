@@ -10,48 +10,47 @@ env:
   global:
     - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
     - PGVERSION="9.3"
+    - JANSSON_VERSION="2.6"
+    - DNAP_UTILITIES_VERSION="0.4.1"
     - BATON_VERSION="0.12.1"
     - CK_DEFAULT_TIMEOUT=10
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
 
 before_install:
-- sudo apt-get update -qq
-- sudo apt-get install -qq odbc-postgresql unixodbc-dev
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq odbc-postgresql unixodbc-dev
+  - wget -q https://github.com/wtsi-npg/irods-legacy/releases/download/3.3.1-travis-bc85aa/irods.tar.gz -O /tmp/irods.tar.gz
+  - wget -q https://github.com/akheron/jansson/archive/v2.6.tar.gz -O /tmp/jansson-2.6.tar.gz
+  - wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
 
 install:
-  - cpanm --quiet --notest Cache::MemoryCache
-  - cpanm --quiet --notest IO::Pty
-  - cpanm --quiet --notest IPC::Run
-  - cpanm --quiet --notest Log::Log4perl
-  - cpanm --quiet --notest Moose
-  - cpanm --quiet --notest Readonly
-  - cpanm --quiet --notest Set::Scalar
-  - cpanm --quiet --notest Test::Class
-
-before_script:
-  - wget -q https://github.com/wtsi-npg/irods-legacy/releases/download/3.3.1-travis-bc85aa/irods.tar.gz -O /tmp/irods.tar.gz
   - tar xfz /tmp/irods.tar.gz
   - source $TRAVIS_BUILD_DIR/travis_linux_env.sh
   - echo "iRODS home is " $IRODS_HOME
-  - wget -q https://github.com/akheron/jansson/archive/v2.6.tar.gz -O /tmp/jansson-2.6.tar.gz
-  - tar xfz /tmp/jansson-2.6.tar.gz -C /tmp
-  - cd /tmp/jansson-2.6 ; autoreconf -fi ; ./configure ; make ; sudo make install
-  - sudo ldconfig
-  - wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
-  - tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
-  - cd /tmp/baton-${BATON_VERSION} ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
-  - sudo ldconfig
-  - cd $TRAVIS_BUILD_DIR
   - export PATH=$PATH:$IRODS_HOME/clients/icommands/bin
   - sudo mkdir -p $IRODS_VAULT
   - sudo chown $USER:$USER $IRODS_VAULT
+  - tar xfz /tmp/jansson-${JANSSON_VERSION}.tar.gz -C /tmp
+  - cd /tmp/jansson-${JANSSON_VERSION} ; autoreconf -fi ; ./configure ; make ; sudo make install
+  - sudo ldconfig
+  - tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
+  - cd /tmp/baton-${BATON_VERSION} ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
+  - sudo ldconfig
+  - cpanm --quiet --notest IO::Pty
+  - cpanm --quiet --notest Readonly
+  - cpanm --quiet --notest Set::Scalar
+  - cpanm --quiet --notest Test::Class
+  - cpanm --quiet --notest Test::Exception
+  - cpanm --quiet --notest Test::Perl::Critic
+  - cpanm --quiet --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
+  - cd $TRAVIS_BUILD_DIR
+
+before_script:
   - sudo -E -u postgres $TRAVIS_BUILD_DIR/setup_pgusers.sh
   - sudo -E -u postgres $TRAVIS_BUILD_DIR/irodscontrol psetup
   - $TRAVIS_BUILD_DIR/irodscontrol istart ; sleep 10
   - echo irods | script -q -c "iinit" > /dev/null
   - ienv
-  - iadmin mkgroup ss_0
-  - iadmin mkgroup ss_10
 
 script:
   - perl Build.PL

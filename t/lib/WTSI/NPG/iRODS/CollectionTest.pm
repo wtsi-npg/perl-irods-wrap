@@ -1,12 +1,11 @@
 
-use utf8;
-
 package WTSI::NPG::iRODS::CollectionTest;
 
 use strict;
 use warnings;
 use File::Spec;
 use List::AllUtils qw(all any none);
+use Log::Log4perl;
 
 use base qw(Test::Class);
 use Test::More tests => 50;
@@ -38,12 +37,26 @@ sub make_fixture : Test(setup) {
       $irods->add_collection_avu($test_coll, $attr, $value, $units);
     }
   }
+
+  unless ($irods->group_exists('ss_0')) {
+    $irods->add_group('ss_0');
+  }
+  unless ($irods->group_exists('ss_10')) {
+    $irods->add_group('ss_10');
+  }
 }
 
 sub teardown : Test(teardown) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   $irods->remove_collection($irods_tmp_coll);
+
+  if ($irods->group_exists('ss_0')) {
+    $irods->remove_group('ss_0');
+  }
+  if ($irods->group_exists('ss_10')) {
+    $irods->remove_group('ss_10');
+  }
 }
 
 sub require : Test(1) {

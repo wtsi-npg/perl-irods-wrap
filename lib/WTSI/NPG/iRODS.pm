@@ -1,16 +1,15 @@
-use utf8;
 
 package WTSI::NPG::iRODS;
 
 use Encode qw(decode);
-use English;
+use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
-use JSON;
 use List::AllUtils qw(any);
 use Moose;
 
-use WTSI::NPG::Runnable;
+use WTSI::DNAP::Utilities::Runnable;
+
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -18,10 +17,13 @@ use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
 use WTSI::NPG::iRODS::MetaSearcher;
 
-with 'WTSI::NPG::Loggable', 'WTSI::NPG::Annotation';
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
+
+our $VERSION = '';
 
 our $REQUIRED_BATON_VERSION = '0.11.0';
 
+our $IADMIN      = 'iadmin';
 our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
@@ -74,7 +76,7 @@ has 'lister' =>
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--acl', '--contents'],
         environment => $self->environment,
-        max_size    => 1024 * 1204,
+        max_size    => 1024 * 1024,
         logger      => $self->logger)->start;
    });
 
@@ -130,7 +132,7 @@ has 'coll_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--coll'],
-        max_size    => 1024 * 1204,
+        max_size    => 1024 * 1024,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -145,7 +147,7 @@ has 'obj_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--obj'],
-        max_size    => 1024 * 1204,
+        max_size    => 1024 * 1024,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -184,16 +186,16 @@ has 'obj_reader' =>
 sub BUILD {
   my ($self) = @_;
 
-  my ($installed_baton_version) = WTSI::NPG::Runnable->new
+  my ($installed_baton_version) = WTSI::DNAP::Utilities::Runnable->new
     (executable  => 'baton-list',
      arguments   => ['--version'],
      environment => $self->environment,
      logger      => $self->logger)->run->split_stdout;
 
   unless ($installed_baton_version eq $self->required_baton_version) {
-    my $msg = sprintf("The installed baton release version %s is " .
-                      "not supported by this wrapper (requires version %s )",
-                      $installed_baton_version, $self->required_baton_version);
+    my $msg = sprintf "The installed baton release version %s is " .
+      "not supported by this wrapper (requires version %s )",
+      $installed_baton_version, $self->required_baton_version;
 
     if ($self->strict_baton_version) {
       $self->logdie($msg);
@@ -202,6 +204,8 @@ sub BUILD {
       $self->warn($msg);
     }
   }
+
+  return $self;
 }
 
 around 'working_collection' => sub {
@@ -209,21 +213,21 @@ around 'working_collection' => sub {
 
   if (@args) {
     my $collection = $args[0];
-    $collection eq '' and
+    $collection eq q{} and
       $self->logconfess('A non-empty collection argument is required');
 
     $collection = File::Spec->canonpath($collection);
     $collection = $self->_ensure_absolute_path($collection);
     $self->debug("Changing working_collection to '$collection'");
 
-    WTSI::NPG::Runnable->new(executable  => $ICD,
-                             arguments   => [$collection],
-                             environment => $self->environment,
-                             logger      => $self->logger)->run;
+    WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
+                                         arguments   => [$collection],
+                                         environment => $self->environment,
+                                         logger      => $self->logger)->run;
     $self->$orig($collection);
   }
   elsif (!$self->has_working_collection) {
-    my ($wc) = WTSI::NPG::Runnable->new
+    my ($wc) = WTSI::DNAP::Utilities::Runnable->new
       (executable  => $IPWD,
        environment => $self->environment,
        logger      => $self->logger)->run->split_stdout;
@@ -273,9 +277,9 @@ sub find_zone_name {
 
   $path = File::Spec->canonpath($path);
   my $abs_path = $self->_ensure_absolute_path($path);
-  $abs_path =~ s/^\///;
+  $abs_path =~ s/^\///msx;
 
-  $self->debug("Determining zone from path '", $abs_path, "'");
+  $self->debug("Determining zone from path '", $abs_path, q{'});
 
   # If no zone if given, assume the current zone
   unless ($abs_path) {
@@ -283,7 +287,7 @@ sub find_zone_name {
     $abs_path = $self->working_collection;
   }
 
-  my @path = grep { $_ ne '' } File::Spec->splitdir($abs_path);
+  my @path = grep { $_ ne q{} } File::Spec->splitdir($abs_path);
   unless (@path) {
     $self->logconfess("Failed to parse iRODS zone from path '$path'");
   }
@@ -321,7 +325,7 @@ sub make_group_name {
 sub list_groups {
   my ($self, @args) = @_;
 
-  my @groups = WTSI::NPG::Runnable->new
+  my @groups = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGROUPADMIN,
      arguments   => ['lg'],
      environment => $self->environment,
@@ -341,7 +345,7 @@ sub list_groups {
 sub group_exists {
   my ($self, $name) = @_;
 
-  return grep { /^$name$/ } $self->list_groups;
+  return any { $_ eq $name } $self->list_groups;
 }
 
 =head2 add_group
@@ -362,10 +366,10 @@ sub add_group {
     $self->logconfess("Failed to create iRODS group '$name' because it exists");
   }
 
-  WTSI::NPG::Runnable->new(executable  => $IGROUPADMIN,
-                           arguments   => ['mkgroup', $name],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
+                                       arguments   => ['mkgroup', $name],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $name;
 }
 
@@ -383,15 +387,15 @@ sub add_group {
 sub remove_group {
   my ($self, $name) = @_;
 
-  unless (group_exists($name)) {
+  unless ($self->group_exists($name)) {
     $self->logconfess("Unable to remove group '$name' because ",
                       "it doesn't exist");
   }
 
-  WTSI::NPG::Runnable->new(executable  => $IGROUPADMIN,
-                           arguments   => ['rmgroup', $name],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
+                                       arguments   => ['rmgroup', $name],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $name;
 }
 
@@ -434,9 +438,9 @@ sub set_group_access {
 sub reset_working_collection {
   my ($self) = @_;
 
-  WTSI::NPG::Runnable->new(executable  => $ICD,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   $self->clear_working_collection;
 
   return $self;
@@ -461,13 +465,13 @@ sub list_collection {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection eq ''
+  $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
 
-  my $recursively = $recurse ? 'recursively' : '';
+  my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
 
   return $self->lister->list_collection($collection, $recurse);
@@ -489,17 +493,17 @@ sub add_collection {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection eq ''
+  $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Adding collection '$collection'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMKDIR,
-                           arguments   => ['-p', $collection],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMKDIR,
+                                       arguments   => ['-p', $collection],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $collection;
 }
 
@@ -522,9 +526,9 @@ sub put_collection {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $dir eq '' and
+  $dir eq q{} and
     $self->logconfess('A non-empty directory argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   # iput does not accept trailing slashes on directories
@@ -534,13 +538,13 @@ sub put_collection {
   $self->debug("Putting directory '$dir' into collection '$target'");
 
   my @args = ('-r', $dir, $target);
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => \@args,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
+                                       arguments   => \@args,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
 
   # FIXME - this is handling a case where the target collection exists
-  return $target . '/' . basename($dir);
+  return $target . q{/} . basename($dir);
 }
 
 =head2 move_collection
@@ -563,9 +567,9 @@ sub move_collection {
   defined $target or
     $self->logconfess('A defined target (collection) argument is required');
 
-  $source eq '' and
+  $source eq q{} and
     $self->logconfess('A non-empty source (collection) argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = File::Spec->canonpath($source);
@@ -574,10 +578,10 @@ sub move_collection {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMV,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -601,9 +605,9 @@ sub get_collection {
   defined $target or
     $self->logconfess('A defined target (directory) argument is required');
 
-  $source eq '' and
+  $source eq q{} and
     $self->logconfess('A non-empty source (collection) argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (directory) argument is required');
 
   $source = File::Spec->canonpath($source);
@@ -612,10 +616,10 @@ sub get_collection {
   $self->debug("Getting from '$source' to '$target'");
 
   my @args = ('-r', '-f', $source, $target);
-  WTSI::NPG::Runnable->new(executable  => $IGET,
-                           arguments   => \@args,
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IGET,
+                                       arguments   => \@args,
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $self;
 }
 
@@ -636,17 +640,17 @@ sub remove_collection {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection eq '' and
+  $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Removing collection '$collection'");
 
-  WTSI::NPG::Runnable->new(executable  => $IRM,
-                           arguments   => ['-r', '-f', $collection],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
+                                       arguments   => ['-r', '-f', $collection],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $collection;
 }
 
@@ -656,7 +660,7 @@ sub get_collection_permissions {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection eq ''
+  $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
   return $self->lister->get_collection_acl($collection);
@@ -670,14 +674,14 @@ sub set_collection_permissions {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $owner eq '' and
+  $owner eq q{} and
     $self->logconfess('A non-empty owner argument is required');
-  $collection eq '' and
+  $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   $self->debug("Setting permissions on '$collection' to ",
@@ -716,7 +720,7 @@ sub get_collection_groups {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   my @perms = $self->get_collection_permissions($collection);
@@ -724,7 +728,9 @@ sub get_collection_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  return sort grep { m{^$GROUP_PREFIX} } map { $_->{owner} } @perms;
+  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+
+  return @sorted;
 }
 
 =head2 get_collection_meta
@@ -743,7 +749,7 @@ sub get_collection_meta {
   defined $collection or
     $self->logconfess('A defined collection argument is required');
 
-  $collection eq '' and
+  $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
   $collection = File::Spec->canonpath($collection);
@@ -776,11 +782,11 @@ sub add_collection_avu {
   defined $value or
     $self->logconfess('A defined value argument is required');
 
-  $collection eq '' and
+  $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
-  $attribute eq '' and
+  $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
-  $value eq '' and
+  $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
@@ -825,11 +831,11 @@ sub remove_collection_avu {
   defined $value or
     $self->logconfess('A defined value argument is required');
 
-  $collection eq '' and
+  $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
-  $attribute eq '' and
+  $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
-  $value eq '' and
+  $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
@@ -868,7 +874,7 @@ sub find_collections_by_meta {
   my ($self, $root, @query_specs) = @_;
 
   defined $root or $self->logconfess('A defined root argument is required');
-  $root eq '' and $self->logconfess('A non-empty root argument is required');
+  $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
   $root = File::Spec->canonpath($root);
   $root = $self->_ensure_absolute_path($root);
@@ -898,7 +904,7 @@ sub find_collections_by_meta {
   $self->debug("Sorted ", scalar @sorted,
                " collections (to filter by '$root')");
 
-  return grep { /^$root/ } @sorted;
+  return grep { /^$root/msx } @sorted;
 }
 
 =head2 list_object
@@ -917,7 +923,7 @@ sub list_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   $object = $self->_ensure_absolute_path($object);
@@ -933,7 +939,7 @@ sub read_object {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   $object = $self->_ensure_absolute_path($object);
@@ -941,8 +947,6 @@ sub read_object {
 
   return $self->obj_reader->read_object($object);
 }
-
-
 
 =head2 add_object
 
@@ -963,18 +967,18 @@ sub add_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $file eq '' and
+  $file eq q{} and
     $self->logconfess('A non-empty file argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Adding '$file' as new object '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => ['-K', $file, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
+                                       arguments   => ['-K', $file, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -997,18 +1001,19 @@ sub replace_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $file eq '' and
+  $file eq q{} and
     $self->logconfess('A non-empty file argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
-  WTSI::NPG::Runnable->new(executable  => $IPUT,
-                           arguments   => ['-f', '-K', $file, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new
+      (executable  => $IPUT,
+       arguments   => ['-f', '-K', $file, $target],
+       environment => $self->environment,
+       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -1035,9 +1040,9 @@ sub copy_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $source eq '' and
+  $source eq q{} and
     $self->logconfess('A non-empty source (object) argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   if (defined $translator) {
@@ -1049,10 +1054,10 @@ sub copy_object {
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Copying object from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $ICP,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICP,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
 
   $self->debug("Copying metadata from '$source' to '$target'");
 
@@ -1088,19 +1093,19 @@ sub move_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $source eq '' and
+  $source eq q{} and
     $self->logconfess('A non-empty source (object) argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   $source = $self->_ensure_absolute_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IMV,
-                           arguments   => [$source, $target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target
 }
 
@@ -1123,13 +1128,13 @@ sub get_object {
   defined $target or
     $self->logconfess('A defined target (file) argument is required');
 
-  $source eq '' and
+  $source eq q{} and
     $self->logconfess('A non-empty source (data object) argument is required');
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (file) argument is required');
 
   my @args = ('-f', '-T', $source, $target);
-  my $runnable = WTSI::NPG::Runnable->new
+  my $runnable = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGET,
      arguments   => \@args,
      logger      => $self->logger)->run;
@@ -1153,15 +1158,15 @@ sub remove_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   $self->debug("Removing object '$target'");
 
-  WTSI::NPG::Runnable->new(executable  => $IRM,
-                           arguments   => [$target],
-                           environment => $self->environment,
-                           logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
+                                       arguments   => [$target],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
   return $target;
 }
 
@@ -1171,7 +1176,7 @@ sub slurp_object {
   defined $target or
     $self->logconfess('A defined target (object) argument is required');
 
-  $target eq '' and
+  $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
   $self->debug("Slurping object '$target'");
@@ -1185,7 +1190,7 @@ sub get_object_permissions {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   return $self->lister->get_object_acl($object);
@@ -1199,14 +1204,14 @@ sub set_object_permissions {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $owner eq '' and
+  $owner eq q{} and
     $self->logconfess('A non-empty owner argument is required');
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   $self->debug("Setting permissions on '$object' to '$perm_str' for '$owner'");
@@ -1242,7 +1247,7 @@ sub get_object_groups {
 
   my $perm_str = defined $level ? $level : 'null';
 
-  grep { $perm_str eq $_ } @VALID_PERMISSIONS or
+  any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
 
   my @perms = $self->get_object_permissions($object);
@@ -1250,7 +1255,9 @@ sub get_object_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  return sort grep { m{^$GROUP_PREFIX} } map { $_->{owner} } @perms;
+  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+
+  return @sorted;
 }
 
 =head2 get_object_meta
@@ -1268,7 +1275,7 @@ sub get_object_meta {
 
   defined $object or
     $self->logconfess('A defined object argument is required');
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   return $self->meta_lister->list_object_meta($object);
@@ -1298,11 +1305,11 @@ sub add_object_avu {
   defined $value or
     $self->logconfess('A defined value argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
-  $attribute eq '' and
+  $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
-  $value eq '' and
+  $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
@@ -1344,11 +1351,11 @@ sub remove_object_avu {
   defined $value or
     $self->logconfess('A defined value argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
-  $attribute eq '' and
+  $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
-  $value eq '' and
+  $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
@@ -1385,7 +1392,7 @@ sub find_objects_by_meta {
   my ($self, $root, @query_specs) = @_;
 
   defined $root or $self->logconfess('A defined root argument is required');
-  $root eq '' and $self->logconfess('A non-empty root argument is required');
+  $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
   $root = File::Spec->canonpath($root);
   $root = $self->_ensure_absolute_path($root);
@@ -1412,7 +1419,7 @@ sub find_objects_by_meta {
   my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");
 
-  return grep { /^$root/ } @sorted;
+  return grep { /^$root/msx } @sorted;
 }
 
 =head2 calculate_checksum
@@ -1432,12 +1439,12 @@ sub calculate_checksum {
   defined $object or
     $self->logconfess('A defined object argument is required');
 
-  $object eq '' and
+  $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
   $object = $self->_ensure_absolute_path($object);
 
-  my @raw_checksum = WTSI::NPG::Runnable->new
+  my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $ICHKSUM,
      arguments   => ['-f', $object],
      environment => $self->environment,
@@ -1447,7 +1454,7 @@ sub calculate_checksum {
   }
 
   my $checksum = shift @raw_checksum;
-  $checksum =~ s/.*([0-9a-f]{32})$/$1/;
+  $checksum =~ s/.*([\da-f]{32})$/$1/msx;
 
   return $checksum;
 }
@@ -1509,9 +1516,9 @@ sub md5sum {
   my ($self, $file) = @_;
 
   defined $file or $self->logconfess('A defined file argument is required');
-  $file eq '' and $self->logconfess('A non-empty file argument is required');
+  $file eq q{} and $self->logconfess('A non-empty file argument is required');
 
-  my @result = WTSI::NPG::Runnable->new
+  my @result = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $MD5SUM,
      arguments   => [$file],
      environment => $self->environment,
@@ -1547,15 +1554,15 @@ sub hash_path {
 
   my @levels = $md5sum =~ m{\G(..)}gmsx;
 
-  return join('/', @levels[0..2]);
+  return (join q{/}, @levels[0..2]);
 }
 
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
   my $absolute = $target;
-  unless ($target =~ m{^/}) {
-    $absolute = $self->working_collection . '/' . $absolute;
+  unless ($target =~ m{^/}msx) {
+    $absolute = $self->working_collection . q{/} . $absolute;
   }
 
   return $absolute;
@@ -1569,7 +1576,7 @@ sub _meta_exists {
 
   if ($units) {
     return grep { $_->{attribute} eq $attribute &&
-                  $_->{value}     eq $value &&
+                  $_->{value}     eq $value     &&
                   $_->{units}     eq $units } @$current_meta;
   }
   else {
@@ -1643,7 +1650,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013 Genome Research Limited. All Rights Reserved.
+Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

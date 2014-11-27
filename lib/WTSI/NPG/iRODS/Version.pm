@@ -8,4 +8,4 @@ use vars qw($VERSION);
 
 $VERSION = '';
 
-return 1;
+1;

@@ -6,6 +6,8 @@ use lib ( -d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib" );
 use WTSI::NPG::iRODS::GroupAdmin;
 use npg_warehouse::Schema;
 
+our $VERSION = '';
+
 my $what_on_earth =<<'WOE';
 
 Script to update WTSI iRODS systems with groups corresponding to Sequencescape studies.
@@ -27,12 +29,12 @@ WOE
 
 if(@ARGV){
   print {*STDERR} $what_on_earth;
-  exit(0);
+  exit 0;
 }
 
 my $iga = WTSI::NPG::iRODS::GroupAdmin->new();
 my@public=$iga->lg(q(public));
-sub _uid_to_iRODSuid {
+sub _uid_to_irods_uid {
   my($u)=@_;
   return grep {/^\Q$u\E#/smx} @public;
 }
@@ -43,7 +45,11 @@ sub ug2id {
   if(my$gha=$ug2id{$g}){return @{$gha};}
   $g=`getent group $g`;
   chomp $g;
-  my@g = split q(,), (split q(:),$g)[-1]||q();
+
+  ##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
+  my@g = split /,/msx, (split /:/msx, $g)[-1] || q();
+  ##use critic
+
   $ug2id{$g}=\@g;
   return @g;
 }
@@ -56,7 +62,7 @@ while (my$st=$rs->next){
   my$study_id=$st->internal_id;
   my$g=$st->data_access_group;
   my$is_seq=($st->npg_information->count||$st->npg_plex_information->count)>0;
-  my@m=$g      ? map{ _uid_to_iRODSuid($_) } ug2id($g) :
+  my@m=$g      ? map{ _uid_to_irods_uid($_) } ug2id($g) :
        $is_seq ? @public :
                  ();
   $altered_count += $iga->set_group_membership("ss_$study_id",@m) ? 1 : 0;

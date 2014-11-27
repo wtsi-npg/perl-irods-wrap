@@ -1,6 +1,4 @@
 
-use utf8;
-
 package WTSI::NPG::iRODSTest;
 
 use strict;
@@ -9,13 +7,12 @@ use English;
 use File::Spec;
 use File::Temp qw(tempdir);
 use List::AllUtils qw(all any none);
+use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
 use Test::More tests => 174;
 use Test::Exception;
-
-use Log::Log4perl;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
@@ -46,6 +43,13 @@ sub make_fixture : Test(setup) {
       $irods->add_object_avu($test_obj, $attr, $value, $units);
     }
   }
+
+  unless ($irods->group_exists('ss_0')) {
+    $irods->add_group('ss_0');
+  }
+  unless ($irods->group_exists('ss_10')) {
+    $irods->add_group('ss_10');
+  }
 }
 
 sub teardown : Test(teardown) {
@@ -53,6 +57,13 @@ sub teardown : Test(teardown) {
 
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
+
+  if ($irods->group_exists('ss_0')) {
+    $irods->remove_group('ss_0');
+  }
+  if ($irods->group_exists('ss_10')) {
+    $irods->remove_group('ss_10');
+  }
 }
 
 sub require : Test(1) {

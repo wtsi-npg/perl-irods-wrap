@@ -23,6 +23,12 @@ our $VERSION = '';
 
 our $REQUIRED_BATON_VERSION = '0.11.0';
 
+##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
+our $MAX_JSON_DATA_GET_SIZE = 100 * 1024 * 1024;
+our $MAX_JSON_METADATA_SIZE = 10  * 1024 * 1024;
+our $MAX_JSON_ACL_SIZE      = 10  * 1024 * 1024;
+##use critic
+
 our $IADMIN      = 'iadmin';
 our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
@@ -76,7 +82,7 @@ has 'lister' =>
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--acl', '--contents'],
         environment => $self->environment,
-        max_size    => 1024 * 1024,
+        max_size    => $MAX_JSON_METADATA_SIZE,
         logger      => $self->logger)->start;
    });
 
@@ -104,6 +110,7 @@ has 'meta_adder' =>
 
      return WTSI::NPG::iRODS::MetaModifier->new
        (arguments   => ['--unbuffered', '--operation', 'add'],
+        max_size    => $MAX_JSON_METADATA_SIZE,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -118,6 +125,7 @@ has 'meta_remover' =>
 
      return WTSI::NPG::iRODS::MetaModifier->new
        (arguments   => ['--unbuffered', '--operation', 'rem'],
+        max_size    => $MAX_JSON_METADATA_SIZE,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -132,7 +140,7 @@ has 'coll_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--coll'],
-        max_size    => 1024 * 1024,
+        max_size    => $MAX_JSON_METADATA_SIZE,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -147,7 +155,7 @@ has 'obj_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--obj'],
-        max_size    => 1024 * 1024,
+        max_size    => $MAX_JSON_METADATA_SIZE,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -161,11 +169,11 @@ has 'acl_modifier' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::ACLModifier->new
-       (arguments   => [ '--unbuffered'],
+       (arguments   => ['--unbuffered'],
+        max_size    => $MAX_JSON_ACL_SIZE,
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
-
 
 has 'obj_reader' =>
   (is         => 'ro',
@@ -176,12 +184,11 @@ has 'obj_reader' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::DataObjectReader->new
-       (arguments   => [ '--unbuffered'],
+       (arguments   => ['--unbuffered'],
         environment => $self->environment,
-        logger      => $self->logger)->start;
+        logger      => $self->logger,
+        max_size    => $MAX_JSON_DATA_GET_SIZE)->start;
    });
-
-
 
 sub BUILD {
   my ($self) = @_;
@@ -237,7 +244,6 @@ around 'working_collection' => sub {
 
   return $self->$orig;
 };
-
 
 =head2 absolute_path
 

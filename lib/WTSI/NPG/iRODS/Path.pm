@@ -78,7 +78,13 @@ sub get_avu {
 
   my @exists = $self->find_in_metadata($attribute, $value, $units);
 
+  # If the AVU does not exist, return an empty HashRef. This way the
+  # caller does not need to check for undef before dereferencing. The
+  # caller can simply check $obj->get_avu('foo')->{attribute}.
+  # my $avu = {};
+
   my $avu;
+
   if (@exists) {
     if (scalar @exists == 1) {
       $avu = $exists[0];

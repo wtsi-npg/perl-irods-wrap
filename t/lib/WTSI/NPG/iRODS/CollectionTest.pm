@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 50;
+use Test::More tests => 53;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -21,6 +21,8 @@ my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
 my $pid = $$;
+
+my @groups_added;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -38,11 +40,10 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  unless ($irods->group_exists('ss_0')) {
-    $irods->add_group('ss_0');
-  }
-  unless ($irods->group_exists('ss_10')) {
-    $irods->add_group('ss_10');
+  foreach my $group (qw(ss_0 ss_10)) {
+    unless ($irods->group_exists($group)) {
+      push @groups_added, $irods->add_group($group);
+    }
   }
 }
 
@@ -51,11 +52,10 @@ sub teardown : Test(teardown) {
 
   $irods->remove_collection($irods_tmp_coll);
 
-  if ($irods->group_exists('ss_0')) {
-    $irods->remove_group('ss_0');
-  }
-  if ($irods->group_exists('ss_10')) {
-    $irods->remove_group('ss_10');
+  foreach my $group (@groups_added) {
+    if ($irods->group_exists($group)) {
+      $irods->remove_group($group);
+    }
   }
 }
 
@@ -207,6 +207,20 @@ sub remove_avu : Test(5) {
             'Collection metadata AVUs removed 2') or diag explain $meta;
 }
 
+sub make_avu_history : Test(3) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir";
+
+  my $coll = WTSI::NPG::iRODS::Collection->new($irods, $obj_path);
+
+  my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
+
+  foreach my $attr (qw(a b c)) {
+    like($coll->make_avu_history($attr)->{value},
+         qr{^$timestamp_regex x,y}, "History of $attr");
+  }
+}
+
 sub str : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
@@ -324,6 +338,5 @@ sub get_groups : Test(6) {
   is_deeply(\@found_own, $expected_own, 'Expected own groups')
     or diag explain \@found_own;
 }
-
 
 1;

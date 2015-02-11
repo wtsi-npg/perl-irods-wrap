@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 57;
+use Test::More tests => 56;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -209,43 +209,60 @@ sub remove_avu : Test(5) {
             'DataObject metadata AVUs removed 2') or diag explain $meta;
 }
 
-sub supersede_avus : Test(5) {
+sub supersede_avus : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
-  my $expected_meta = [{attribute => 'a', value => 'new_a'},
-                       {attribute => 'b', value => 'new_b', units => 'km'},
-                       {attribute => 'c', value => 'x', units => 'cm'},
-                       {attribute => 'c', value => 'y'}];
+  my $history_timestamp1 = DateTime->now;
+
+  # Perform one update of 'a' and 'b'
+  my $history_value1a = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $history_value1b = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $expected_meta1 = [{attribute => 'a', value => 'new_a'},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b', value => 'new_b', units => 'km'},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
-  ok($obj->supersede_avus('a' => 'new_a'));
-  ok($obj->supersede_avus('b' => 'new_b', 'km'));
+  ok($obj->supersede_avus('a' => 'new_a', undef, $history_timestamp1));
+  ok($obj->supersede_avus('b' => 'new_b', 'km', $history_timestamp1));
 
-  my $meta = $obj->metadata;
-  is_deeply($meta, $expected_meta,
-            'DataObject metadata AVUs superseded 1') or diag explain $meta;
+  my $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs superseded 1') or diag explain $meta1;
 
   # Flush the cache to re-read from iRODS
   $obj->clear_metadata;
 
-  $meta = $obj->metadata;
-  is_deeply($meta, $expected_meta,
-            'DataObject metadata AVUs superseded 2') or diag explain $meta;
-}
+  $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs superseded 1, flushed cache')
+    or diag explain $meta1;
 
-sub make_avu_history : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  # Perform another update of 'a'
+  my $history_timestamp2 = DateTime->now;
+  my $history_value2a = sprintf "[%s] new_a", $history_timestamp2->iso8601;
+  my $expected_meta2 = [{attribute => 'a', value => 'x'},
+                        {attribute => 'a_history', value => $history_value2a},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b', value => 'new_b', units => 'km'},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
+  ok($obj->supersede_avus('a' => 'x', undef, $history_timestamp2));
 
-  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  my $meta2 = $obj->metadata;
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs superseded 2') or diag explain $meta2;
 
-  my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
 
-  foreach my $attr (qw(a b c)) {
-    like($obj->make_avu_history($attr)->{value},
-         qr{^$timestamp_regex x,y}, "History of $attr");
-  }
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs superseded 2, flushed cache')
+    or diag explain $meta2;
 }
 
 sub str : Test(1) {

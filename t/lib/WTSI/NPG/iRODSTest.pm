@@ -11,7 +11,7 @@ use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 182;
+use Test::More tests => 187;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -861,6 +861,26 @@ sub hash_path : Test(2) {
 
   is($irods->hash_path("$data_path/md5sum/lorem.txt",
                        'aabbccxxxxxxxxxxxxxxxxxxxxxxxxxx'), 'aa/bb/cc');
+}
+
+sub avu_history_attr : Test(2) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  is($irods->avu_history_attr('foo'), 'foo_history', 'History attribute');
+
+  dies_ok {
+    $irods->avu_history_attr('');
+  } 'History attribute empty'
+}
+
+sub is_avu_history_attr : Test(3) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->is_avu_history_attr('foo_history'), 'Is history attribute');
+  ok(!$irods->is_avu_history_attr('foo'), 'Is not history attribute');
+
+  dies_ok {
+    $irods->is_avu_history_attr('');
+  } 'Is history attribute empty'
 }
 
 sub round_trip_utf8_avu : Test(5) {

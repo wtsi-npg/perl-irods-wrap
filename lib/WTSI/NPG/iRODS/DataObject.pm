@@ -193,7 +193,9 @@ sub remove_avu {
 
   Arg [1]    : attribute
   Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [3]    : units (optional)
+  Arg [4]    : timestamp (optional) a DateTime to use in creation of the
+               AVU history
 
   Example    : $path->supersede_avus('foo', 'bar')
   Description: Replace an AVU from an iRODS path (data object or collection)
@@ -205,7 +207,7 @@ sub remove_avu {
 
 ##no critic (Subroutines::ProhibitExcessComplexity)
 sub supersede_avus {
-  my ($self, $attribute, $value, $units) = @_;
+  my ($self, $attribute, $value, $units, $timestamp) = @_;
 
   defined $attribute or
     $self->logcroak("A defined attribute argument is required");
@@ -218,6 +220,15 @@ sub supersede_avus {
   my $num_matching = scalar @matching;
 
   $self->debug("Found $num_matching '$attribute' AVUs to supersede");
+
+  # Make a history AVU here, using the current values of the tag.
+  # Make a special case to avoid making histories of histories
+  # recursively.
+  my $history_avu;
+  if (!$self->irods->is_avu_history_attr($attribute)) {
+    $history_avu = $self->irods->make_object_avu_history
+      ($self->str, $attribute, $timestamp);
+  }
 
   my $num_processed = 0;
   if ($num_matching > 0) {
@@ -281,6 +292,15 @@ sub supersede_avus {
         }
       }
     }
+
+    if ($history_avu) {
+      my $history_attribute = $history_avu->{attribute};
+      my $history_value     = $history_avu->{value};
+      $self->debug("Adding history AVU ",
+                   "{'$history_attribute', '$history_value', ''} to ",
+                   $self->str);
+      $self->add_avu($history_attribute, $history_value);
+    }
   }
   else {
     # There are no AVUs present for this attribute, so just add it
@@ -295,15 +315,6 @@ sub supersede_avus {
   return $self;
 }
 ##use critic
-
-sub make_avu_history {
-  my ($self, $attribute) = @_;
-
-  defined $attribute or
-    $self->logcroak("A defined attribute argument is required");
-
-  return $self->irods->make_object_avu_history($self->str, $attribute);
-}
 
 sub get_permissions {
   my ($self) = @_;

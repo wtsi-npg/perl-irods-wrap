@@ -867,6 +867,7 @@ sub remove_collection_avu {
 
   Arg [1]    : iRODS collection path
   Arg [2]    : attribute
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
 
   Example    : $irods->make_collection_avu_history('/my/path/lorem.txt', 'id');
   Description: Return a new history AVU reflecting the current state of
@@ -886,7 +887,7 @@ sub remove_collection_avu {
 =cut
 
 sub make_collection_avu_history {
-  my ($self, $collection, $attribute) = @_;
+  my ($self, $collection, $attribute, $timestamp) = @_;
 
   defined $collection or
     $self->logconfess('A defined collection argument is required');
@@ -906,7 +907,7 @@ sub make_collection_avu_history {
                       "with that attribute");
   }
 
-  return $self->_make_avu_history($attribute, @historic_avus);
+  return $self->_make_avu_history($attribute, \@historic_avus, $timestamp);
 }
 
 =head2 find_collections_by_meta
@@ -1430,6 +1431,7 @@ sub remove_object_avu {
 
   Arg [1]    : iRODS data object path
   Arg [2]    : attribute
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
 
   Example    : $irods->make_object_avu_history('/my/path/lorem.txt', 'id');
   Description: Return a new history AVU reflecting the current state of
@@ -1449,7 +1451,7 @@ sub remove_object_avu {
 =cut
 
 sub make_object_avu_history {
-  my ($self, $object, $attribute) = @_;
+  my ($self, $object, $attribute, $timestamp) = @_;
 
   defined $object or
     $self->logconfess('A defined object argument is required');
@@ -1469,7 +1471,7 @@ sub make_object_avu_history {
                       "that attribute");
   }
 
-  return $self->_make_avu_history($attribute, @historic_avus);
+  return $self->_make_avu_history($attribute, \@historic_avus, $timestamp);
 }
 
 =head2 find_objects_by_meta
@@ -1680,6 +1682,30 @@ sub avu_history_attr {
   return $attribute . '_history';
 }
 
+=head2 is_avu_history_attr
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+
+  Example    : $irods->is_avu_history_attr('id_history');
+  Description: Return true if the attribute string matches the pattern
+               expected for an AVU history attribute.
+  Returntype : Bool
+
+=cut
+
+sub is_avu_history_attr {
+  my ($self, $attribute) = @_;
+
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  return $attribute =~ m{.*_history$}msx;
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -1709,11 +1735,16 @@ sub _meta_exists {
 }
 
 sub _make_avu_history {
-  my ($self, $attribute, @historic_avus) = @_;
+  my ($self, $attribute, $historic_avus, $history_timestamp) = @_;
 
-  my @historic_values = sort { $a cmp $b } map { $_->{value} } @historic_avus;
+  $self->is_avu_history_attr($attribute) and
+    $self->logcroak("An AVU history may not be created for the ",
+                    "history attribute '$attribute'");
 
-  my $history_timestamp = DateTime->now->iso8601;
+  $history_timestamp ||= DateTime->now->iso8601;
+
+  my @historic_values = sort { $a cmp $b } map { $_->{value} } @$historic_avus;
+
   my $history_attribute = $self->avu_history_attr($attribute);
   my $history_value     = sprintf "[%s] %s", $history_timestamp, join q{,},
     @historic_values;

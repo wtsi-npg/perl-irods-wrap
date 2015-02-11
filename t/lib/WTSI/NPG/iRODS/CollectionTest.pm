@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 53;
+use Test::More tests => 50;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -205,20 +205,6 @@ sub remove_avu : Test(5) {
   $meta = $coll->metadata;
   is_deeply($meta, $expected_meta,
             'Collection metadata AVUs removed 2') or diag explain $meta;
-}
-
-sub make_avu_history : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir";
-
-  my $coll = WTSI::NPG::iRODS::Collection->new($irods, $obj_path);
-
-  my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
-
-  foreach my $attr (qw(a b c)) {
-    like($coll->make_avu_history($attr)->{value},
-         qr{^$timestamp_regex x,y}, "History of $attr");
-  }
 }
 
 sub str : Test(1) {

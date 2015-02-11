@@ -27,6 +27,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
    requires =>           {
                           'Carp'                  => '>= 1.20',
                           'Encode'                => '>= 2.42',
+                          'DateTime'              => '>= 1.05',
                           'IO::Pty'               => '>= 1.10',
                           'Log::Log4perl'         => '>= 1.42',
                           'List::AllUtils'        => '>= 0.07',

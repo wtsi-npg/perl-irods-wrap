@@ -11,7 +11,7 @@ use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 174;
+use Test::More tests => 182;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -25,6 +25,8 @@ my $cwc = WTSI::NPG::iRODS->new(strict_baton_version => 0)->working_collection;
 
 my $data_path = './t/irods';
 my $irods_tmp_coll;
+
+my @groups_added;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -44,11 +46,10 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  unless ($irods->group_exists('ss_0')) {
-    $irods->add_group('ss_0');
-  }
-  unless ($irods->group_exists('ss_10')) {
-    $irods->add_group('ss_10');
+  foreach my $group (qw(ss_0 ss_10)) {
+    unless ($irods->group_exists($group)) {
+      push @groups_added, $irods->add_group($group);
+    }
   }
 }
 
@@ -58,11 +59,10 @@ sub teardown : Test(teardown) {
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
 
-  if ($irods->group_exists('ss_0')) {
-    $irods->remove_group('ss_0');
-  }
-  if ($irods->group_exists('ss_10')) {
-    $irods->remove_group('ss_10');
+  foreach my $group (@groups_added) {
+    if ($irods->group_exists($group)) {
+      $irods->remove_group($group);
+    }
   }
 }
 
@@ -474,6 +474,22 @@ sub remove_collection_avu : Test(4) {
     'Failed to remove metadata from a non-existent collection';
 }
 
+sub make_collection_avu_history : Test(4) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $coll = "$irods_tmp_coll/irods";
+  my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
+
+  foreach my $attr (qw(a b c)) {
+    like($irods->make_collection_avu_history($coll, $attr)->{value},
+         qr{^$timestamp_regex x,y}, "History of $attr");
+  }
+
+  dies_ok {
+    $irods->make_collection_avu_history($coll, 'no_such_attribute');
+  }
+}
+
 sub find_collections_by_meta : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
@@ -754,6 +770,22 @@ sub remove_object_avu : Test(4) {
 
   dies_ok { $irods->remove_object_avu('/no_such_object', 'attr', 'value') }
     'Failed to remove metadata from a non-existent object';
+}
+
+sub make_object_avu_history : Test(4) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
+
+  foreach my $attr (qw(a b c)) {
+    like($irods->make_object_avu_history($lorem_object, $attr)->{value},
+         qr{^$timestamp_regex x,y}, "History of $attr");
+  }
+
+  dies_ok {
+    $irods->make_object_avu_history($lorem_object, 'no_such_attribute');
+  }
 }
 
 sub find_objects_by_meta : Test(6) {

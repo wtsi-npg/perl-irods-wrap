@@ -129,6 +129,15 @@ sub remove_avu {
   return $self;
 }
 
+sub make_avu_history {
+  my ($self, $attribute) = @_;
+
+  defined $attribute or
+    $self->logcroak("A defined attribute argument is required");
+
+  return $self->irods->make_collection_avu_history($self->str, $attribute);
+}
+
 =head2 get_contents
 
   Arg [1]    :

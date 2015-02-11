@@ -1,6 +1,7 @@
 
 package WTSI::NPG::iRODS;
 
+use DateTime;
 use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
@@ -21,7 +22,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.11.0';
+our $REQUIRED_BATON_VERSION = '0.13.0';
 
 ##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
 our $MAX_JSON_DATA_GET_SIZE = 100 * 1024 * 1024;
@@ -455,7 +456,7 @@ sub reset_working_collection {
 =head2 list_collection
 
   Arg [1]    : Str iRODS collection name
-  Arg [1]    : Bool recurse flag.
+  Arg [2]    : Bool recurse flag.
 
   Example    : my ($objs, $colls) = $irods->list_collection($coll)
   Description: Return the contents of the collection as two arrayrefs,
@@ -860,6 +861,52 @@ sub remove_collection_avu {
 
   return $self->meta_remover->modify_collection_meta($collection, $attribute,
                                                      $value, $units);
+}
+
+=head2 make_collection_avu_history
+
+  Arg [1]    : iRODS collection path
+  Arg [2]    : attribute
+
+  Example    : $irods->make_collection_avu_history('/my/path/lorem.txt', 'id');
+  Description: Return a new history AVU reflecting the current state of
+               the attribue. i.e. call this method before you change the
+               AVU.
+
+               The history will be of the form:
+
+               [<ISO8601 timestamp>] <value>[,<value>]+
+
+               If there are multiple AVUS for the specified attribute, their
+               values will be sorted and concatenated, separated by commas.
+               If there are no AVUs specified attribute, an error will be
+               raised.
+  Returntype : HashRef
+
+=cut
+
+sub make_collection_avu_history {
+  my ($self, $collection, $attribute) = @_;
+
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $collection eq q{} and
+    $self->logconfess('A non-empty collection argument is required');
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  my @historic_avus = grep { $_->{attribute} eq $attribute }
+    $self->get_collection_meta($collection);
+  unless (@historic_avus) {
+    $self->logconfess("Failed to make a history for attribute '$attribute' ",
+                      "on collection '$collection' because there are no AVUs ",
+                      "with that attribute");
+  }
+
+  return $self->_make_avu_history($attribute, @historic_avus);
 }
 
 =head2 find_collections_by_meta
@@ -1379,6 +1426,52 @@ sub remove_object_avu {
                                                  $value, $units);
 }
 
+=head2 make_object_avu_history
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+
+  Example    : $irods->make_object_avu_history('/my/path/lorem.txt', 'id');
+  Description: Return a new history AVU reflecting the current state of
+               the attribue. i.e. call this method before you change the
+               AVU.
+
+               The history will be of the form:
+
+               [<ISO8601 timestamp>] <value>[,<value>]+
+
+               If there are multiple AVUS for the specified attribute, their
+               values will be sorted and concatenated, separated by commas.
+               If there are no AVUs specified attribute, an error will be
+               raised.
+  Returntype : HashRef
+
+=cut
+
+sub make_object_avu_history {
+  my ($self, $object, $attribute) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  my @historic_avus = grep { $_->{attribute} eq $attribute }
+    $self->get_object_meta($object);
+  unless (@historic_avus) {
+    $self->logconfess("Failed to make a history for attribute '$attribute' ",
+                      "on object '$object' because there are no AVUs with ",
+                      "that attribute");
+  }
+
+  return $self->_make_avu_history($attribute, @historic_avus);
+}
+
 =head2 find_objects_by_meta
 
   Arg [1]    : iRODS collection
@@ -1563,6 +1656,30 @@ sub hash_path {
   return (join q{/}, @levels[0..2]);
 }
 
+=head2 avu_history_attr
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+
+  Example    : $irods->make_avu_history_attr('/my/path/lorem.txt', 'id');
+  Description: Return the new history AVU attribute corresponding to the
+               specified attribute.
+  Returntype : Str
+
+=cut
+
+sub avu_history_attr {
+  my ($self, $attribute) = @_;
+
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  return $attribute . '_history';
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -1589,6 +1706,21 @@ sub _meta_exists {
     return grep { $_->{attribute} eq $attribute &&
                   $_->{value}     eq $value} @$current_meta;
   }
+}
+
+sub _make_avu_history {
+  my ($self, $attribute, @historic_avus) = @_;
+
+  my @historic_values = sort { $a cmp $b } map { $_->{value} } @historic_avus;
+
+  my $history_timestamp = DateTime->now->iso8601;
+  my $history_attribute = $self->avu_history_attr($attribute);
+  my $history_value     = sprintf "[%s] %s", $history_timestamp, join q{,},
+    @historic_values;
+
+  return {attribute => $history_attribute,
+          value     => $history_value,
+          units     => undef};
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -46,9 +46,7 @@ sub ug2id {
   $g=`getent group $g`;
   chomp $g;
 
-  ##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
   my@g = split /,/msx, (split /:/msx, $g)[-1] || q();
-  ##use critic
 
   $ug2id{$g}=\@g;
   return @g;

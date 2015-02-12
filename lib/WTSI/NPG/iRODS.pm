@@ -762,7 +762,9 @@ sub get_collection_meta {
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
 
-  return $self->meta_lister->list_collection_meta($collection);
+  my @avus = $self->meta_lister->list_collection_meta($collection);
+
+  return _sort_avus(@avus);
 }
 
 =head2 add_collection_avu
@@ -1332,7 +1334,9 @@ sub get_object_meta {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  return $self->meta_lister->list_object_meta($object);
+  my @avus = $self->meta_lister->list_object_meta($object);
+
+  return _sort_avus(@avus);
 }
 
 =head2 add_object_avu
@@ -1416,7 +1420,6 @@ sub remove_object_avu {
 
   $self->debug("Removing AVU {'$attribute', '$value', $units_str} ",
                "from '$object'");
-
   my @current_meta = $self->get_object_meta($object);
   if (!$self->_meta_exists($attribute, $value, $units, \@current_meta)) {
     $self->logconfess("AVU {'$attribute', '$value', $units_str} ",
@@ -1734,6 +1737,7 @@ sub _meta_exists {
   }
 }
 
+
 sub _make_avu_history {
   my ($self, $attribute, $historic_avus, $history_timestamp) = @_;
 
@@ -1752,6 +1756,19 @@ sub _make_avu_history {
   return {attribute => $history_attribute,
           value     => $history_value,
           units     => undef};
+}
+
+sub _sort_avus {
+  my (@avus) = @_;
+
+  my @sorted = sort {
+     $a->{attribute} cmp $b->{attribute}                    ||
+     $a->{value}     cmp $b->{value}                        ||
+     (( defined $a->{units} && !defined $b->{units}) && -1) ||
+     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
+     $a->{units}     cmp $b->{units} } @avus;
+
+  return @sorted;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -2,6 +2,7 @@
 package WTSI::NPG::iRODS::DataObject;
 
 use File::Spec;
+use List::AllUtils qw(uniq);
 use Moose;
 use Set::Scalar;
 
@@ -131,9 +132,9 @@ sub validate_checksum_metadata {
 
 =head2 add_avu
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [1]    : Str attribute
+  Arg [2]    : Str value
+  Arg [2]    : Str units (optional)
 
   Example    : $path->add_avu('foo', 'bar')
   Description: Add an AVU to an iRODS path (data object or collection)
@@ -162,9 +163,9 @@ sub add_avu {
 
 =head2 remove_avu
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [1]    : Str attribute
+  Arg [2]    : Str value
+  Arg [2]    : Str units (optional)
 
   Example    : $path->remove_avu('foo', 'bar')
   Description: Remove an AVU from an iRODS path (data object or collection)
@@ -180,8 +181,9 @@ sub remove_avu {
     $self->irods->remove_object_avu($self->str, $attribute, $value, $units);
   }
   else {
-    $self->logcarp("Failed to remove AVU {'$attribute', '$value', '$units'} ",
-                   "from '", $self->str, "': AVU is not present");
+    $self->logconfess("Failed to remove AVU ",
+                      "{'$attribute', '$value', '$units'} from '", $self->str,
+                      "': AVU is not present");
   }
 
   $self->clear_metadata;
@@ -191,109 +193,139 @@ sub remove_avu {
 
 =head2 supersede_avus
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [3]    : units (optional)
-  Arg [4]    : timestamp (optional) a DateTime to use in creation of the
+  Arg [1]    : Str attribute
+  Arg [2]    : Str value
+  Arg [3]    : Str units (optional)
+  Arg [4]    : DateTime timestamp (optional) to use in creation of the
                AVU history
 
   Example    : $path->supersede_avus('foo', 'bar')
-  Description: Replace an AVU from an iRODS path (data object or collection)
-               while removing any existing AVUs having under the same
-               attribute. Return self. Clear the metadata cache.
+  Description: Replace any existing AVUs on an iRODS data object
+               with a single new AVU having the same attribute. If there
+               are no existing AVUs having the specified attribute, simply
+               add the new AVU. Return self. Clear the metadata cache.
   Returntype : WTSI::NPG::iRODS::DataObject
 
 =cut
 
-##no critic (Subroutines::ProhibitExcessComplexity)
 sub supersede_avus {
   my ($self, $attribute, $value, $units, $timestamp) = @_;
 
+  ref $value and
+    $self->logcroak("The value argument must be a scalar");
+
+  return $self->supersede_multivalue_avus($attribute, [$value], $units,
+                                          $timestamp);
+}
+
+=head2 supersede_multivalue_avus
+
+  Arg [1]    : Str attribute
+  Arg [2]    : ArrayRef[Str] values
+  Arg [3]    : Str units (optional)
+  Arg [4]    : DateTime timestamp (optional) to use in creation of the
+               AVU history
+
+  Example    : $path->supersede_multivalue_avus('foo', ['bar', 'baz'])
+  Description: Replace any existing AVUs on an iRODS data object
+               with a set of new AVUs having the same attribute and the
+               specified values. If there are no existing AVUs having
+               the specified attribute, simply add the new AVUs.
+               Return self. Clear the metadata cache.
+  Returntype : WTSI::NPG::iRODS::DataObject
+
+=cut
+
+sub supersede_multivalue_avus {
+  my ($self, $attribute, $values, $units, $timestamp) = @_;
+
   defined $attribute or
     $self->logcroak("A defined attribute argument is required");
-  defined $value or
-    $self->logcroak("A defined value argument is required");
+  defined $values or
+    $self->logcroak("A defined values argument is required");
 
-  $self->debug("Superseding all '$attribute' metadata on '", $self->str, q{'});
+  ref $values eq 'ARRAY' or
+    $self->logcroak("The values argument must be an ArrayRef");
 
-  my @matching = $self->find_in_metadata($attribute);
-  my $num_matching = scalar @matching;
+  $self->debug("Superseding all '$attribute' AVUs on '", $self->str, q{'});
 
-  $self->debug("Found $num_matching '$attribute' AVUs to supersede");
-
-  # Make a history AVU here, using the current values of the tag.
-  # Make a special case to avoid making histories of histories
-  # recursively.
   my $history_avu;
   if (!$self->irods->is_avu_history_attr($attribute)) {
     $history_avu = $self->irods->make_object_avu_history
       ($self->str, $attribute, $timestamp);
   }
 
-  my $num_processed = 0;
-  if ($num_matching > 0) {
-    # There are some AVUs present for this attribute, so remove them,
-    # except in the case where one happens to be the same as we are
-    # trying to add (to avoid removing it and immediately adding it
-    # back).
-    foreach my $avu (@matching) {
-      ++$num_processed;
-      $self->debug("Attempting to supersede $num_processed of ",
-                   "$num_matching AVUs");
+  my @values = uniq @$values;
 
-      my $old_attribute = $avu->{attribute};
-      my $old_value     = $avu->{value};
-      my $old_units     = $avu->{units};
+  my @old_avus = $self->find_in_metadata($attribute);
+  my @new_avus = map { {attribute => $attribute,
+                        value     => $_,
+                        units     => $units} } @values;
 
-      if (defined $units && defined $old_units &&
-          $old_attribute eq $attribute &&
-          $old_value     eq $value &&
-          $old_units     eq $units) {
-        # Units were defined in both and everything matches
-        $self->debug("Not superseding (leaving in place) AVU ",
-                     "{'$old_attribute', '$old_value', '$old_units'} on '",
-                     $self->str, "' [$num_processed / $num_matching]");
-      }
-      elsif (!defined $units && !defined $old_units &&
-             $old_attribute eq $attribute &&
-             $old_value     eq $value) {
-        # Units were undefined in both and everything else matches
-        $self->debug("Not superseding (leaving in place) AVU ",
-                     "{'$old_attribute', '$old_value', ''} on '",
-                     $self->str, "' [$num_processed / $num_matching]");
+  # Compare old AVUS to new; if any of the new ones are already
+  # present, leave the old copy, otherwise remove the old AVU
+  my $num_old = scalar @old_avus;
+  $self->debug("Found $num_old existing '$attribute' AVUs on '",
+               $self->str, q{'});
+
+  my $num_old_processed = 0;
+  my $num_old_removed   = 0;
+  my @retained_avus;
+ OLD: foreach my $old_avu (@old_avus) {
+    $num_old_processed++;
+
+    foreach my $new_avu (@new_avus) {
+      if (_avus_equal($old_avu, $new_avu)) {
+        $self->debug("Not superseding (retaining) old AVU ",
+                     _avu_str($old_avu), " on '", $self->str,
+                     "' [$num_old_processed / $num_old]");
+        push @retained_avus, $old_avu;
+        next OLD;
       }
       else {
-        # There were some differences
-        my $old_units_str = defined $old_units ? "'$old_units'" : 'undef';
-        $self->debug("Superseding AVU (removing) ",
-                     "{'$old_attribute', '$old_value', ",
-                     "$old_units_str} on '", $self->str,
-                     "' [$num_processed / $num_matching]");
+        $self->debug("Superseding (removing) old AVU ",
+                     _avu_str($old_avu), " on '", $self->str,
+                     "' [$num_old_processed / $num_old]");
+        $self->remove_avu($old_avu->{attribute},
+                          $old_avu->{value},
+                          $old_avu->{units});
+        $num_old_removed++;
+        next OLD;
+      }
+    }
+  }
 
-        $self->remove_avu($old_attribute, $old_value, $old_units);
+  # Add the new AVUs, unless they are identical to one of the old
+  # copies that were retained
+  my $num_new = scalar @new_avus;
+  $self->debug("Adding $num_new '$attribute' AVUs to '", $self->str, q{'});
 
-        my $units_str = defined $units ? "'$units'" : 'undef';
-        $self->debug("Superseding with AVU (now adding) ",
-                     "{'$attribute', '$value', ",
-                     "$units_str} on '", $self->str,
-                     "' [$num_processed / $num_matching]");
+  my $num_new_processed = 0;
+  my $num_new_added     = 0;
+ NEW: foreach my $new_avu (@new_avus) {
+    $num_new_processed++;
 
-        if ($self->get_avu($attribute, $value, $units)) {
-          $self->debug("The superseding AVU ",
-                       "{'$attribute', '$value', $units_str} ",
-                       "is already in place on '",
-                       $self->str, "' [$num_processed / $num_matching]");
-        }
-        else {
-          $self->debug("Superseding with AVU {'$attribute', '$value', ",
-                       "$units_str} on '", $self->str,
-                       "' [$num_processed / $num_matching]");
-          $self->add_avu($attribute, $value, $units);
-        }
+    foreach my $old_avu (@retained_avus) {
+      if (_avus_equal($new_avu, $old_avu)) {
+        $self->debug("Superseding (using retained) new AVU ",
+                     _avu_str($old_avu), " on '", $self->str,
+                     "' [$num_new_processed / $num_new]");
+        next NEW;
       }
     }
 
-    if ($history_avu) {
+    # If we can't re-use a retained AVU, we must add this one
+    $self->debug("Superseding (adding) new AVU ",
+                 _avu_str($new_avu), " on '", $self->str,
+                 "' [$num_new_processed / $num_new]");
+    $self->add_avu($new_avu->{attribute},
+                   $new_avu->{value},
+                   $new_avu->{units});
+    $num_new_added++;
+  }
+
+  # Only add history if some AVUs were removed or added
+  if (($num_old_removed > 0 || $num_new_added > 0) && defined $history_avu) {
       my $history_attribute = $history_avu->{attribute};
       my $history_value     = $history_avu->{value};
       $self->debug("Adding history AVU ",
@@ -301,20 +333,9 @@ sub supersede_avus {
                    $self->str);
       $self->add_avu($history_attribute, $history_value);
     }
-  }
-  else {
-    # There are no AVUs present for this attribute, so just add it
-    my $units_str = defined $units ? "'$units'" : 'undef';
-    $self->debug("Not superseding with AVU (none currently with this) ",
-                 "attribute {'$attribute', '$value', $units_str} on '",
-                 $self->str, q{'});
-
-    $self->add_avu($attribute, $value, $units);
-  }
 
   return $self;
 }
-##use critic
 
 sub get_permissions {
   my ($self) = @_;
@@ -325,7 +346,7 @@ sub get_permissions {
 
 =head2 set_permissions
 
-  Arg [1]    : permission Str, one of 'null', 'read', 'write' or 'own'
+  Arg [1]    : Str permission, one of 'null', 'read', 'write' or 'own'
   Arg [2]    : Array of owners (users and /or groups).
 
   Example    : $obj->set_permissions('read', 'user1', 'group1')
@@ -429,6 +450,29 @@ sub slurp {
     $self->logconfess("Slurped content of '", $self->str, "' was undefined");
 
   return $content;
+}
+
+sub _avus_equal {
+  my ($new_avu, $old_avu) = @_;
+
+  return ((defined $new_avu->{units} && defined $old_avu->{units} &&
+           $new_avu->{attribute} eq $old_avu->{attribute} &&
+           $new_avu->{value}     eq $old_avu->{value} &&
+           $new_avu->{units}     eq $old_avu->{units})
+          ||
+          (!defined $new_avu->{units} && !defined $old_avu->{units} &&
+           $new_avu->{attribute} eq $old_avu->{attribute} &&
+           $new_avu->{value}     eq $old_avu->{value}));
+}
+
+sub _avu_str {
+  my ($avu) = @_;
+
+  my ($attribute, $value, $units) =
+    map { defined $_ ? $_ : 'undef' }
+      ($avu->{attribute}, $avu->{value}, $avu->{units});
+
+  return sprintf "{'%s', '%s', '%s'}", $attribute, $value, $units;
 }
 
 __PACKAGE__->meta->make_immutable;

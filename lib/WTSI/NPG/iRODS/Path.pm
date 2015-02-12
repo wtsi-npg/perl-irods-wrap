@@ -53,9 +53,13 @@ sub BUILD {
 around 'metadata' => sub {
    my ($orig, $self, @args) = @_;
 
-   my @sorted = sort { $a->{attribute} cmp $b->{attribute} ||
-                       $a->{value}     cmp $b->{value}     ||
-                       $a->{units}     cmp $b->{units} } @{$self->$orig(@args)};
+   my @sorted = sort {
+     $a->{attribute} cmp $b->{attribute}                    ||
+     $a->{value}     cmp $b->{value}                        ||
+     (( defined $a->{units} && !defined $b->{units}) && -1) ||
+     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
+     $a->{units}     cmp $b->{units} } @{$self->$orig(@args)};
+
    return \@sorted;
 };
 

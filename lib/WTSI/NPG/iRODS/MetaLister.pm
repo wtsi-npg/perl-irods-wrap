@@ -71,16 +71,7 @@ sub _list_path_meta {
                       $self->encode($response));
   }
 
-  # Sort by attribute, then value, then units
-  my @avus = sort {
-    $a->{attribute} cmp $b->{attribute}                    ||
-    $a->{value}     cmp $b->{value}                        ||
-    (( defined $a->{units} && !defined $b->{units}) && -1) ||
-    ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
-    $a->{units}     cmp $b->{units}
-  } @{$response->{avus}};
-
-  return @avus;
+  return @{$response->{avus}};
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -129,6 +129,26 @@ sub remove_avu {
   return $self;
 }
 
+=head2 make_avu_history
+
+  Arg [1]    : Str attribute
+  Arg [2]    : DateTime (optional)
+
+  Example    : $obj->make_avu_history('foo')
+  Description: Return a history value showing the current state of all
+               AVUs with the specified attribute, suitable for adding
+               as a history AVU.
+  Returntype : Str
+
+=cut
+
+sub make_avu_history {
+  my ($self, $attribute, $timestamp) = @_;
+
+  return $self->irods->make_collection_avu_history
+    ($self->str, $attribute, $timestamp);
+}
+
 =head2 get_contents
 
   Arg [1]    :

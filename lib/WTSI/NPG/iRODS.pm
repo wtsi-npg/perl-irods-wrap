@@ -185,7 +185,7 @@ has 'obj_reader' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::DataObjectReader->new
-       (arguments   => ['--unbuffered'],
+       (arguments   => ['--unbuffered', '--avu'],
         environment => $self->environment,
         logger      => $self->logger,
         max_size    => $MAX_JSON_DATA_GET_SIZE)->start;

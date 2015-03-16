@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 54;
+use Test::More tests => 63;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -21,6 +21,8 @@ my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
 my $pid = $$;
+
+my @groups_added;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -39,11 +41,10 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  unless ($irods->group_exists('ss_0')) {
-    $irods->add_group('ss_0');
-  }
-  unless ($irods->group_exists('ss_10')) {
-    $irods->add_group('ss_10');
+  foreach my $group (qw(ss_0 ss_10)) {
+    unless ($irods->group_exists($group)) {
+      push @groups_added, $irods->add_group($group);
+    }
   }
 }
 
@@ -52,11 +53,10 @@ sub teardown : Test(teardown) {
 
   $irods->remove_collection($irods_tmp_coll);
 
-  if ($irods->group_exists('ss_0')) {
-    $irods->remove_group('ss_0');
-  }
-  if ($irods->group_exists('ss_10')) {
-    $irods->remove_group('ss_10');
+  foreach my $group (@groups_added) {
+    if ($irods->group_exists($group)) {
+      $irods->remove_group($group);
+    }
   }
 }
 
@@ -208,29 +208,124 @@ sub remove_avu : Test(5) {
   is_deeply($meta, $expected_meta,
             'DataObject metadata AVUs removed 2') or diag explain $meta;
 }
-sub supersede_avus : Test(5) {
+
+sub supersede_avus : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
-  my $expected_meta = [{attribute => 'a', value => 'new_a'},
-                       {attribute => 'b', value => 'new_b', units => 'km'},
-                       {attribute => 'c', value => 'x', units => 'cm'},
-                       {attribute => 'c', value => 'y'}];
+  my $history_timestamp1 = DateTime->now;
+
+  # Perform one update of 'a' and 'b'
+  my $history_value1a = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $history_value1b = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $expected_meta1 = [{attribute => 'a', value => 'new_a'},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b', value => 'new_b', units => 'km'},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
-  ok($obj->supersede_avus('a' => 'new_a'));
-  ok($obj->supersede_avus('b' => 'new_b', 'km'));
+  ok($obj->supersede_avus('a' => 'new_a', undef, $history_timestamp1));
+  ok($obj->supersede_avus('b' => 'new_b', 'km', $history_timestamp1));
 
-  my $meta = $obj->metadata;
-  is_deeply($meta, $expected_meta,
-            'DataObject metadata AVUs superseded 1') or diag explain $meta;
+  my $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs superseded 1') or diag explain $meta1;
 
   # Flush the cache to re-read from iRODS
   $obj->clear_metadata;
 
-  $meta = $obj->metadata;
-  is_deeply($meta, $expected_meta,
-            'DataObject metadata AVUs superseded 2') or diag explain $meta;
+  $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs superseded 1, flushed cache')
+    or diag explain $meta1;
+
+  # Perform another update of 'a'
+  my $history_timestamp2 = DateTime->now->add(seconds => 10);
+  my $history_value2a = sprintf "[%s] new_a", $history_timestamp2->iso8601;
+  my $expected_meta2 = [{attribute => 'a', value => 'x'},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'a_history', value => $history_value2a},
+                        {attribute => 'b', value => 'new_b', units => 'km'},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
+  ok($obj->supersede_avus('a' => 'x', undef, $history_timestamp2));
+
+  my $meta2 = $obj->metadata;
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs superseded 2') or diag explain $meta2;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs superseded 2, flushed cache')
+    or diag explain $meta2;
+}
+
+sub supersede_multivalue_avus : Test(7) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $history_timestamp1 = DateTime->now;
+
+  # Perform one update of 'a' and 'b'
+  my $history_value1a = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $expected_meta1 = [{attribute => 'a', value => 'new_a1'},
+                        {attribute => 'a', value => 'new_a2'},
+                        {attribute => 'a', value => 'new_a3'},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b', value => 'x', units => 'cm'},
+                        {attribute => 'b', value => 'y'},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+  ok($obj->supersede_multivalue_avus('a' => ['new_a1', 'new_a2', 'new_a3'],
+                                     undef, $history_timestamp1));
+
+  my $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata multivalue AVUs superseded 1')
+    or diag explain $meta1;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata multivalue AVUs superseded 1, flushed cache')
+    or diag explain $meta1;
+
+  # Perform another update of 'a'
+  my $history_timestamp2 = DateTime->now->add(seconds => 10);
+  my $history_value2a = sprintf "[%s] new_a1,new_a2,new_a3",
+    $history_timestamp2->iso8601;
+  my $expected_meta2 = [{attribute => 'a', value => 'new_a4'},
+                        {attribute => 'a', value => 'new_a5'},
+                        {attribute => 'a', value => 'new_a6'},
+                        {attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'a_history', value => $history_value2a},
+                        {attribute => 'b', value => 'x', units => 'cm'},
+                        {attribute => 'b', value => 'y'},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
+  ok($obj->supersede_multivalue_avus('a' => ['new_a4', 'new_a5', 'new_a6'],
+                                     undef, $history_timestamp2));
+
+  my $meta2 = $obj->metadata;
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata multivalue AVUs superseded 2')
+    or diag explain $meta2;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata multivalue AVUs superseded 2, flushed cache')
+    or diag explain $meta2;
 }
 
 sub str : Test(1) {

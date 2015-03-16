@@ -1,6 +1,7 @@
 
 package WTSI::NPG::iRODS;
 
+use DateTime;
 use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
@@ -21,7 +22,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.11.0';
+our $REQUIRED_BATON_VERSION = '0.13.0';
 
 ##no critic (ValuesAndExpressions::ProhibitMagicNumbers)
 our $MAX_JSON_DATA_GET_SIZE = 100 * 1024 * 1024;
@@ -184,7 +185,7 @@ has 'obj_reader' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::DataObjectReader->new
-       (arguments   => ['--unbuffered'],
+       (arguments   => ['--unbuffered', '--avu'],
         environment => $self->environment,
         logger      => $self->logger,
         max_size    => $MAX_JSON_DATA_GET_SIZE)->start;
@@ -455,7 +456,7 @@ sub reset_working_collection {
 =head2 list_collection
 
   Arg [1]    : Str iRODS collection name
-  Arg [1]    : Bool recurse flag.
+  Arg [2]    : Bool recurse flag.
 
   Example    : my ($objs, $colls) = $irods->list_collection($coll)
   Description: Return the contents of the collection as two arrayrefs,
@@ -761,7 +762,9 @@ sub get_collection_meta {
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
 
-  return $self->meta_lister->list_collection_meta($collection);
+  my @avus = $self->meta_lister->list_collection_meta($collection);
+
+  return _sort_avus(@avus);
 }
 
 =head2 add_collection_avu
@@ -860,6 +863,53 @@ sub remove_collection_avu {
 
   return $self->meta_remover->modify_collection_meta($collection, $attribute,
                                                      $value, $units);
+}
+
+=head2 make_collection_avu_history
+
+  Arg [1]    : iRODS collection path
+  Arg [2]    : attribute
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
+
+  Example    : $irods->make_collection_avu_history('/my/path/lorem.txt', 'id');
+  Description: Return a new history AVU reflecting the current state of
+               the attribue. i.e. call this method before you change the
+               AVU.
+
+               The history will be of the form:
+
+               [<ISO8601 timestamp>] <value>[,<value>]+
+
+               If there are multiple AVUS for the specified attribute, their
+               values will be sorted and concatenated, separated by commas.
+               If there are no AVUs specified attribute, an error will be
+               raised.
+  Returntype : HashRef
+
+=cut
+
+sub make_collection_avu_history {
+  my ($self, $collection, $attribute, $timestamp) = @_;
+
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $collection eq q{} and
+    $self->logconfess('A non-empty collection argument is required');
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  my @historic_avus = grep { $_->{attribute} eq $attribute }
+    $self->get_collection_meta($collection);
+  unless (@historic_avus) {
+    $self->logconfess("Failed to make a history for attribute '$attribute' ",
+                      "on collection '$collection' because there are no AVUs ",
+                      "with that attribute");
+  }
+
+  return $self->_make_avu_history($attribute, \@historic_avus, $timestamp);
 }
 
 =head2 find_collections_by_meta
@@ -1284,7 +1334,9 @@ sub get_object_meta {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  return $self->meta_lister->list_object_meta($object);
+  my @avus = $self->meta_lister->list_object_meta($object);
+
+  return _sort_avus(@avus);
 }
 
 =head2 add_object_avu
@@ -1368,7 +1420,6 @@ sub remove_object_avu {
 
   $self->debug("Removing AVU {'$attribute', '$value', $units_str} ",
                "from '$object'");
-
   my @current_meta = $self->get_object_meta($object);
   if (!$self->_meta_exists($attribute, $value, $units, \@current_meta)) {
     $self->logconfess("AVU {'$attribute', '$value', $units_str} ",
@@ -1377,6 +1428,53 @@ sub remove_object_avu {
 
   return $self->meta_remover->modify_object_meta($object, $attribute,
                                                  $value, $units);
+}
+
+=head2 make_object_avu_history
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
+
+  Example    : $irods->make_object_avu_history('/my/path/lorem.txt', 'id');
+  Description: Return a new history AVU reflecting the current state of
+               the attribue. i.e. call this method before you change the
+               AVU.
+
+               The history will be of the form:
+
+               [<ISO8601 timestamp>] <value>[,<value>]+
+
+               If there are multiple AVUS for the specified attribute, their
+               values will be sorted and concatenated, separated by commas.
+               If there are no AVUs specified attribute, an error will be
+               raised.
+  Returntype : HashRef
+
+=cut
+
+sub make_object_avu_history {
+  my ($self, $object, $attribute, $timestamp) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  my @historic_avus = grep { $_->{attribute} eq $attribute }
+    $self->get_object_meta($object);
+  unless (@historic_avus) {
+    $self->logconfess("Failed to make a history for attribute '$attribute' ",
+                      "on object '$object' because there are no AVUs with ",
+                      "that attribute");
+  }
+
+  return $self->_make_avu_history($attribute, \@historic_avus, $timestamp);
 }
 
 =head2 find_objects_by_meta
@@ -1563,6 +1661,54 @@ sub hash_path {
   return (join q{/}, @levels[0..2]);
 }
 
+=head2 avu_history_attr
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+
+  Example    : $irods->make_avu_history_attr('/my/path/lorem.txt', 'id');
+  Description: Return the new history AVU attribute corresponding to the
+               specified attribute.
+  Returntype : Str
+
+=cut
+
+sub avu_history_attr {
+  my ($self, $attribute) = @_;
+
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  return $attribute . '_history';
+}
+
+=head2 is_avu_history_attr
+
+  Arg [1]    : iRODS data object path
+  Arg [2]    : attribute
+
+  Example    : $irods->is_avu_history_attr('id_history');
+  Description: Return true if the attribute string matches the pattern
+               expected for an AVU history attribute.
+  Returntype : Bool
+
+=cut
+
+sub is_avu_history_attr {
+  my ($self, $attribute) = @_;
+
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+
+  return $attribute =~ m{.*_history$}msx;
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -1589,6 +1735,40 @@ sub _meta_exists {
     return grep { $_->{attribute} eq $attribute &&
                   $_->{value}     eq $value} @$current_meta;
   }
+}
+
+
+sub _make_avu_history {
+  my ($self, $attribute, $historic_avus, $history_timestamp) = @_;
+
+  $self->is_avu_history_attr($attribute) and
+    $self->logcroak("An AVU history may not be created for the ",
+                    "history attribute '$attribute'");
+
+  $history_timestamp ||= DateTime->now->iso8601;
+
+  my @historic_values = sort { $a cmp $b } map { $_->{value} } @$historic_avus;
+
+  my $history_attribute = $self->avu_history_attr($attribute);
+  my $history_value     = sprintf "[%s] %s", $history_timestamp, join q{,},
+    @historic_values;
+
+  return {attribute => $history_attribute,
+          value     => $history_value,
+          units     => undef};
+}
+
+sub _sort_avus {
+  my (@avus) = @_;
+
+  my @sorted = sort {
+     $a->{attribute} cmp $b->{attribute}                    ||
+     $a->{value}     cmp $b->{value}                        ||
+     (( defined $a->{units} && !defined $b->{units}) && -1) ||
+     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
+     $a->{units}     cmp $b->{units} } @avus;
+
+  return @sorted;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -1656,7 +1836,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

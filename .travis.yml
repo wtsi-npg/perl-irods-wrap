@@ -12,7 +12,7 @@ env:
     - PGVERSION="9.3"
     - JANSSON_VERSION="2.6"
     - DNAP_UTILITIES_VERSION="0.4.1"
-    - BATON_VERSION="0.12.1"
+    - BATON_VERSION="0.13.0"
     - CK_DEFAULT_TIMEOUT=10
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
 
@@ -42,7 +42,7 @@ install:
   - cpanm --quiet --notest Test::Class
   - cpanm --quiet --notest Test::Exception
   - cpanm --quiet --notest Test::Perl::Critic
-  - cpanm --quiet --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
+  - cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
   - cd $TRAVIS_BUILD_DIR
 
 before_script:

@@ -22,6 +22,8 @@ my $irods_tmp_coll;
 
 my $pid = $$;
 
+my @groups_added;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
@@ -38,11 +40,10 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  unless ($irods->group_exists('ss_0')) {
-    $irods->add_group('ss_0');
-  }
-  unless ($irods->group_exists('ss_10')) {
-    $irods->add_group('ss_10');
+  foreach my $group (qw(ss_0 ss_10)) {
+    unless ($irods->group_exists($group)) {
+      push @groups_added, $irods->add_group($group);
+    }
   }
 }
 
@@ -51,11 +52,10 @@ sub teardown : Test(teardown) {
 
   $irods->remove_collection($irods_tmp_coll);
 
-  if ($irods->group_exists('ss_0')) {
-    $irods->remove_group('ss_0');
-  }
-  if ($irods->group_exists('ss_10')) {
-    $irods->remove_group('ss_10');
+  foreach my $group (@groups_added) {
+    if ($irods->group_exists($group)) {
+      $irods->remove_group($group);
+    }
   }
 }
 
@@ -324,6 +324,5 @@ sub get_groups : Test(6) {
   is_deeply(\@found_own, $expected_own, 'Expected own groups')
     or diag explain \@found_own;
 }
-
 
 1;

@@ -129,6 +129,26 @@ sub remove_avu {
   return $self;
 }
 
+=head2 make_avu_history
+
+  Arg [1]    : Str attribute
+  Arg [2]    : DateTime (optional)
+
+  Example    : $obj->make_avu_history('foo')
+  Description: Return a history value showing the current state of all
+               AVUs with the specified attribute, suitable for adding
+               as a history AVU.
+  Returntype : Str
+
+=cut
+
+sub make_avu_history {
+  my ($self, $attribute, $timestamp) = @_;
+
+  return $self->irods->make_collection_avu_history
+    ($self->str, $attribute, $timestamp);
+}
+
 =head2 get_contents
 
   Arg [1]    :
@@ -293,7 +313,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

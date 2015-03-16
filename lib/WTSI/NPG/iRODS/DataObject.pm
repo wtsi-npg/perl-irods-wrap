@@ -2,6 +2,7 @@
 package WTSI::NPG::iRODS::DataObject;
 
 use File::Spec;
+use List::AllUtils qw(uniq);
 use Moose;
 use Set::Scalar;
 
@@ -131,9 +132,9 @@ sub validate_checksum_metadata {
 
 =head2 add_avu
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [1]    : Str attribute
+  Arg [2]    : Str value
+  Arg [2]    : Str units (optional)
 
   Example    : $path->add_avu('foo', 'bar')
   Description: Add an AVU to an iRODS path (data object or collection)
@@ -162,9 +163,9 @@ sub add_avu {
 
 =head2 remove_avu
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [1]    : Str attribute
+  Arg [2]    : Str value
+  Arg [2]    : Str units (optional)
 
   Example    : $path->remove_avu('foo', 'bar')
   Description: Remove an AVU from an iRODS path (data object or collection)
@@ -180,8 +181,9 @@ sub remove_avu {
     $self->irods->remove_object_avu($self->str, $attribute, $value, $units);
   }
   else {
-    $self->logcarp("Failed to remove AVU {'$attribute', '$value', '$units'} ",
-                   "from '", $self->str, "': AVU is not present");
+    $self->logconfess("Failed to remove AVU ",
+                      "{'$attribute', '$value', '$units'} from '", $self->str,
+                      "': AVU is not present");
   }
 
   $self->clear_metadata;
@@ -189,112 +191,25 @@ sub remove_avu {
   return $self;
 }
 
-=head2 supersede_avus
+=head2 make_avu_history
 
-  Arg [1]    : attribute
-  Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [1]    : Str attribute
+  Arg [2]    : DateTime (optional)
 
-  Example    : $path->supersede_avus('foo', 'bar')
-  Description: Replace an AVU from an iRODS path (data object or collection)
-               while removing any existing AVUs having under the same
-               attribute. Return self. Clear the metadata cache.
-  Returntype : WTSI::NPG::iRODS::DataObject
+  Example    : $obj->make_avu_history('foo')
+  Description: Return a history value showing the current state of all
+               AVUs with the specified attribute, suitable for adding
+               as a history AVU.
+  Returntype : Str
 
 =cut
 
-##no critic (Subroutines::ProhibitExcessComplexity)
-sub supersede_avus {
-  my ($self, $attribute, $value, $units) = @_;
+sub make_avu_history {
+  my ($self, $attribute, $timestamp) = @_;
 
-  defined $attribute or
-    $self->logcroak("A defined attribute argument is required");
-  defined $value or
-    $self->logcroak("A defined value argument is required");
-
-  $self->debug("Superseding all '$attribute' metadata on '", $self->str, q{'});
-
-  my @matching = $self->find_in_metadata($attribute);
-  my $num_matching = scalar @matching;
-
-  $self->debug("Found $num_matching '$attribute' AVUs to supersede");
-
-  my $num_processed = 0;
-  if ($num_matching > 0) {
-    # There are some AVUs present for this attribute, so remove them,
-    # except in the case where one happens to be the same as we are
-    # trying to add (to avoid removing it and immediately adding it
-    # back).
-    foreach my $avu (@matching) {
-      ++$num_processed;
-      $self->debug("Attempting to supersede $num_processed of ",
-                   "$num_matching AVUs");
-
-      my $old_attribute = $avu->{attribute};
-      my $old_value     = $avu->{value};
-      my $old_units     = $avu->{units};
-
-      if (defined $units && defined $old_units &&
-          $old_attribute eq $attribute &&
-          $old_value     eq $value &&
-          $old_units     eq $units) {
-        # Units were defined in both and everything matches
-        $self->debug("Not superseding (leaving in place) AVU ",
-                     "{'$old_attribute', '$old_value', '$old_units'} on '",
-                     $self->str, "' [$num_processed / $num_matching]");
-      }
-      elsif (!defined $units && !defined $old_units &&
-             $old_attribute eq $attribute &&
-             $old_value     eq $value) {
-        # Units were undefined in both and everything else matches
-        $self->debug("Not superseding (leaving in place) AVU ",
-                     "{'$old_attribute', '$old_value', ''} on '",
-                     $self->str, "' [$num_processed / $num_matching]");
-      }
-      else {
-        # There were some differences
-        my $old_units_str = defined $old_units ? "'$old_units'" : 'undef';
-        $self->debug("Superseding AVU (removing) ",
-                     "{'$old_attribute', '$old_value', ",
-                     "$old_units_str} on '", $self->str,
-                     "' [$num_processed / $num_matching]");
-
-        $self->remove_avu($old_attribute, $old_value, $old_units);
-
-        my $units_str = defined $units ? "'$units'" : 'undef';
-        $self->debug("Superseding with AVU (now adding) ",
-                     "{'$attribute', '$value', ",
-                     "$units_str} on '", $self->str,
-                     "' [$num_processed / $num_matching]");
-
-        if ($self->get_avu($attribute, $value, $units)) {
-          $self->debug("The superseding AVU ",
-                       "{'$attribute', '$value', $units_str} ",
-                       "is already in place on '",
-                       $self->str, "' [$num_processed / $num_matching]");
-        }
-        else {
-          $self->debug("Superseding with AVU {'$attribute', '$value', ",
-                       "$units_str} on '", $self->str,
-                       "' [$num_processed / $num_matching]");
-          $self->add_avu($attribute, $value, $units);
-        }
-      }
-    }
-  }
-  else {
-    # There are no AVUs present for this attribute, so just add it
-    my $units_str = defined $units ? "'$units'" : 'undef';
-    $self->debug("Not superseding with AVU (none currently with this) ",
-                 "attribute {'$attribute', '$value', $units_str} on '",
-                 $self->str, q{'});
-
-    $self->add_avu($attribute, $value, $units);
-  }
-
-  return $self;
+  return $self->irods->make_object_avu_history
+    ($self->str, $attribute, $timestamp);
 }
-##use critic
 
 sub get_permissions {
   my ($self) = @_;
@@ -305,7 +220,7 @@ sub get_permissions {
 
 =head2 set_permissions
 
-  Arg [1]    : permission Str, one of 'null', 'read', 'write' or 'own'
+  Arg [1]    : Str permission, one of 'null', 'read', 'write' or 'own'
   Arg [2]    : Array of owners (users and /or groups).
 
   Example    : $obj->set_permissions('read', 'user1', 'group1')
@@ -434,7 +349,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (c) 2013-2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

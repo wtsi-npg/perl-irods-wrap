@@ -222,11 +222,6 @@ sub supersede_multivalue_avus {
 
   $self->debug("Superseding all '$attribute' AVUs on '", $self->str, q{'});
 
-  my $history_avu;
-  if (!$self->irods->is_avu_history_attr($attribute)) {
-    $history_avu = $self->make_avu_history($attribute, $timestamp);
-  }
-
   my @values = uniq @$values;
 
   my @old_avus = $self->find_in_metadata($attribute);
@@ -239,6 +234,12 @@ sub supersede_multivalue_avus {
   my $num_old = scalar @old_avus;
   $self->debug("Found $num_old existing '$attribute' AVUs on '",
                $self->str, q{'});
+
+  my $history_avu;
+  # Only make a history if there are some AVUs with this attribute
+  if (!$self->irods->is_avu_history_attr($attribute) && $num_old > 0) {
+    $history_avu = $self->make_avu_history($attribute, $timestamp);
+  }
 
   my $num_old_processed = 0;
   my $num_old_removed   = 0;

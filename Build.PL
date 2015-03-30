@@ -27,8 +27,10 @@ my $build = WTSI::DNAP::Utilities::Build->new
    requires =>           {
                           'Carp'                  => '>= 1.20',
                           'Encode'                => '>= 2.42',
+                          'File::Which'           => '>= 1.09',
                           'DateTime'              => '>= 1.05',
                           'IO::Pty'               => '>= 1.10',
+                          'IPC::Run'              => '>= 0.92',
                           'Log::Log4perl'         => '>= 1.42',
                           'List::AllUtils'        => '>= 0.07',
                           'Moose'                 => '>= 2.1',
@@ -36,7 +38,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Set::Scalar'           => '>= 1.26',
                           'Try::Tiny'             => '>= 0.12',
                           'URI'                   => '>= 1.60',
-                          'WTSI::DNAP::Utilities' => '>= 0.4.1'
+                          'WTSI::DNAP::Utilities' => '>= 0.4.2'
                          },
    recommends =>         {
                           'Net::LDAP'             => '0'

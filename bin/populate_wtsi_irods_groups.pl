@@ -58,7 +58,8 @@ my$rs=$s->resultset(q(CurrentStudy));
 my($group_count,$altered_count)= (0,0);
 while (my$st=$rs->next){
   my$study_id=$st->internal_id;
-  my@g= $st->data_access_group() =~ m/\S+/smxg;
+  my$gs=$st->data_access_group();
+  my@g= defined $gs ? $gs=~m/\S+/smxg : ();
   my$is_seq=($st->npg_information->count||$st->npg_plex_information->count)>0;
   my@m=@g      ? map{ _uid_to_irods_uid($_) } map { ug2id($_) } @g :
        $is_seq ? @public :

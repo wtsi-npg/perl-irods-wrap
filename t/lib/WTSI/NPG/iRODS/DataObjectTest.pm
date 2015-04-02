@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 63;
+use Test::More tests => 66;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -209,7 +209,7 @@ sub remove_avu : Test(5) {
             'DataObject metadata AVUs removed 2') or diag explain $meta;
 }
 
-sub supersede_avus : Test(7) {
+sub supersede_avus : Test(10) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
   my $history_timestamp1 = DateTime->now;
@@ -263,6 +263,32 @@ sub supersede_avus : Test(7) {
   is_deeply($meta2, $expected_meta2,
             'DataObject metadata AVUs superseded 2, flushed cache')
     or diag explain $meta2;
+
+  # "Supersede" an AVU that is not present; this should be equivalent
+  # to the simple addition of a new AVU and should not create any
+  # history.
+  ok($obj->supersede_avus('zzzzzz' => 'new_zzzzzz', undef,
+                          $history_timestamp2));
+
+ my $expected_meta3 = [{attribute => 'a', value => 'x'},
+                       {attribute => 'a_history', value => $history_value1a},
+                       {attribute => 'a_history', value => $history_value2a},
+                       {attribute => 'b', value => 'new_b', units => 'km'},
+                       {attribute => 'b_history', value => $history_value1b},
+                       {attribute => 'c', value => 'x', units => 'cm'},
+                       {attribute => 'c', value => 'y'},
+                       {attribute => 'zzzzzz', value => 'new_zzzzzz'}];
+
+  my $meta3 = $obj->metadata;
+  is_deeply($meta3, $expected_meta3,
+            'DataObject metadata AVUs superseded 3') or diag explain $meta3;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  is_deeply($meta3, $expected_meta3,
+            'DataObject metadata AVUs superseded 3, flushed cache')
+    or diag explain $meta3;
 }
 
 sub supersede_multivalue_avus : Test(7) {

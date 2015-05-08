@@ -17,7 +17,7 @@ our $VERSION = '';
 
 subtype AbsolutePath,
   as Str,
-  where { $_ =~ m{^/}msx },
+  where { m{^/}msx },
   message { "'$_' is not an absolute path" };
 
 1;

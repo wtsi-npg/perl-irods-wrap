@@ -17,23 +17,23 @@ use WTSI::NPG::iRODS::Lister;
 use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
 use WTSI::NPG::iRODS::MetaSearcher;
+use WTSI::NPG::iRODS::Types qw(:all);
 
 with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.13.0';
+our $REQUIRED_BATON_VERSION = '0.14.0';
 
 our $IADMIN      = 'iadmin';
-our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
+our $IENV        = 'ienv';
 our $IGET        = 'iget';
 our $IGROUPADMIN = 'igroupadmin';
 our $IMKDIR      = 'imkdir';
 our $IMV         = 'imv';
 our $IPUT        = 'iput';
-our $IPWD        = 'ipwd';
 our $IRM         = 'irm';
 our $MD5SUM      = 'md5sum';
 
@@ -62,7 +62,7 @@ has 'environment' =>
 
 has 'working_collection' =>
   (is        => 'rw',
-   isa       => 'Str',
+   isa       =>  AbsolutePath,
    predicate => 'has_working_collection',
    clearer   => 'clear_working_collection');
 
@@ -214,20 +214,10 @@ around 'working_collection' => sub {
     $collection = File::Spec->canonpath($collection);
     $collection = $self->_ensure_absolute_path($collection);
     $self->debug("Changing working_collection to '$collection'");
-
-    WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
-                                         arguments   => [$collection],
-                                         environment => $self->environment,
-                                         logger      => $self->logger)->run;
     $self->$orig($collection);
   }
   elsif (!$self->has_working_collection) {
-    my ($wc) = WTSI::DNAP::Utilities::Runnable->new
-      (executable  => $IPWD,
-       environment => $self->environment,
-       logger      => $self->logger)->run->split_stdout;
-
-    $self->$orig($wc);
+    $self->$orig($self->get_irods_home);
   }
 
   return $self->$orig;
@@ -252,6 +242,80 @@ sub absolute_path {
   $path = File::Spec->canonpath($path);
 
   return $self->_ensure_absolute_path($path);
+}
+
+=head2 get_irods_env
+
+  Arg [1]    : None
+
+  Example    : $irods->get_irods_env
+  Description: Return the iRODS environment according to 'ienv'.
+  Returntype : HashRef[Str]
+
+=cut
+
+sub get_irods_env {
+  my ($self) = @_;
+
+  my @entries = WTSI::DNAP::Utilities::Runnable->new
+    (executable  => $IENV,
+     environment => $self->environment,
+     logger      => $self->logger)->run->split_stdout;
+
+  my %env;
+  foreach my $entry (@entries) {
+    my ($key, $value) = $entry =~ m{^NOTICE:\s+([^=]+)=(.*)}msx;
+
+    if ($key and $value) {
+      $env{$key} = $value;
+    }
+    else {
+      $self->warn("Failed to parse iRODS environment entry '$entry'");
+    }
+  }
+
+  return \%env;
+}
+
+=head2 get_irods_user
+
+  Arg [1]    : None
+
+  Example    : $irods->get_irods_user
+  Description: Return an iRODS user name according to 'ienv'.
+  Returntype : Str
+
+=cut
+
+sub get_irods_user {
+  my ($self) = @_;
+
+  my $user = $self->get_irods_env->{irodsUserName};
+  defined $user or
+    $self->logconfess("Failed to obtain the irodsUserName from '$IENV'");
+
+  return $user;
+}
+
+
+=head2 get_irods_home
+
+  Arg [1]    : None
+
+  Example    : $irods->get_irods_home
+  Description: Return an iRODS user home collection according to 'ienv'.
+  Returntype : Str
+
+=cut
+
+sub get_irods_home {
+  my ($self) = @_;
+
+  my $home = $self->get_irods_env->{irodsHome};
+  defined $home or
+    $self->logconfess("Failed to obtain the irodsHome from '$IENV'");
+
+  return $home;
 }
 
 =head2 find_zone_name
@@ -432,9 +496,6 @@ sub set_group_access {
 sub reset_working_collection {
   my ($self) = @_;
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
   $self->clear_working_collection;
 
   return $self;

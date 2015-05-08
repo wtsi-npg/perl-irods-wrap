@@ -1,4 +1,5 @@
 .travis.yml
+bin/miget.pl
 bin/populate_wtsi_irods_groups.pl
 Build.PL
 etc/log4perl_tests.conf
@@ -18,8 +19,11 @@ lib/WTSI/NPG/iRODS/MetaModifier.pm
 lib/WTSI/NPG/iRODS/MetaSearcher.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Storable.pm
+lib/WTSI/NPG/iRODS/Types.pm
 lib/WTSI/NPG/iRODS/Version.pm
 MANIFEST			This list of files
+META.json
+META.yml
 README
 t/critic.t
 t/irods.t

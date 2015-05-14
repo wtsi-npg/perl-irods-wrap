@@ -37,8 +37,6 @@ our $IPUT        = 'iput';
 our $IRM         = 'irm';
 our $MD5SUM      = 'md5sum';
 
-our $GROUP_PREFIX = 'ss_';
-
 our @VALID_PERMISSIONS = qw(null read write own);
 
 has 'strict_baton_version' =>
@@ -59,6 +57,12 @@ has 'environment' =>
    isa      => 'HashRef',
    required => 1,
    default  => sub { \%ENV });
+
+has 'group_prefix' =>
+  (is       => 'rw',
+   isa      => NoWhitespaceStr,
+   required => 1,
+   default  => 'ss_');
 
 has 'working_collection' =>
   (is        => 'rw',
@@ -356,18 +360,26 @@ sub find_zone_name {
 
 =head2 make_group_name
 
-  Arg [1]    : A SequenceScape study ID.
+  Arg [1]    : An identifier indicating group membership.
 
   Example    : $irods->make_group_name(1234)
-  Description: Return an iRODS group name given a SequenceScape study ID.
+  Description: Return an iRODS group name given an identifier e.g. a
+               SequenceScape study ID.
   Returntype : Str
 
 =cut
 
 sub make_group_name {
-  my ($self, $study_id) = @_;
+  my ($self, $identifier) = @_;
 
-  return $GROUP_PREFIX . $study_id;
+  defined $identifier or
+    $self->logconfess('A defined group identifier is required');
+  $identifier eq q{} and
+    $self->logconfess('A non-empty group identifier is required');
+  is_NoWhitespaceStr($identifier) or
+    $self->logconfess('A non-whitespace group identifier is required');
+
+  return $self->group_prefix . $identifier;
 }
 
 =head2 list_groups
@@ -783,7 +795,8 @@ sub get_collection_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+  my $prefix = $self->group_prefix;
+  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
 
   return @sorted;
 }
@@ -1359,7 +1372,8 @@ sub get_object_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+  my $prefix = $self->group_prefix;
+  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
 
   return @sorted;
 }

@@ -11,7 +11,7 @@ use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 191;
+use Test::More tests => 197;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -68,6 +68,21 @@ sub teardown : Test(teardown) {
 
 sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
+}
+
+sub group_prefix : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  is($irods->group_prefix, 'ss_', 'Default group prefix');
+
+  dies_ok { $irods->group_prefix('') }
+    'Failed to set empty group prefix';
+  dies_ok { $irods->group_prefix(' ') }
+    'Failed to set whitespace group prefix';
+  dies_ok { $irods->group_prefix('foo bar') }
+    'Failed to set internal whitespace group prefix';
+
+  ok($irods->group_prefix('foo_'), 'Set group prefix');
+  is($irods->make_group_name('bar'), 'foo_bar', 'Group prefix used')
 }
 
 sub absolute_path : Test(2) {

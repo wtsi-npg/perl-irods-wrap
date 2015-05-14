@@ -10,6 +10,7 @@ use MooseX::Types -declare =>
   [
    qw(
        AbsolutePath
+       NoWhitespaceStr
      )
   ];
 
@@ -19,6 +20,11 @@ subtype AbsolutePath,
   as Str,
   where { m{^/}msx },
   message { "'$_' is not an absolute path" };
+
+subtype NoWhitespaceStr,
+  as Str,
+  where { m{^\S+$}msx },
+  message { "'$_' is a string containing whitespace" };
 
 1;
 

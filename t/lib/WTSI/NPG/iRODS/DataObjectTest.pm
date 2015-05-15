@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 66;
+use Test::More tests => 68;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -369,20 +369,22 @@ sub get_permissions : Test(1) {
 
   my $perms = all { exists $_->{owner} &&
                     exists $_->{level} }
-   $obj->get_permissions;
+    $obj->get_permissions;
   ok($perms, 'Permissions obtained');
 }
 
-sub set_permissions : Test(5) {
+sub set_permissions : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
+  # Begin
   my $r0 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $obj->get_permissions;
   ok($r0, 'No public read access');
 
+  # Set public read
   ok($obj->set_permissions('read', 'public'));
 
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
@@ -390,12 +392,19 @@ sub set_permissions : Test(5) {
     $obj->get_permissions;
   ok($r1, 'Added public read access');
 
+  # Remove public read
   ok($obj->set_permissions(undef, 'public'));
 
   my $r2 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $obj->get_permissions;
   ok($r2, 'Removed public read access');
+
+  dies_ok { $obj->set_permissions('bogus_permission', 'public') }
+    'Fails to set bogus permission';
+
+  dies_ok { $obj->set_permissions('read', 'bogus_group') }
+    'Fails to set permission for bogus group';
 }
 
 sub get_groups : Test(6) {

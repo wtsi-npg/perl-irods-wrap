@@ -271,9 +271,52 @@ sub update_group_permissions {
   my @to_add    = $annot->difference($perms)->members;
 
   $self->debug("Groups to remove: [", join(', ', @to_remove), "]");
-  $self->set_permissions('null', @to_remove);
+
+  # We try/catch for each group in order to do our best, while
+  # counting any errors and failing afterwards if the update was not
+  # clean.
+  my $num_errors = 0;
+
+  my @all_groups = $self->irods->list_groups;
+  foreach my $group (@to_remove) {
+    if (any { $group eq $_ } @all_groups) {
+      try {
+        $self->set_permissions('null', $group);
+      } catch {
+        $num_errors++;
+        $self->error("Failed to remove permissions for group '$group' from '",
+                     $self->str, q{':}, $_);
+      };
+    }
+    else {
+      $self->error("Attempted to remove permissions for non-existent group ",
+                   "'$group' on '", $self->str, q{'});
+    }
+  }
+
   $self->debug("Groups to add: [", join(', ', @to_add), "]");
-  $self->set_permissions('read', @to_add);
+
+  foreach my $group (@to_add) {
+    if (any { $group eq $_ } @all_groups) {
+      try {
+        $self->set_permissions('read', $group);
+      } catch {
+        $num_errors++;
+        $self->error("Failed to add read permissions for group '$group' to '",
+                     $self->str, q{':}, $_);
+      };
+    }
+    else {
+      $self->error("Attempted to add read permissions for non-existent group ",
+                   "'$group' on '", $self->str, q{'});
+    }
+  }
+
+  if ($num_errors > 0) {
+    $self->logconfess("Failed to update cleanly group permissions on '",
+                      $self->str, "'; $num_errors errors were recorded. ",
+                      "See logs for details.");
+  }
 
   return $self;
 }

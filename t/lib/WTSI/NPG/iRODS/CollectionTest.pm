@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 50;
+use Test::More tests => 52;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -274,7 +274,7 @@ sub get_permissions : Test(1) {
   ok($perms, 'Permissions obtained');
 }
 
-sub set_permissions : Test(5) {
+sub set_permissions : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
@@ -297,6 +297,12 @@ sub set_permissions : Test(5) {
                   exists $_->{level} && $_->{level} eq 'read' }
     $coll->get_permissions;
   ok($r2, 'Removed public read access');
+
+  dies_ok { $coll->set_permissions('bogus_permission', 'public') }
+    'Fails to set bogus permission';
+
+  dies_ok { $coll->set_permissions('read', 'bogus_group') }
+    'Fails to set permission for bogus group';
 }
 
 sub get_groups : Test(6) {

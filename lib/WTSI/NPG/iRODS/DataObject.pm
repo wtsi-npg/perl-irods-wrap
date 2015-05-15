@@ -2,9 +2,10 @@
 package WTSI::NPG::iRODS::DataObject;
 
 use File::Spec;
-use List::AllUtils qw(uniq);
+use List::AllUtils qw(any uniq);
 use Moose;
 use Set::Scalar;
+use Try::Tiny;
 
 use WTSI::NPG::iRODS;
 

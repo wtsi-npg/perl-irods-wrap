@@ -28,6 +28,16 @@ around [qw(list_collection list_object
   return $self->$orig(@args);
 };
 
+=head2 list_object
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my $path = $irods->list_object('/path/to/object')
+  Description: Return a fully qualified iRODS data object path.
+  Returntype : Str
+
+=cut
+
 sub list_object {
   my ($self, $object) = @_;
 
@@ -48,6 +58,19 @@ sub list_object {
 
   return $path;
 }
+
+=head2 list_collection
+
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : Recursive list flag (optional).
+
+  Example    : my $path = $irods->list_object('/path/to/object')
+  Description: Return an array of two values; the first being an ArrayRef
+               of contained collections, the second being an ArrayRef of
+               contained data objects.
+  Returntype : Array[Arrayref[Str], ArrayRef[Str]]
+
+=cut
 
 sub list_collection {
   my ($self, $collection, $recur) = @_;
@@ -72,6 +95,19 @@ sub list_collection {
   return @paths;
 }
 
+=head2 get_object_acl
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @acls = $irods->get_object_acl('/path/to/object')
+  Description: Return the ACLs of a data object. Each element in the ACL
+               is represented as a HashRef with keys 'owner' and 'level'
+               whose values are the iRODS user/group and iRODS access
+               level, respectively.
+  Returntype : Array[HashRef[Str]]
+
+=cut
+
 sub get_object_acl {
   my ($self, $object) = @_;
 
@@ -94,6 +130,19 @@ sub get_object_acl {
 
   return @$acl;
 }
+
+=head2 get_collection_acl
+
+  Arg [1]    : iRODS collection path.
+
+  Example    : my @acls = $irods->get_collection_acl('/path/to/collection')
+  Description: Return the ACLs of a collection. Each element in the ACL
+               is represented as a HashRef with keys 'owner' and 'level'
+               whose values are the iRODS user/group and iRODS access
+               level, respectively.
+  Returntype : Array[HashRef[Str]]
+
+=cut
 
 sub get_collection_acl {
   my ($self, $collection) = @_;
@@ -264,7 +313,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

@@ -11,7 +11,7 @@ use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 187;
+use Test::More tests => 197;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -70,11 +70,45 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
+sub group_prefix : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  is($irods->group_prefix, 'ss_', 'Default group prefix');
+
+  dies_ok { $irods->group_prefix('') }
+    'Failed to set empty group prefix';
+  dies_ok { $irods->group_prefix(' ') }
+    'Failed to set whitespace group prefix';
+  dies_ok { $irods->group_prefix('foo bar') }
+    'Failed to set internal whitespace group prefix';
+
+  ok($irods->group_prefix('foo_'), 'Set group prefix');
+  is($irods->make_group_name('bar'), 'foo_bar', 'Group prefix used')
+}
+
 sub absolute_path : Test(2) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   is($irods->absolute_path('/path'), '/path');
-  like($irods->absolute_path('path'), qr{^/.*path$});
+  is($irods->absolute_path('path'), $irods->working_collection . '/path');
+}
+
+sub get_irods_env : Test(2) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->get_irods_env, 'Obtained an iRODS environment');
+  is(ref $irods->get_irods_env, 'HASH', 'iRODS environment is a HashRef');
+}
+
+sub get_irods_user : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->get_irods_user, 'Obtained an iRODS user name')
+}
+
+sub get_irods_home : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->get_irods_user, 'Obtained an iRODS user name')
 }
 
 sub find_zone_name : Test(3) {
@@ -95,9 +129,9 @@ sub working_collection : Test(4) {
 
   like($irods->working_collection, qr{^/}, 'Found a working collection');
 
-  isnt($irods->working_collection, '/');
-  ok($irods->working_collection('/'), 'Set the working collection');
-  is($irods->working_collection, '/', 'Working collection set');
+  isnt($irods->working_collection, '/test');
+  ok($irods->working_collection('/test'), 'Set the working collection');
+  is($irods->working_collection, '/test', 'Working collection set');
 }
 
 sub list_groups : Test(1) {

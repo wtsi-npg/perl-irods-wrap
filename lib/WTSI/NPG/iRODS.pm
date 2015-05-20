@@ -17,27 +17,25 @@ use WTSI::NPG::iRODS::Lister;
 use WTSI::NPG::iRODS::MetaLister;
 use WTSI::NPG::iRODS::MetaModifier;
 use WTSI::NPG::iRODS::MetaSearcher;
+use WTSI::NPG::iRODS::Types qw(:all);
 
 with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.13.0';
+our $REQUIRED_BATON_VERSION = '0.14.0';
 
 our $IADMIN      = 'iadmin';
-our $ICD         = 'icd';
 our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
+our $IENV        = 'ienv';
 our $IGET        = 'iget';
 our $IGROUPADMIN = 'igroupadmin';
 our $IMKDIR      = 'imkdir';
 our $IMV         = 'imv';
 our $IPUT        = 'iput';
-our $IPWD        = 'ipwd';
 our $IRM         = 'irm';
 our $MD5SUM      = 'md5sum';
-
-our $GROUP_PREFIX = 'ss_';
 
 our @VALID_PERMISSIONS = qw(null read write own);
 
@@ -60,9 +58,15 @@ has 'environment' =>
    required => 1,
    default  => sub { \%ENV });
 
+has 'group_prefix' =>
+  (is       => 'rw',
+   isa      => NoWhitespaceStr,
+   required => 1,
+   default  => 'ss_');
+
 has 'working_collection' =>
   (is        => 'rw',
-   isa       => 'Str',
+   isa       =>  AbsolutePath,
    predicate => 'has_working_collection',
    clearer   => 'clear_working_collection');
 
@@ -214,20 +218,10 @@ around 'working_collection' => sub {
     $collection = File::Spec->canonpath($collection);
     $collection = $self->_ensure_absolute_path($collection);
     $self->debug("Changing working_collection to '$collection'");
-
-    WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
-                                         arguments   => [$collection],
-                                         environment => $self->environment,
-                                         logger      => $self->logger)->run;
     $self->$orig($collection);
   }
   elsif (!$self->has_working_collection) {
-    my ($wc) = WTSI::DNAP::Utilities::Runnable->new
-      (executable  => $IPWD,
-       environment => $self->environment,
-       logger      => $self->logger)->run->split_stdout;
-
-    $self->$orig($wc);
+    $self->$orig($self->get_irods_home);
   }
 
   return $self->$orig;
@@ -252,6 +246,80 @@ sub absolute_path {
   $path = File::Spec->canonpath($path);
 
   return $self->_ensure_absolute_path($path);
+}
+
+=head2 get_irods_env
+
+  Arg [1]    : None.
+
+  Example    : $irods->get_irods_env
+  Description: Return the iRODS environment according to 'ienv'.
+  Returntype : HashRef[Str]
+
+=cut
+
+sub get_irods_env {
+  my ($self) = @_;
+
+  my @entries = WTSI::DNAP::Utilities::Runnable->new
+    (executable  => $IENV,
+     environment => $self->environment,
+     logger      => $self->logger)->run->split_stdout;
+
+  my %env;
+  foreach my $entry (@entries) {
+    my ($key, $value) = $entry =~ m{^NOTICE:\s+([^=]+)=(.*)}msx;
+
+    if ($key and $value) {
+      $env{$key} = $value;
+    }
+    else {
+      $self->warn("Failed to parse iRODS environment entry '$entry'");
+    }
+  }
+
+  return \%env;
+}
+
+=head2 get_irods_user
+
+  Arg [1]    : None.
+
+  Example    : $irods->get_irods_user
+  Description: Return an iRODS user name according to 'ienv'.
+  Returntype : Str
+
+=cut
+
+sub get_irods_user {
+  my ($self) = @_;
+
+  my $user = $self->get_irods_env->{irodsUserName};
+  defined $user or
+    $self->logconfess("Failed to obtain the irodsUserName from '$IENV'");
+
+  return $user;
+}
+
+
+=head2 get_irods_home
+
+  Arg [1]    : None.
+
+  Example    : $irods->get_irods_home
+  Description: Return an iRODS user home collection according to 'ienv'.
+  Returntype : Str
+
+=cut
+
+sub get_irods_home {
+  my ($self) = @_;
+
+  my $home = $self->get_irods_env->{irodsHome};
+  defined $home or
+    $self->logconfess("Failed to obtain the irodsHome from '$IENV'");
+
+  return $home;
 }
 
 =head2 find_zone_name
@@ -292,23 +360,31 @@ sub find_zone_name {
 
 =head2 make_group_name
 
-  Arg [1]    : A SequenceScape study ID.
+  Arg [1]    : An identifier indicating group membership.
 
   Example    : $irods->make_group_name(1234)
-  Description: Return an iRODS group name given a SequenceScape study ID.
+  Description: Return an iRODS group name given an identifier e.g. a
+               SequenceScape study ID.
   Returntype : Str
 
 =cut
 
 sub make_group_name {
-  my ($self, $study_id) = @_;
+  my ($self, $identifier) = @_;
 
-  return $GROUP_PREFIX . $study_id;
+  defined $identifier or
+    $self->logconfess('A defined group identifier is required');
+  $identifier eq q{} and
+    $self->logconfess('A non-empty group identifier is required');
+  is_NoWhitespaceStr($identifier) or
+    $self->logconfess('A non-whitespace group identifier is required');
+
+  return $self->group_prefix . $identifier;
 }
 
 =head2 list_groups
 
-  Arg [1]    : None
+  Arg [1]    : None.
 
   Example    : $irods->list_groups
   Description: Returns a list of iRODS groups
@@ -344,7 +420,7 @@ sub group_exists {
 
 =head2 add_group
 
-  Arg [1]    : new iRODS group name
+  Arg [1]    : new iRODS group name.
   Example    : $irods->add_group($name)
   Description: Create a new group. Raises an error if the group exists
                already. Returns the group name. The group name is not escaped
@@ -370,7 +446,7 @@ sub add_group {
 =head2 remove_group
 
   Arg [1]    : An existing iRODS group name.
-  Example    : remove_group($name)
+  Example    : $irods->remove_group($name)
   Description: Remove a group. Raises an error if the group does not exist.
                already. Returns the group name. The group name is not escaped
                in any way.
@@ -397,7 +473,7 @@ sub remove_group {
 
   Arg [1]    : A permission string, 'read', 'write', 'own' or undef ('null')
   Arg [2]    : An iRODS group name.
-  Arg [3]    : One or more data objects or collections
+  Arg [3]    : One or more data objects or collections.
 
   Example    : $irods->set_group_access('read', 'public', $object1, $object2)
   Description: Set the access rights on one or more objects for a group,
@@ -420,7 +496,7 @@ sub set_group_access {
 
 =head2 reset_working_collection
 
-  Arg [1]    : None
+  Arg [1]    : None.
 
   Example    : $irods->reset_working_collection
   Description: Reset the current iRODS working collection to the home
@@ -432,9 +508,6 @@ sub set_group_access {
 sub reset_working_collection {
   my ($self) = @_;
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $ICD,
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
   $self->clear_working_collection;
 
   return $self;
@@ -442,7 +515,7 @@ sub reset_working_collection {
 
 =head2 list_collection
 
-  Arg [1]    : Str iRODS collection name
+  Arg [1]    : Str iRODS collection path.
   Arg [2]    : Bool recurse flag.
 
   Example    : my ($objs, $colls) = $irods->list_collection($coll)
@@ -473,7 +546,7 @@ sub list_collection {
 
 =head2 add_collection
 
-  Arg [1]    : iRODS collection name
+  Arg [1]    : iRODS collection path.
 
   Example    : $irods->add_collection('/my/path/foo')
   Description: Make a new collection in iRODS. Return the new collection.
@@ -503,8 +576,8 @@ sub add_collection {
 
 =head2 put_collection
 
-  Arg [1]    : Local directory name
-  Arg [2]    : iRODS collection name
+  Arg [1]    : Local directory path.
+  Arg [2]    : iRODS collection path.
 
   Example    : $irods->put_collection('/my/path/foo', '/archive')
   Description: Make a new collection in iRODS. Return the new collection.
@@ -543,8 +616,8 @@ sub put_collection {
 
 =head2 move_collection
 
-  Arg [1]    : iRODS collection name
-  Arg [2]    : iRODS collection name
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : iRODS collection path.
 
   Example    : $irods->move_collection('/my/path/lorem.txt',
                                        '/my/path/ipsum.txt')
@@ -581,8 +654,8 @@ sub move_collection {
 
 =head2 get_collection
 
-  Arg [1]    : iRODS collection name
-  Arg [2]    : Local directory path
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : Local directory path.
 
   Example    : $irods->get_collection('/my/path/foo', '.')
   Description: Fetch a collection and contents, recursively and return
@@ -619,7 +692,7 @@ sub get_collection {
 
 =head2 remove_collection
 
-  Arg [1]    : iRODS collection name
+  Arg [1]    : iRODS collection path.
 
   Example    : $irods->remove_collection('/my/path/foo')
   Description: Remove a collection and contents, recursively, and return
@@ -697,9 +770,9 @@ sub set_collection_permissions {
 
 =head2 get_collection_groups
 
-  Arg [1]    : iRODS data collection path
-  Arg [2]    : permission Str, one of 'null', 'read', 'write' or 'own',
-               optional
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : Permission Str, one of 'null', 'read', 'write' or 'own',
+               optional.
 
   Example    : $irods->get_collection_groups($path)
   Description: Return a list of the data access groups in the collection's ACL.
@@ -722,17 +795,18 @@ sub get_collection_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+  my $prefix = $self->group_prefix;
+  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
 
   return @sorted;
 }
 
 =head2 get_collection_meta
 
-  Arg [1]    : iRODS data collection name
+  Arg [1]    : iRODS data collection path.
 
   Example    : $irods->get_collection_meta('/my/path/')
-  Description: Get metadata on a collection as an array of AVUs
+  Description: Get metadata on a collection as an array of AVUs.
   Returntype : Array[HashRef]
 
 =cut
@@ -756,10 +830,10 @@ sub get_collection_meta {
 
 =head2 add_collection_avu
 
-  Arg [1]    : iRODS collection name
-  Arg [2]    : attribute
-  Arg [3]    : value
-  Arg [4]    : units (optional)
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : attribute.
+  Arg [3]    : value.
+  Arg [4]    : units (optional).
 
   Example    : $irods->add_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Add metadata to a collection. Return an array of
@@ -805,10 +879,10 @@ sub add_collection_avu {
 
 =head2 remove_collection_avu
 
-  Arg [1]    : iRODS collection name
-  Arg [2]    : attribute
-  Arg [3]    : value
-  Arg [4]    : units (optional)
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : attribute.
+  Arg [3]    : value.
+  Arg [4]    : units (optional).
 
   Example    : $irods->remove_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Removes metadata from a collection object. Return an array of
@@ -854,9 +928,9 @@ sub remove_collection_avu {
 
 =head2 make_collection_avu_history
 
-  Arg [1]    : iRODS collection path
-  Arg [2]    : attribute
-  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : attribute.
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time).
 
   Example    : $irods->make_collection_avu_history('/my/path/lorem.txt', 'id');
   Description: Return a new history AVU reflecting the current state of
@@ -901,14 +975,13 @@ sub make_collection_avu_history {
 
 =head2 find_collections_by_meta
 
-  Arg [1]    : iRODS collection
+  Arg [1]    : iRODS collection path.
   Arg [2]    : ArrayRef attribute value tuples
 
   Example    : $irods->find_collections_by_meta('/my/path/foo',
                                                 ['id' => 'ABCD1234'])
   Description: Find collections by their metadata, restricted to a parent
-               collection.
-               Return a list of collections.
+               collection. Return a list of collections.
   Returntype : Array
 
 =cut
@@ -952,7 +1025,7 @@ sub find_collections_by_meta {
 
 =head2 list_object
 
-  Arg [1]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
 
   Example    : $obj = $irods->list_object($object)
   Description: Return the full path of the object.
@@ -975,6 +1048,15 @@ sub list_object {
   return $self->lister->list_object($object);
 }
 
+=head2 read_object
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : $irods->read_object('/my/path/lorem.txt')
+  Description: Read a data object's contents into a string.
+  Returntype : Str
+
+=cut
 
 sub read_object {
   my ($self, $object) = @_;
@@ -993,8 +1075,8 @@ sub read_object {
 
 =head2 add_object
 
-  Arg [1]    : Name of file to add to iRODs
-  Arg [2]    : iRODS data object name
+  Arg [1]    : Path of file to add to iRODs.
+  Arg [2]    : iRODS data object path.
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
@@ -1027,8 +1109,8 @@ sub add_object {
 
 =head2 replace_object
 
-  Arg [1]    : Name of file to add to iRODs
-  Arg [2]    : iRODS data object name
+  Arg [1]    : Path of file to add to iRODs.
+  Arg [2]    : iRODS data object path.
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
@@ -1062,9 +1144,9 @@ sub replace_object {
 
 =head2 copy_object
 
-  Arg [1]    : iRODS data object name
-  Arg [2]    : iRODS data object name
-  Arg [3]    : iRODS metadata attribute translator (optional)
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : iRODS data object path.
+  Arg [3]    : iRODS metadata attribute translator (optional).
 
   Example    : $irods->copy_object('/my/path/lorem.txt', '/my/path/ipsum.txt',
                                    sub { 'copy_' . $_ })
@@ -1119,8 +1201,8 @@ sub copy_object {
 
 =head2 move_object
 
-  Arg [1]    : iRODS data object name
-  Arg [2]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : iRODS data object path.
 
   Example    : $irods->move_object('/my/path/lorem.txt', '/my/path/ipsum.txt')
   Description: Move a data object.
@@ -1154,8 +1236,8 @@ sub move_object {
 
 =head2 get_object
 
-  Arg [1]    : iRODS data object name
-  Arg [2]    : Local file path
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : Local file path.
 
   Example    : $irods->get_object('/my/path/lorem.txt', 'lorem.txt')
   Description: Fetch a data object and return the path of the local copy.
@@ -1187,7 +1269,7 @@ sub get_object {
 
 =head2 remove_object
 
-  Arg [1]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
 
   Example    : $irods->remove_object('/my/path/lorem.txt')
   Description: Remove a data object.
@@ -1213,6 +1295,17 @@ sub remove_object {
   return $target;
 }
 
+=head2 slurp_object
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : $irods->read_object('/my/path/lorem.txt')
+  Description: Read a data object's contents into a string. (Synonym for
+               read_object.)
+  Returntype : Str
+
+=cut
+
 sub slurp_object {
   my ($self, $target) = @_;
 
@@ -1226,6 +1319,17 @@ sub slurp_object {
 
   return $self->read_object($target);
 }
+
+
+=head2 get_object_permissions
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : $irods->get_object_permissions($path)
+  Description: Return a list of ACLs defined for an object.
+  Returntype : Array
+
+=cut
 
 sub get_object_permissions {
   my ($self, $object) = @_;
@@ -1273,9 +1377,9 @@ sub set_object_permissions {
 
 =head2 get_object_groups
 
-  Arg [1]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
   Arg [2]    : permission Str, one of 'null', 'read', 'write' or 'own',
-               optional
+               optional.
 
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
@@ -1298,17 +1402,18 @@ sub get_object_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my @sorted = sort grep { m{^$GROUP_PREFIX}msx } map { $_->{owner} } @perms;
+  my $prefix = $self->group_prefix;
+  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
 
   return @sorted;
 }
 
 =head2 get_object_meta
 
-  Arg [1]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
 
   Example    : $irods->get_object_meta('/my/path/lorem.txt')
-  Description: Get metadata on a data object as an array of AVUs
+  Description: Get metadata on a data object as an array of AVUs.
   Returntype : Array[HashRef]
 
 =cut
@@ -1328,15 +1433,15 @@ sub get_object_meta {
 
 =head2 add_object_avu
 
-  Arg [1]    : iRODS data object name
-  Arg [2]    : attribute
-  Arg [3]    : value
-  Arg [4]    : units (optional)
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : attribute.
+  Arg [3]    : value.
+  Arg [4]    : units (optional).
 
   Example    : add_object_avu('/my/path/lorem.txt', 'id', 'ABCD1234')
   Description: Add metadata to a data object. Return an array of
                the new attribute, value and units.
-  Returntype : array
+  Returntype : Array
 
 =cut
 
@@ -1373,10 +1478,10 @@ sub add_object_avu {
 
 =head2 remove_object_avu
 
-  Arg [1]    : iRODS data object path
-  Arg [2]    : attribute
-  Arg [3]    : value
-  Arg [4]    : units (optional)
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : attribute.
+  Arg [3]    : value.
+  Arg [4]    : units (optional).
 
   Example    : $irods->remove_object_avu('/my/path/lorem.txt', 'id',
                'ABCD1234')
@@ -1419,9 +1524,9 @@ sub remove_object_avu {
 
 =head2 make_object_avu_history
 
-  Arg [1]    : iRODS data object path
-  Arg [2]    : attribute
-  Arg [3]    : DateTime a timestamp (optional, defaults to the current time)
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : attribute.
+  Arg [3]    : DateTime a timestamp (optional, defaults to the current time).
 
   Example    : $irods->make_object_avu_history('/my/path/lorem.txt', 'id');
   Description: Return a new history AVU reflecting the current state of
@@ -1466,8 +1571,8 @@ sub make_object_avu_history {
 
 =head2 find_objects_by_meta
 
-  Arg [1]    : iRODS collection
-  Arg [2]    : ArrayRefs of attribute value tuples
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : ArrayRefs of attribute value tuples.
 
   Example    : $irods->find_objects_by_meta('/my/path/foo',
                                             ['id' => 'ABCD1234'])
@@ -1515,7 +1620,7 @@ sub find_objects_by_meta {
 
 =head2 calculate_checksum
 
-  Arg [1]    : iRODS data object name
+  Arg [1]    : iRODS data object path.
 
   Example    : $cs = $irods->calculate_checksum('/my/path/lorem.txt')
   Description: Return the MD5 checksum of an iRODS data object. Uses -f
@@ -1552,12 +1657,12 @@ sub calculate_checksum {
 
 =head2 validate_checksum_metadata
 
-  Arg [1]    : iRODS data object path
+  Arg [1]    : iRODS data object path.
 
   Example    : $irods->validate_checksum_metadata('/my/path/lorem.txt')
   Description: Return true if the MD5 checksum in the metadata of an iRODS
                object is identical to the MD5 calculated by iRODS.
-  Returntype : boolean
+  Returntype : Bool
 
 =cut
 
@@ -1595,7 +1700,7 @@ sub validate_checksum_metadata {
 
 =head2 md5sum
 
-  Arg [1]    : string path to a file
+  Arg [1]    : String path to a file.
 
   Example    : my $md5 = md5sum($filename)
   Description: Calculate the MD5 checksum of a file.
@@ -1623,8 +1728,8 @@ sub md5sum {
 
 =head2 hash_path
 
-  Arg [1]    : string path to a file
-  Arg [2]    : MD5 checksum (optional)
+  Arg [1]    : String path to a file.
+  Arg [2]    : MD5 checksum (optional).
 
   Example    : my $path = $irods->hash_path($filename)
   Description: Return a hashed path 3 directories deep, each level having
@@ -1650,8 +1755,8 @@ sub hash_path {
 
 =head2 avu_history_attr
 
-  Arg [1]    : iRODS data object path
-  Arg [2]    : attribute
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : attribute.
 
   Example    : $irods->make_avu_history_attr('/my/path/lorem.txt', 'id');
   Description: Return the new history AVU attribute corresponding to the
@@ -1674,8 +1779,8 @@ sub avu_history_attr {
 
 =head2 is_avu_history_attr
 
-  Arg [1]    : iRODS data object path
-  Arg [2]    : attribute
+  Arg [1]    : iRODS data object path.
+  Arg [2]    : attribute.
 
   Example    : $irods->is_avu_history_attr('id_history');
   Description: Return true if the attribute string matches the pattern
@@ -1723,7 +1828,6 @@ sub _meta_exists {
                   $_->{value}     eq $value} @$current_meta;
   }
 }
-
 
 sub _make_avu_history {
   my ($self, $attribute, $historic_avus, $history_timestamp) = @_;

@@ -34,6 +34,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Log::Log4perl'         => '>= 1.42',
                           'List::AllUtils'        => '>= 0.07',
                           'Moose'                 => '>= 2.1',
+                          'MooseX::Types'         => '>= 0.45',
                           'Readonly'              => '>= 1.04',
                           'Set::Scalar'           => '>= 1.26',
                           'Try::Tiny'             => '>= 0.12',

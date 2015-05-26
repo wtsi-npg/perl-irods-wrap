@@ -3,6 +3,7 @@ package WTSI::NPG::Accountable;
 
 use strict;
 use warnings;
+use English qw(-no_match_vars);
 use Moose::Role;
 use URI;
 
@@ -14,9 +15,8 @@ has 'accountee_uid' =>
    required => 1,
    lazy     => 1,
    default  => sub {
-     my $uid = `whoami`;
-     chomp $uid;
-     return $uid;
+     my ($name) = getpwuid $REAL_USER_ID;
+     return $name;
    });
 
 has 'affiliation_uri' =>

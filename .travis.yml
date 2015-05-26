@@ -42,6 +42,7 @@ install:
   - cpanm --quiet --notest Test::Class
   - cpanm --quiet --notest Test::Exception
   - cpanm --quiet --notest Test::Perl::Critic
+  - cpanm --quiet --notest URI~1.67
   - cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
   - cd $TRAVIS_BUILD_DIR
 

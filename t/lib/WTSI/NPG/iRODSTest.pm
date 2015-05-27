@@ -1,6 +1,8 @@
 
 package WTSI::NPG::iRODSTest;
 
+use utf8;
+
 use strict;
 use warnings;
 use English;

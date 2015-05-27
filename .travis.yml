@@ -10,9 +10,9 @@ env:
   global:
     - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
     - PGVERSION="9.3"
-    - JANSSON_VERSION="2.6"
+    - JANSSON_VERSION="2.7"
     - DNAP_UTILITIES_VERSION="0.4.2"
-    - BATON_VERSION="0.13.0"
+    - BATON_VERSION="0.14.0"
     - CK_DEFAULT_TIMEOUT=10
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
 
@@ -20,7 +20,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq odbc-postgresql unixodbc-dev
   - wget -q https://github.com/wtsi-npg/irods-legacy/releases/download/3.3.1-travis-bc85aa/irods.tar.gz -O /tmp/irods.tar.gz
-  - wget -q https://github.com/akheron/jansson/archive/v2.6.tar.gz -O /tmp/jansson-2.6.tar.gz
+  - wget -q https://github.com/akheron/jansson/archive/v${JANSSON_VERSION}.tar.gz -O /tmp/jansson-${JANSSON_VERSION}.tar.gz
   - wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
 
 install:
@@ -42,6 +42,7 @@ install:
   - cpanm --quiet --notest Test::Class
   - cpanm --quiet --notest Test::Exception
   - cpanm --quiet --notest Test::Perl::Critic
+  - cpanm --quiet --notest URI~1.67
   - cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
   - cd $TRAVIS_BUILD_DIR
 

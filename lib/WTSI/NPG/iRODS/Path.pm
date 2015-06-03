@@ -2,7 +2,7 @@
 package WTSI::NPG::iRODS::Path;
 
 use File::Spec;
-use List::AllUtils qw(uniq);
+use List::AllUtils qw(notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
@@ -220,9 +220,18 @@ sub supersede_multivalue_avus {
   ref $values eq 'ARRAY' or
     $self->logcroak("The values argument must be an ArrayRef");
 
-  $self->debug("Superseding all '$attribute' AVUs on '", $self->str, q{'});
+  my @values = @$values;
+  if (notall { defined $_ } @values) {
+    $self->warn("The values array for '$attribute' contained one or more ",
+                "undef elements. An AVU may not have an undef value; any ",
+                "such will be ignored.");
+    @values = grep { defined $_ } @values;
+  }
 
-  my @values = uniq @$values;
+  @values = uniq @values;
+  @values or $self->logcroak("At least one defined value is required");
+
+  $self->debug("Superseding all '$attribute' AVUs on '", $self->str, q{'});
 
   my @old_avus = $self->find_in_metadata($attribute);
   my @new_avus = map { {attribute => $attribute,

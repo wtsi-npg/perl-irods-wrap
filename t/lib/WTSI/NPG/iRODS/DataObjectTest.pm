@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 68;
+use Test::More tests => 76;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -352,6 +352,60 @@ sub supersede_multivalue_avus : Test(7) {
   is_deeply($meta2, $expected_meta2,
             'DataObject metadata multivalue AVUs superseded 2, flushed cache')
     or diag explain $meta2;
+}
+
+sub abandon_avus : Test(8) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $history_timestamp1 = DateTime->now;
+
+  # Abandon AVUs with attribute 'a' and 'b'
+  my $history_value1a = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $history_value1b = sprintf "[%s] x,y", $history_timestamp1->iso8601;
+  my $expected_meta1 = [{attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c', value => 'x', units => 'cm'},
+                        {attribute => 'c', value => 'y'}];
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+  ok($obj->abandon_avus('a', $history_timestamp1));
+  ok($obj->abandon_avus('b', $history_timestamp1));
+
+  my $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs abandoned 1') or diag explain $meta1;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  $meta1 = $obj->metadata;
+  is_deeply($meta1, $expected_meta1,
+            'DataObject metadata AVUs abandoned 1, flushed cache')
+    or diag explain $meta1;
+
+  # Abandon AVUs with attribute 'c'
+  my $history_timestamp2 = DateTime->now->add(seconds => 10);
+  my $history_value2a = sprintf "[%s] x,y", $history_timestamp2->iso8601;
+  my $expected_meta2 = [{attribute => 'a_history', value => $history_value1a},
+                        {attribute => 'b_history', value => $history_value1b},
+                        {attribute => 'c_history', value => $history_value2a}];
+
+  ok($obj->abandon_avus('c', $history_timestamp2));
+
+  my $meta2 = $obj->metadata;
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs abandoned 2') or diag explain $meta2;
+
+  # Flush the cache to re-read from iRODS
+  $obj->clear_metadata;
+
+  is_deeply($meta2, $expected_meta2,
+            'DataObject metadata AVUs abandoned 2, flushed cache')
+    or diag explain $meta2;
+
+  # "Abandon" AVUs that are not present
+  ok($obj->abandon_avus('zzzzzz'), 'Abandoned an AVU that is not present');
 }
 
 sub str : Test(1) {

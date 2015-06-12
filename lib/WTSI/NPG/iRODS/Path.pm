@@ -257,11 +257,11 @@ sub supersede_multivalue_avus {
     $self->logcroak("The values argument must be an ArrayRef");
 
   my @values = @$values;
-  if (notall { defined $_ } @values) {
+  if (notall { defined } @values) {
     $self->logcarp("The values array for '$attribute' contained one or more ",
                    "undef elements. An AVU may not have an undef value; any ",
                    "such will be ignored.");
-    @values = grep { defined $_ } @values;
+    @values = grep { defined } @values;
   }
 
   @values = uniq @values;

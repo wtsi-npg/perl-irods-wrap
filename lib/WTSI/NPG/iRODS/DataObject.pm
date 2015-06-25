@@ -21,6 +21,11 @@ has 'data_object' =>
    default   => q{.},
    predicate => 'has_data_object');
 
+has 'checksum' => (is        => 'rw',
+                   isa       => 'Str',
+                   predicate => 'has_checksum',
+                   clearer   => 'clear_checksum');
+
 # TODO: Add a check so that a DataObject cannot be built from a path
 # that is in fact a collection.
 around BUILDARGS => sub {
@@ -47,6 +52,18 @@ around 'metadata' => sub {
   unless ($self->has_metadata) {
     my @meta = $self->irods->get_object_meta($self->str);
     $self->$orig(\@meta);
+  }
+
+  return $self->$orig;
+};
+
+# Lazily load checksum from iRODS
+around 'checksum' => sub {
+  my ($orig, $self) = @_;
+
+  unless ($self->has_checksum) {
+    my $checksum = $self->irods->checksum($self->str);
+    $self->$orig($checksum);
   }
 
   return $self->$orig;
@@ -102,7 +119,7 @@ sub absolute {
 
   Arg [1]    : None
 
-  Example    : $path->calculate_checksum
+  Example    : $obj->calculate_checksum
   Description: Return the MD5 checksum of the data object.
   Returntype : WTSI::NPG::iRODS::DataObject
 
@@ -111,6 +128,7 @@ sub absolute {
 sub calculate_checksum {
   my ($self) = @_;
 
+  $self->clear_checksum;
   return $self->irods->calculate_checksum($self->str);
 }
 
@@ -212,6 +230,16 @@ sub make_avu_history {
     ($self->str, $attribute, $timestamp);
 }
 
+=head2 get_permissions
+
+  Arg [1]    : None
+
+  Example    : $obj->get_permissions
+  Description: Return a list of ACLs defined for the object.
+  Returntype : Array
+
+=cut
+
 sub get_permissions {
   my ($self) = @_;
 
@@ -243,6 +271,19 @@ sub set_permissions {
 
   return $self;
 }
+
+=head2 get_groups
+
+  Arg [1]      permission Str, one of 'null', 'read', 'write' or 'own',
+               optional.
+
+  Example    : $obj->get_object_groups('read')
+  Description: Return a list of the data access groups in the object's ACL.
+               If a permission leve argument is supplied, only groups with
+               that level of access will be returned.
+  Returntype : Array
+
+=cut
 
 sub get_groups {
   my ($self, $level) = @_;

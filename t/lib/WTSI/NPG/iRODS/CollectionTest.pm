@@ -17,6 +17,7 @@ BEGIN { use_ok('WTSI::NPG::iRODS::Collection'); }
 
 use WTSI::NPG::iRODS::Collection;
 
+my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
@@ -27,7 +28,9 @@ my @groups_added;
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  $irods_tmp_coll = $irods->add_collection("CollectionTest.$pid");
+  $irods_tmp_coll =
+    $irods->add_collection("CollectionTest.$pid.$fixture_counter");
+  $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
   my $i = 0;

@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 76;
+use Test::More tests => 77;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -17,6 +17,7 @@ BEGIN { use_ok('WTSI::NPG::iRODS::DataObject'); }
 
 use WTSI::NPG::iRODS::DataObject;
 
+my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
@@ -27,7 +28,9 @@ my @groups_added;
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  $irods_tmp_coll = $irods->add_collection("DataObjectTest.$pid");
+  $irods_tmp_coll =
+    $irods->add_collection("DataObjectTest.$pid.$fixture_counter");
+  $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
   my $i = 0;
@@ -414,6 +417,15 @@ sub str : Test(1) {
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
   is($obj->str, $obj_path, 'DataObject string');
+}
+
+sub checksum : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  is($obj->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+     'Has correct checksum');
 }
 
 sub get_permissions : Test(1) {

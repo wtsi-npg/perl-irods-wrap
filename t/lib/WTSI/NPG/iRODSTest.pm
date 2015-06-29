@@ -10,6 +10,7 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use List::AllUtils qw(all any none);
 use Log::Log4perl;
+use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
@@ -31,6 +32,9 @@ my $irods_tmp_coll;
 
 my @groups_added;
 
+my $have_admin_rights =
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
@@ -50,9 +54,11 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  foreach my $group (qw(ss_0 ss_10)) {
-    unless ($irods->group_exists($group)) {
-      push @groups_added, $irods->add_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (qw(ss_0 ss_10)) {
+      if (not $irods->group_exists($group)) {
+        push @groups_added, $irods->add_group($group);
+      }
     }
   }
 }
@@ -63,9 +69,11 @@ sub teardown : Test(teardown) {
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
 
-  foreach my $group (@groups_added) {
-    if ($irods->group_exists($group)) {
-      $irods->remove_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (@groups_added) {
+      if ($irods->group_exists($group)) {
+        $irods->remove_group($group);
+      }
     }
   }
 }
@@ -232,19 +240,25 @@ sub get_object_groups : Test(6) {
    my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
-   ok($irods->set_object_permissions('read', 'public', $lorem_object));
-   ok($irods->set_object_permissions('read', 'ss_0',   $lorem_object));
-   ok($irods->set_object_permissions('read', 'ss_10',  $lorem_object));
+ SKIP: {
+     if (not $irods->group_exists('ss_0')) {
+       skip "Skipping test requiring the test group ss_0", 5;
+     }
 
-   my $expected_all = ['ss_0', 'ss_10'];
-   my @found_all  = $irods->get_object_groups($lorem_object);
-   is_deeply(\@found_all, $expected_all, 'Expected all groups')
-     or diag explain \@found_all;
+     ok($irods->set_object_permissions('read', 'public', $lorem_object));
+     ok($irods->set_object_permissions('read', 'ss_0',   $lorem_object));
+     ok($irods->set_object_permissions('read', 'ss_10',  $lorem_object));
 
-   my $expected_read = ['ss_0', 'ss_10'];
-   my @found_read = $irods->get_object_groups($lorem_object, 'read');
-   is_deeply(\@found_read, $expected_read, 'Expected read groups')
-     or diag explain \@found_read;
+     my $expected_all = ['ss_0', 'ss_10'];
+     my @found_all  = $irods->get_object_groups($lorem_object);
+     is_deeply(\@found_all, $expected_all, 'Expected all groups')
+       or diag explain \@found_all;
+
+     my $expected_read = ['ss_0', 'ss_10'];
+     my @found_read = $irods->get_object_groups($lorem_object, 'read');
+     is_deeply(\@found_read, $expected_read, 'Expected read groups')
+       or diag explain \@found_read;
+   }
 
    my $expected_own = [];
    my @found_own  = $irods->get_object_groups($lorem_object, 'own');
@@ -297,19 +311,25 @@ sub get_collection_groups : Test(6) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
-  ok($irods->set_collection_permissions('read', 'public', $coll));
-  ok($irods->set_collection_permissions('read', 'ss_0',   $coll));
-  ok($irods->set_collection_permissions('read', 'ss_10',  $coll));
+ SKIP: {
+    if (not $irods->group_exists('ss_0')) {
+      skip "Skipping test requiring the test group ss_0", 5;
+    }
 
-  my $expected_all = ['ss_0', 'ss_10'];
-  my @found_all  = $irods->get_collection_groups($coll);
-  is_deeply(\@found_all, $expected_all, 'Expected all groups')
-    or diag explain \@found_all;
+    ok($irods->set_collection_permissions('read', 'public', $coll));
+    ok($irods->set_collection_permissions('read', 'ss_0',   $coll));
+    ok($irods->set_collection_permissions('read', 'ss_10',  $coll));
 
-  my $expected_read = ['ss_0', 'ss_10'];
-  my @found_read = $irods->get_collection_groups($coll, 'read');
-  is_deeply(\@found_read, $expected_read, 'Expected read groups')
-    or diag explain \@found_read;
+    my $expected_all = ['ss_0', 'ss_10'];
+    my @found_all  = $irods->get_collection_groups($coll);
+    is_deeply(\@found_all, $expected_all, 'Expected all groups')
+      or diag explain \@found_all;
+
+    my $expected_read = ['ss_0', 'ss_10'];
+    my @found_read = $irods->get_collection_groups($coll, 'read');
+    is_deeply(\@found_read, $expected_read, 'Expected read groups')
+      or diag explain \@found_read;
+  }
 
   my $expected_own = [];
   my @found_own  = $irods->get_collection_groups($coll, 'own');

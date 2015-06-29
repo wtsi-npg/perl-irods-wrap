@@ -25,6 +25,9 @@ my $pid = $$;
 
 my @groups_added;
 
+my $have_admin_rights =
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
@@ -43,9 +46,11 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  foreach my $group (qw(ss_0 ss_10)) {
-    unless ($irods->group_exists($group)) {
-      push @groups_added, $irods->add_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (qw(ss_0 ss_10)) {
+      unless ($irods->group_exists($group)) {
+        push @groups_added, $irods->add_group($group);
+      }
     }
   }
 }
@@ -55,9 +60,11 @@ sub teardown : Test(teardown) {
 
   $irods->remove_collection($irods_tmp_coll);
 
-  foreach my $group (@groups_added) {
-    if ($irods->group_exists($group)) {
-      $irods->remove_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (@groups_added) {
+      if ($irods->group_exists($group)) {
+        $irods->remove_group($group);
+      }
     }
   }
 }
@@ -313,20 +320,25 @@ sub get_groups : Test(6) {
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
+ SKIP: {
+    if (not $irods->group_exists('ss_0')) {
+      skip "Skipping test requiring the test group ss_0", 5;
+    }
 
-  ok($irods->set_collection_permissions('read', 'public', $coll_path));
-  ok($irods->set_collection_permissions('read', 'ss_0',   $coll_path));
-  ok($irods->set_collection_permissions('read', 'ss_10',  $coll_path));
+    ok($irods->set_collection_permissions('read', 'public', $coll_path));
+    ok($irods->set_collection_permissions('read', 'ss_0',   $coll_path));
+    ok($irods->set_collection_permissions('read', 'ss_10',  $coll_path));
 
-  my $expected_all = ['ss_0', 'ss_10'];
-  my @found_all  = $coll->get_groups;
-  is_deeply(\@found_all, $expected_all, 'Expected all groups')
-    or diag explain \@found_all;
+    my $expected_all = ['ss_0', 'ss_10'];
+    my @found_all  = $coll->get_groups;
+    is_deeply(\@found_all, $expected_all, 'Expected all groups')
+      or diag explain \@found_all;
 
-  my $expected_read = ['ss_0', 'ss_10'];
-  my @found_read = $coll->get_groups('read');
-  is_deeply(\@found_read, $expected_read, 'Expected read groups')
-    or diag explain \@found_read;
+    my $expected_read = ['ss_0', 'ss_10'];
+    my @found_read = $coll->get_groups('read');
+    is_deeply(\@found_read, $expected_read, 'Expected read groups')
+      or diag explain \@found_read;
+  }
 
   my $expected_own = [];
   my @found_own  = $coll->get_groups('own');

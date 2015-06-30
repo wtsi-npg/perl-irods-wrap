@@ -79,6 +79,21 @@ sub path_spec_str {
   return $path;
 }
 
+sub path_spec_checksum {
+  my ($self, $path_spec) = @_;
+
+    defined $path_spec or
+    $self->logconfess('A defined path_spec argument is required');
+
+  ref $path_spec eq 'HASH' or
+    $self->logconfess('A HashRef path_spec argument is required');
+
+  exists $path_spec->{checksum} or
+    $self->logconfess('The path_spec argument did not have a "checksum" key');
+
+  return $path_spec->{checksum};
+}
+
 __PACKAGE__->meta->make_immutable;
 
 no Moose;
@@ -101,7 +116,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2014, 2015 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

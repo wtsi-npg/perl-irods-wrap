@@ -23,7 +23,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.14.0';
+our $REQUIRED_BATON_VERSION = '0.15.0';
 
 our $IADMIN      = 'iadmin';
 our $ICHKSUM     = 'ichksum';
@@ -79,7 +79,7 @@ has 'lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--acl', '--contents'],
+       (arguments   => ['--unbuffered', '--acl', '--contents', '--checksum'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -721,6 +721,16 @@ sub remove_collection {
   return $collection;
 }
 
+=head2 get_collection_permissions
+
+  Arg [1]    : iRODS collection path.
+
+  Example    : $irods->get_collection_permissions($path)
+  Description: Return a list of ACLs defined for a collection.
+  Returntype : Array
+
+=cut
+
 sub get_collection_permissions {
   my ($self, $collection) = @_;
 
@@ -1320,7 +1330,6 @@ sub slurp_object {
   return $self->read_object($target);
 }
 
-
 =head2 get_object_permissions
 
   Arg [1]    : iRODS data object path.
@@ -1618,6 +1627,32 @@ sub find_objects_by_meta {
   return grep { /^$root/msx } @sorted;
 }
 
+=head2 checksum
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : $cs = $irods->checksum('/my/path/lorem.txt')
+  Description: Return the MD5 checksum of an iRODS data object. The checksum
+               returned is the iRODS cached value, which may be empty if
+               the calculation has not yet been done.
+  Returntype : Str
+
+=cut
+
+sub checksum {
+  my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_absolute_path($object);
+
+  return $self->lister->list_object_checksum($object);
+}
+
 =head2 calculate_checksum
 
   Arg [1]    : iRODS data object path.
@@ -1702,8 +1737,8 @@ sub validate_checksum_metadata {
 
   Arg [1]    : String path to a file.
 
-  Example    : my $md5 = md5sum($filename)
-  Description: Calculate the MD5 checksum of a file.
+  Example    : my $md5 = $irods->md5sum($filename)
+  Description: Calculate the MD5 checksum of a local file.
   Returntype : Str
 
 =cut

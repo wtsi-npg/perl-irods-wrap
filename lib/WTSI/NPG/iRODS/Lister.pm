@@ -59,16 +59,38 @@ sub list_object {
   return $path;
 }
 
+sub list_object_checksum {
+  my ($self, $object) = @_;
+
+  my $response = $self->_list_object($object);
+  my $checksum;
+
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return undef
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    $checksum = $response->{checksum};
+  }
+
+  return $checksum;
+}
+
 =head2 list_collection
 
   Arg [1]    : iRODS collection path.
   Arg [2]    : Recursive list flag (optional).
 
   Example    : my $path = $irods->list_object('/path/to/object')
-  Description: Return an array of two values; the first being an ArrayRef
-               of contained collections, the second being an ArrayRef of
-               contained data objects.
-  Returntype : Array[Arrayref[Str], ArrayRef[Str]]
+  Description: Return an array of three values; the first being an
+               ArrayRef of contained data objects, the second being
+               an ArrayRef of contained collections, the third a HashRef
+               mapping of the contained data object paths to their checksums.
+  Returntype : ArrayRef[Str], ArrayRef[Str], HashRef[Str]
 
 =cut
 
@@ -89,7 +111,9 @@ sub list_collection {
   if ($obj_specs and $coll_specs) {
     my @data_objects = map { $self->path_spec_str($_) } @$obj_specs;
     my @collections  = map { $self->path_spec_str($_) } @$coll_specs;
-    @paths = (\@data_objects, \@collections);
+    my %checksums    = map { $self->path_spec_str($_) =>
+                             $self->path_spec_checksum($_) } @$obj_specs;
+    @paths = (\@data_objects, \@collections, \%checksums);
   }
 
   return @paths;

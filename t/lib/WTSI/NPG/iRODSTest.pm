@@ -10,10 +10,11 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use List::AllUtils qw(all any none);
 use Log::Log4perl;
+use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 199;
+use Test::More tests => 202;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -25,15 +26,20 @@ use WTSI::NPG::iRODS;
 my $pid = $PID;
 my $cwc = WTSI::NPG::iRODS->new(strict_baton_version => 0)->working_collection;
 
+my $fixture_counter = 0;
 my $data_path = './t/irods';
 my $irods_tmp_coll;
 
 my @groups_added;
 
+my $have_admin_rights =
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  $irods_tmp_coll = $irods->add_collection("iRODSTest.$pid");
+  $irods_tmp_coll = $irods->add_collection("iRODSTest.$pid.$fixture_counter");
+  $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
   my $i = 0;
@@ -48,9 +54,11 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  foreach my $group (qw(ss_0 ss_10)) {
-    unless ($irods->group_exists($group)) {
-      push @groups_added, $irods->add_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (qw(ss_0 ss_10)) {
+      if (not $irods->group_exists($group)) {
+        push @groups_added, $irods->add_group($group);
+      }
     }
   }
 }
@@ -61,9 +69,11 @@ sub teardown : Test(teardown) {
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
 
-  foreach my $group (@groups_added) {
-    if ($irods->group_exists($group)) {
-      $irods->remove_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (@groups_added) {
+      if ($irods->group_exists($group)) {
+        $irods->remove_group($group);
+      }
     }
   }
 }
@@ -161,7 +171,9 @@ sub set_group_access : Test(7) {
                                      $lorem_object) }
     'Expected to fail setting access for non-existent group';
 
+  my $zone = $irods->find_zone_name($irods_tmp_coll);
   my $r0 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
+                  exists $_->{zone}  && $_->{zone}  eq $zone    &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r0, 'No public read access');
@@ -169,6 +181,7 @@ sub set_group_access : Test(7) {
   ok($irods->set_group_access('read', 'public', $lorem_object));
 
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
+                 exists $_->{zone}  && $_->{zone}  eq $zone    &&
                  exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r1, 'Added public read access');
@@ -176,6 +189,7 @@ sub set_group_access : Test(7) {
   ok($irods->set_group_access(undef, 'public', $lorem_object));
 
   my $r2 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
+                  exists $_->{zone}  && $_->{zone}  eq $zone    &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r2, 'Removed public read access');
@@ -186,6 +200,7 @@ sub get_object_permissions : Test(1) {
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   my $perms = all { exists $_->{owner} &&
+                    exists $_->{zone}  &&
                     exists $_->{level} }
     $irods->get_object_permissions($lorem_object);
   ok($perms, 'Permissions obtained');
@@ -205,7 +220,9 @@ sub set_object_permissions : Test(6) {
 
   ok($irods->set_object_permissions('read', 'public', $lorem_object));
 
+  my $zone = $irods->find_zone_name($irods_tmp_coll);
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
+                 exists $_->{zone}  && $_->{zone}  eq $zone    &&
                  exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r1, 'Added public read access');
@@ -213,6 +230,7 @@ sub set_object_permissions : Test(6) {
   ok($irods->set_object_permissions(undef, 'public', $lorem_object));
 
   my $r2 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
+                  exists $_->{zone}  && $_->{zone}  eq $zone    &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r2, 'Removed public read access');
@@ -222,19 +240,25 @@ sub get_object_groups : Test(6) {
    my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
-   ok($irods->set_object_permissions('read', 'public', $lorem_object));
-   ok($irods->set_object_permissions('read', 'ss_0',   $lorem_object));
-   ok($irods->set_object_permissions('read', 'ss_10',  $lorem_object));
+ SKIP: {
+     if (not $irods->group_exists('ss_0')) {
+       skip "Skipping test requiring the test group ss_0", 5;
+     }
 
-   my $expected_all = ['ss_0', 'ss_10'];
-   my @found_all  = $irods->get_object_groups($lorem_object);
-   is_deeply(\@found_all, $expected_all, 'Expected all groups')
-     or diag explain \@found_all;
+     ok($irods->set_object_permissions('read', 'public', $lorem_object));
+     ok($irods->set_object_permissions('read', 'ss_0',   $lorem_object));
+     ok($irods->set_object_permissions('read', 'ss_10',  $lorem_object));
 
-   my $expected_read = ['ss_0', 'ss_10'];
-   my @found_read = $irods->get_object_groups($lorem_object, 'read');
-   is_deeply(\@found_read, $expected_read, 'Expected read groups')
-     or diag explain \@found_read;
+     my $expected_all = ['ss_0', 'ss_10'];
+     my @found_all  = $irods->get_object_groups($lorem_object);
+     is_deeply(\@found_all, $expected_all, 'Expected all groups')
+       or diag explain \@found_all;
+
+     my $expected_read = ['ss_0', 'ss_10'];
+     my @found_read = $irods->get_object_groups($lorem_object, 'read');
+     is_deeply(\@found_read, $expected_read, 'Expected read groups')
+       or diag explain \@found_read;
+   }
 
    my $expected_own = [];
    my @found_own  = $irods->get_object_groups($lorem_object, 'own');
@@ -247,6 +271,7 @@ sub get_collection_permissions : Test(1) {
   my $coll = "$irods_tmp_coll/irods";
 
   my $perms = all { exists $_->{owner} &&
+                    exists $_->{zone}  &&
                     exists $_->{level} }
     $irods->get_collection_permissions($coll);
   ok($perms, 'Permissions obtained');
@@ -266,7 +291,9 @@ sub set_collection_permissions : Test(6) {
 
   ok($irods->set_collection_permissions('read', 'public', $coll));
 
+  my $zone = $irods->find_zone_name($irods_tmp_coll);
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
+                 exists $_->{zone}  && $_->{zone}  eq $zone    &&
                  exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_collection_permissions($coll);
   ok($r1, 'Added public read access');
@@ -274,6 +301,7 @@ sub set_collection_permissions : Test(6) {
   ok($irods->set_collection_permissions(undef, 'public', $coll));
 
   my $r2 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
+                  exists $_->{zone}  && $_->{zone}  eq $zone    &&
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_collection_permissions($coll);
   ok($r2, 'Removed public read access');
@@ -283,19 +311,25 @@ sub get_collection_groups : Test(6) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
-  ok($irods->set_collection_permissions('read', 'public', $coll));
-  ok($irods->set_collection_permissions('read', 'ss_0',   $coll));
-  ok($irods->set_collection_permissions('read', 'ss_10',  $coll));
+ SKIP: {
+    if (not $irods->group_exists('ss_0')) {
+      skip "Skipping test requiring the test group ss_0", 5;
+    }
 
-  my $expected_all = ['ss_0', 'ss_10'];
-  my @found_all  = $irods->get_collection_groups($coll);
-  is_deeply(\@found_all, $expected_all, 'Expected all groups')
-    or diag explain \@found_all;
+    ok($irods->set_collection_permissions('read', 'public', $coll));
+    ok($irods->set_collection_permissions('read', 'ss_0',   $coll));
+    ok($irods->set_collection_permissions('read', 'ss_10',  $coll));
 
-  my $expected_read = ['ss_0', 'ss_10'];
-  my @found_read = $irods->get_collection_groups($coll, 'read');
-  is_deeply(\@found_read, $expected_read, 'Expected read groups')
-    or diag explain \@found_read;
+    my $expected_all = ['ss_0', 'ss_10'];
+    my @found_all  = $irods->get_collection_groups($coll);
+    is_deeply(\@found_all, $expected_all, 'Expected all groups')
+      or diag explain \@found_all;
+
+    my $expected_read = ['ss_0', 'ss_10'];
+    my @found_read = $irods->get_collection_groups($coll, 'read');
+    is_deeply(\@found_read, $expected_read, 'Expected read groups')
+      or diag explain \@found_read;
+  }
 
   my $expected_own = [];
   my @found_own  = $irods->get_collection_groups($coll, 'own');
@@ -303,9 +337,10 @@ sub get_collection_groups : Test(6) {
     or diag explain \@found_own;
 }
 
-sub list_collection : Test(5) {
+sub list_collection : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-  my ($objs, $colls) = $irods->list_collection("$irods_tmp_coll/irods");
+  my ($objs, $colls, $checksums) =
+    $irods->list_collection("$irods_tmp_coll/irods");
 
   is_deeply($objs, ["$irods_tmp_coll/irods/lorem.txt",
                     "$irods_tmp_coll/irods/test.txt",
@@ -316,10 +351,19 @@ sub list_collection : Test(5) {
                      "$irods_tmp_coll/irods/md5sum",
                      "$irods_tmp_coll/irods/test"]) or diag explain $colls;
 
+  is_deeply($checksums,
+            {"$irods_tmp_coll/irods/lorem.txt" =>
+             "39a4aa291ca849d601e4e5b8ed627a04",
+             "$irods_tmp_coll/irods/test.txt" =>
+             "2205e48de5f93c784733ffcca841d2b5",
+             "$irods_tmp_coll/irods/utf-8.txt" =>
+             "500cec3fbb274064e2a25fa17a69638a"
+             }) or diag explain $checksums;
+
    ok(!$irods->list_collection('no_collection_exists'),
       'Failed to list a non-existent collection');
 
-  my ($objs_deep, $colls_deep) =
+  my ($objs_deep, $colls_deep, $checksums_deep) =
     $irods->list_collection("$irods_tmp_coll/irods", 'RECURSE');
 
   is_deeply($objs_deep, ["$irods_tmp_coll/irods/lorem.txt",
@@ -351,6 +395,38 @@ sub list_collection : Test(5) {
                           "$irods_tmp_coll/irods/test/dir1",
                           "$irods_tmp_coll/irods/test/dir2"])
     or diag explain $colls_deep;
+
+  is_deeply($checksums_deep,
+            {"$irods_tmp_coll/irods/lorem.txt" =>
+             "39a4aa291ca849d601e4e5b8ed627a04",
+             "$irods_tmp_coll/irods/test.txt" =>
+             "2205e48de5f93c784733ffcca841d2b5",
+             "$irods_tmp_coll/irods/utf-8.txt" =>
+             "500cec3fbb274064e2a25fa17a69638a",
+             "$irods_tmp_coll/irods/collect_files/a/10.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/collect_files/a/x/1.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/collect_files/b/20.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/collect_files/b/y/2.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/collect_files/c/30.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/collect_files/c/z/3.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/md5sum/lorem.txt" =>
+             "39a4aa291ca849d601e4e5b8ed627a04",
+             "$irods_tmp_coll/irods/test/file1.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/test/file2.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/test/dir1/file3.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e",
+             "$irods_tmp_coll/irods/test/dir2/file4.txt" =>
+             "d41d8cd98f00b204e9800998ecf8427e"
+            })
+    or diag explain $checksums_deep;
 }
 
 sub add_collection : Test(2) {
@@ -377,9 +453,15 @@ sub put_collection : Test(2) {
   is_deeply(\@contents,
             [["$irods_tmp_coll/put_collection/test/file1.txt",
               "$irods_tmp_coll/put_collection/test/file2.txt"],
+
              ["$irods_tmp_coll/put_collection/test",
               "$irods_tmp_coll/put_collection/test/dir1",
-              "$irods_tmp_coll/put_collection/test/dir2"]])
+              "$irods_tmp_coll/put_collection/test/dir2"],
+
+             {"$irods_tmp_coll/put_collection/test/file1.txt" =>
+              "d41d8cd98f00b204e9800998ecf8427e",
+              "$irods_tmp_coll/put_collection/test/file2.txt" =>
+              "d41d8cd98f00b204e9800998ecf8427e"}])
     or diag explain \@contents;
 }
 
@@ -863,6 +945,16 @@ sub find_objects_by_meta : Test(7) {
   dies_ok { $irods->find_objects_by_meta($irods_tmp_coll,
                                          ["a", "x", 'invalid_operator']) }
     'Expected to fail using an invalid query operator';
+}
+
+sub checksum : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+
+  is($irods->checksum($lorem_object), $expected_checksum,
+     'Checksum matched');
 }
 
 sub calculate_checksum : Test(1) {

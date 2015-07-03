@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 76;
+use Test::More tests => 77;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -17,6 +17,7 @@ BEGIN { use_ok('WTSI::NPG::iRODS::DataObject'); }
 
 use WTSI::NPG::iRODS::DataObject;
 
+my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
@@ -24,10 +25,15 @@ my $pid = $$;
 
 my @groups_added;
 
+my $have_admin_rights =
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  $irods_tmp_coll = $irods->add_collection("DataObjectTest.$pid");
+  $irods_tmp_coll =
+    $irods->add_collection("DataObjectTest.$pid.$fixture_counter");
+  $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
   my $i = 0;
@@ -41,9 +47,11 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  foreach my $group (qw(ss_0 ss_10)) {
-    unless ($irods->group_exists($group)) {
-      push @groups_added, $irods->add_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (qw(ss_0 ss_10)) {
+      unless ($irods->group_exists($group)) {
+        push @groups_added, $irods->add_group($group);
+      }
     }
   }
 }
@@ -53,9 +61,11 @@ sub teardown : Test(teardown) {
 
   $irods->remove_collection($irods_tmp_coll);
 
-  foreach my $group (@groups_added) {
-    if ($irods->group_exists($group)) {
-      $irods->remove_group($group);
+  if ($have_admin_rights) {
+    foreach my $group (@groups_added) {
+      if ($irods->group_exists($group)) {
+        $irods->remove_group($group);
+      }
     }
   }
 }
@@ -416,6 +426,15 @@ sub str : Test(1) {
   is($obj->str, $obj_path, 'DataObject string');
 }
 
+sub checksum : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  is($obj->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+     'Has correct checksum');
+}
+
 sub get_permissions : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
@@ -466,19 +485,25 @@ sub get_groups : Test(6) {
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
-  ok($irods->set_object_permissions('read', 'public', $obj_path));
-  ok($irods->set_object_permissions('read', 'ss_0',   $obj_path));
-  ok($irods->set_object_permissions('read', 'ss_10',  $obj_path));
+ SKIP: {
+    if (not $irods->group_exists('ss_0')) {
+      skip "Skipping test requiring the test group ss_0", 5;
+    }
 
-  my $expected_all = ['ss_0', 'ss_10'];
-  my @found_all  = $obj->get_groups;
-  is_deeply(\@found_all, $expected_all, 'Expected all groups')
-    or diag explain \@found_all;
+    ok($irods->set_object_permissions('read', 'public', $obj_path));
+    ok($irods->set_object_permissions('read', 'ss_0',   $obj_path));
+    ok($irods->set_object_permissions('read', 'ss_10',  $obj_path));
 
-  my $expected_read = ['ss_0', 'ss_10'];
-  my @found_read = $obj->get_groups('read');
-  is_deeply(\@found_read, $expected_read, 'Expected read groups')
-    or diag explain \@found_read;
+    my $expected_all = ['ss_0', 'ss_10'];
+    my @found_all  = $obj->get_groups;
+    is_deeply(\@found_all, $expected_all, 'Expected all groups')
+      or diag explain \@found_all;
+
+    my $expected_read = ['ss_0', 'ss_10'];
+    my @found_read = $obj->get_groups('read');
+    is_deeply(\@found_read, $expected_read, 'Expected read groups')
+      or diag explain \@found_read;
+  }
 
   my $expected_own = [];
   my @found_own  = $obj->get_groups('own');

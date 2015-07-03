@@ -153,10 +153,13 @@ sub make_avu_history {
 
   Arg [1]    :
 
-  Example    : my ($objs, $cols) = $irods->get_contents($coll)
+  Example    : my ($objs, $cols) = $coll->get_contents
   Description: Return the contents of the collection as two arrayrefs,
                the first listing data objects, the second listing nested
-               collections.
+               collections. This method is preferred if the checksums of
+               a large number of data objects are to be tested because it
+               populates the data object checksum attribute as it reads the
+               collection.
   Returntype : Array
 
 =cut
@@ -166,13 +169,23 @@ sub get_contents {
 
    my $irods = $self->irods;
    my $path = $self->str;
-   my ($objs, $colls) = $self->irods->list_collection($path, $recurse);
+   my ($objs, $colls, $checksums) =
+     $self->irods->list_collection($path, $recurse);
 
    my @objects;
    my @collections;
 
    foreach my $obj (@$objs) {
-     push @objects, WTSI::NPG::iRODS::DataObject->new($irods, $obj);
+     my $object = WTSI::NPG::iRODS::DataObject->new($irods, $obj);
+     if (exists $checksums->{$obj}) {
+       $object->checksum($checksums->{$obj});
+     }
+     else {
+       $self->logwarn("Failed to find a checksum for '$obj' when getting ",
+                      "the contents of '", $self->str, q{'});
+     }
+
+     push @objects, $object;
    }
    foreach my $coll (@$colls) {
      push @collections, WTSI::NPG::iRODS::Collection->new($irods, $coll);
@@ -180,6 +193,16 @@ sub get_contents {
 
    return (\@objects, \@collections);
 }
+
+=head2 get_permissions
+
+  Arg [1]    : None
+
+  Example    : $coll->get_permissions
+  Description: Return a list of ACLs defined for the collection.
+  Returntype : Array
+
+=cut
 
 sub get_permissions {
   my ($self) = @_;
@@ -212,6 +235,19 @@ sub set_permissions {
 
   return $self;
 }
+
+=head2 get_groups
+
+  Arg [1]    : Permission Str, one of 'null', 'read', 'write' or 'own',
+               optional.
+
+  Example    : $coll->get_groups('read')
+  Description: Return a list of the data access groups in the collection's ACL.
+               If a permission leve argument is supplied, only groups with
+               that level of access will be returned.
+  Returntype : Array
+
+=cut
 
 sub get_groups {
   my ($self, $level) = @_;

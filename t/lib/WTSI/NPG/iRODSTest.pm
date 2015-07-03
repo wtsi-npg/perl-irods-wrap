@@ -13,7 +13,7 @@ use Log::Log4perl;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 197;
+use Test::More tests => 199;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -526,7 +526,7 @@ sub make_collection_avu_history : Test(4) {
   }
 }
 
-sub find_collections_by_meta : Test(7) {
+sub find_collections_by_meta : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   my $expected_coll = "$irods_tmp_coll/irods";
@@ -542,6 +542,13 @@ sub find_collections_by_meta : Test(7) {
   is_deeply([$irods->find_collections_by_meta($irods_tmp_coll,
                                               ['a', 'x'], ['a', 'y'])],
             [$expected_coll]);
+
+  # All but the last character
+  my $part_collection_root = substr $irods_tmp_coll, 0, -1;
+
+  is_deeply([$irods->find_collections_by_meta($part_collection_root,
+                                              ['a', 'x'])], [],
+            'Collection query root is not a simple path string prefix');
 
   my $new_coll = "$irods_tmp_coll/irods/new";
   ok($irods->add_collection($new_coll));
@@ -824,7 +831,7 @@ sub make_object_avu_history : Test(4) {
   }
 }
 
-sub find_objects_by_meta : Test(6) {
+sub find_objects_by_meta : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
@@ -838,6 +845,13 @@ sub find_objects_by_meta : Test(6) {
   is_deeply([$irods->find_objects_by_meta($irods_tmp_coll,
                                           ['a', 'x'], ['a', 'y'])],
             [$lorem_object]);
+
+  # All but the last character
+  my $part_collection_root = substr $irods_tmp_coll, 0, -1;
+
+  is_deeply([$irods->find_objects_by_meta($part_collection_root,
+                                          ['a', 'x'])], [],
+            'Object query root is not a simple path string prefix');
 
   my $object = "$irods_tmp_coll/irods/test.txt";
   ok($irods->add_object_avu($object, 'a', 'x99'));

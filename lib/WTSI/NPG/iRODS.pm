@@ -978,10 +978,14 @@ sub make_collection_avu_history {
   Arg [1]    : iRODS collection path.
   Arg [2]    : ArrayRef attribute value tuples
 
-  Example    : $irods->find_collections_by_meta('/my/path/foo',
+  Example    : $irods->find_collections_by_meta('/my/path/foo/',
                                                 ['id' => 'ABCD1234'])
   Description: Find collections by their metadata, restricted to a parent
-               collection. Return a list of collections.
+               collection. The collection path argument is not a simple
+               string prefix, it is a collection. i.e. '/my/path/foo' is
+               equivalent to '/my/path/foo/' and will not return results
+               in collection '/my/path/foo_1'.
+               Return a list of collections, sorted by their path.
   Returntype : Array
 
 =cut
@@ -994,6 +998,9 @@ sub find_collections_by_meta {
 
   $root = File::Spec->canonpath($root);
   $root = $self->_ensure_absolute_path($root);
+
+  # Ensure a single trailing slash for collection boundary matching.
+  $root =~ s/\/*$/\//msx;
 
   my $zone = $self->find_zone_name($root);
   # baton >= 0.10.0 uses paths as per-query zone hints
@@ -1574,10 +1581,13 @@ sub make_object_avu_history {
   Arg [1]    : iRODS collection path.
   Arg [2]    : ArrayRefs of attribute value tuples.
 
-  Example    : $irods->find_objects_by_meta('/my/path/foo',
+  Example    : $irods->find_objects_by_meta('/my/path/foo/',
                                             ['id' => 'ABCD1234'])
   Description: Find objects by their metadata, restricted to a parent
-               collection.
+               collection. The collection path argument is not a simple
+               string prefix, it is a collection. i.e. '/my/path/foo' is
+               equivalent to '/my/path/foo/' and will not return results
+               in collection '/my/path/foo_1'.
                Return a list of objects, sorted by their data object name
                component.
   Returntype : Array
@@ -1592,6 +1602,9 @@ sub find_objects_by_meta {
 
   $root = File::Spec->canonpath($root);
   $root = $self->_ensure_absolute_path($root);
+
+  # Ensure a single trailing slash for collection boundary matching.
+  $root =~ s/\/*$/\//msx;
 
   my $zone = $self->find_zone_name($root);
   # baton >= 0.10.0 uses paths as per-query zone hints

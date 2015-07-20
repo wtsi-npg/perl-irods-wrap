@@ -279,7 +279,7 @@ sub set_permissions {
 
   Example    : $obj->get_object_groups('read')
   Description: Return a list of the data access groups in the object's ACL.
-               If a permission leve argument is supplied, only groups with
+               If a permission level argument is supplied, only groups with
                that level of access will be returned.
   Returntype : Array
 
@@ -292,7 +292,12 @@ sub get_groups {
 }
 
 sub update_group_permissions {
-  my ($self) = @_;
+  my ($self, $strict_groups) = @_;
+
+  $strict_groups = $strict_groups ? 1 : 0;
+  # If strict_groups is true, we only work with groups we can see with
+  # igroupadmin. Across zones we usually have to work non-strict
+  # because the stock igroupadmin can't see them.
 
   # Record the current group permissions
   my @groups_permissions = $self->get_groups('read');
@@ -321,16 +326,17 @@ sub update_group_permissions {
 
   my @all_groups = $self->irods->list_groups;
   foreach my $group (@to_remove) {
-    if (any { $group eq $_ } @all_groups) {
+    if (not $strict_groups or any { $group eq $_ } @all_groups) {
       try {
         $self->set_permissions('null', $group);
       } catch {
         $num_errors++;
         $self->error("Failed to remove permissions for group '$group' from '",
-                     $self->str, q{':}, $_);
+                     $self->str, q{': }, $_);
       };
     }
     else {
+      $num_errors++;
       $self->error("Attempted to remove permissions for non-existent group ",
                    "'$group' on '", $self->str, q{'});
     }
@@ -339,25 +345,33 @@ sub update_group_permissions {
   $self->debug("Groups to add: [", join(', ', @to_add), "]");
 
   foreach my $group (@to_add) {
-    if (any { $group eq $_ } @all_groups) {
+    if (not $strict_groups or any { $group eq $_ } @all_groups) {
       try {
         $self->set_permissions('read', $group);
       } catch {
         $num_errors++;
         $self->error("Failed to add read permissions for group '$group' to '",
-                     $self->str, q{':}, $_);
+                     $self->str, q{': }, $_);
       };
     }
     else {
+      $num_errors++;
       $self->error("Attempted to add read permissions for non-existent group ",
                    "'$group' on '", $self->str, q{'});
     }
   }
 
   if ($num_errors > 0) {
-    $self->logconfess("Failed to update cleanly group permissions on '",
-                      $self->str, "'; $num_errors errors were recorded. ",
-                      "See logs for details.");
+    my $msg = "Failed to update cleanly group permissions on '" . $self->str .
+      "'; $num_errors errors were recorded. See logs for details ".
+      "(strict groups = $strict_groups).";
+
+    if ($strict_groups) {
+      $self->logconfess($msg);
+    }
+    else {
+      $self->error($msg);
+    }
   }
 
   return $self;

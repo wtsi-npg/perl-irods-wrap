@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 77;
+use Test::More tests => 90;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -509,6 +509,60 @@ sub get_groups : Test(6) {
   my @found_own  = $obj->get_groups('own');
   is_deeply(\@found_own, $expected_own, 'Expected own groups')
     or diag explain \@found_own;
+}
+
+sub update_group_permissions : Test(13) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+ SKIP: {
+    if (not $irods->group_exists('ss_0')) {
+      skip "Skipping test requiring the test group ss_0", 13;
+    }
+
+    # Begin
+    my $r0 = none { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
+                    exists $_->{level} && $_->{level} eq 'read' }
+      $obj->get_permissions;
+    ok($r0, 'No ss_0 read access');
+
+    # Add a study 0 AVU and use it to update (add) permissions
+    ok($obj->add_avu('study_id', '0'));
+    ok($obj->update_group_permissions);
+
+    my $r1 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
+                   exists $_->{level} && $_->{level} eq 'read' }
+      $obj->get_permissions;
+    ok($r1, 'Added ss_0 read access');
+
+    # Remove the study 0 AVU and use it to update (remove) permissions
+    ok($obj->remove_avu('study_id', '0'));
+    ok($obj->update_group_permissions);
+
+    my $r2 = none { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
+                    exists $_->{level} && $_->{level} eq 'read' }
+      $obj->get_permissions;
+    ok($r2, 'Removed ss_0 read access');
+
+    # Add a study 0 AVU and use it to update (add) permissions
+    # in the presence of anAVU that will infer a non-existent group
+    ok($obj->add_avu('study_id', '0'));
+    ok($obj->add_avu('study_id', 'no_such_group'));
+    ok($obj->update_group_permissions);
+
+    my $r3 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
+                   exists $_->{level} && $_->{level} eq 'read' }
+      $obj->get_permissions;
+    ok($r3, 'Restored ss_0 read access');
+
+    # The bogus study AVU should trigger an exception in strict groups
+    # mode
+    dies_ok {
+      my $strict_groups = 1;
+      ok($obj->update_group_permissions($strict_groups));
+    } 'An unknown iRODS group causes failure';
+  }
 }
 
 1;

@@ -215,8 +215,7 @@ around 'working_collection' => sub {
     $collection eq q{} and
       $self->logconfess('A non-empty collection argument is required');
 
-    $collection = File::Spec->canonpath($collection);
-    $collection = $self->_ensure_absolute_path($collection);
+    $collection = $self->_ensure_collection_path($collection);
     $self->debug("Changing working_collection to '$collection'");
     $self->$orig($collection);
   }
@@ -513,6 +512,31 @@ sub reset_working_collection {
   return $self;
 }
 
+=head2 is_collection
+
+  Arg [1]    : Str iRODS path.
+
+  Example    : $irods->is_collection('/path')
+  Description: Return true if path is an iRODS collection.
+  Returntype : Bool
+
+=cut
+
+sub is_collection {
+  my ($self, $path) = @_;
+
+  defined $path or
+    $self->logconfess('A defined path argument is required');
+
+  $path eq q{}
+    and $self->logconfess('A non-empty path argument is required');
+
+  $path = File::Spec->canonpath($path);
+  $path = $self->_ensure_absolute_path($path);
+
+  return $self->lister->is_collection($path);
+}
+
 =head2 list_collection
 
   Arg [1]    : Str iRODS collection path.
@@ -537,6 +561,10 @@ sub list_collection {
 
   $collection = File::Spec->canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
+
+  # TODO: We could check that the collection exists here. However,
+  # current behaviour is to return undef rather than raise an
+  # exception.
 
   my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
@@ -600,8 +628,9 @@ sub put_collection {
 
   # iput does not accept trailing slashes on directories
   $dir = File::Spec->canonpath($dir);
-  $target = File::Spec->canonpath($target);
-  $target = $self->_ensure_absolute_path($target);
+  # $target = File::Spec->canonpath($target);
+  # $target = $self->_ensure_absolute_path($target);
+  $target = $self->_ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
   my @args = ('-r', $dir, $target);
@@ -616,11 +645,10 @@ sub put_collection {
 
 =head2 move_collection
 
-  Arg [1]    : iRODS collection path.
+  Arg [1]    : iRODS collection path, which must exist.
   Arg [2]    : iRODS collection path.
 
-  Example    : $irods->move_collection('/my/path/lorem.txt',
-                                       '/my/path/ipsum.txt')
+  Example    : $irods->move_collection('/my/path/a', '/my/path/b')
   Description: Move a collection.
   Returntype : Str
 
@@ -639,8 +667,7 @@ sub move_collection {
   $target eq q{} and
     $self->logconfess('A non-empty target (collection) argument is required');
 
-  $source = File::Spec->canonpath($source);
-  $source = $self->_ensure_absolute_path($source);
+  $source = $self->_ensure_collection_path($source);
   $target = File::Spec->canonpath($target);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
@@ -677,8 +704,7 @@ sub get_collection {
   $target eq q{} and
     $self->logconfess('A non-empty target (directory) argument is required');
 
-  $source = File::Spec->canonpath($source);
-  $source = $self->_ensure_absolute_path($source);
+  $source = $self->_ensure_collection_path($source);
   $target = File::Spec->canonpath($target);
   $self->debug("Getting from '$source' to '$target'");
 
@@ -710,8 +736,7 @@ sub remove_collection {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
-  $collection = $self->_ensure_absolute_path($collection);
+  $collection = $self->_ensure_collection_path($collection);
   $self->debug("Removing collection '$collection'");
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
@@ -740,6 +765,8 @@ sub get_collection_permissions {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
+  $collection = $self->_ensure_collection_path($collection);
+
   return $self->lister->get_collection_acl($collection);
 }
 
@@ -755,6 +782,8 @@ sub set_collection_permissions {
     $self->logconfess('A non-empty owner argument is required');
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
+
+  $collection = $self->_ensure_collection_path($collection);
 
   my $perm_str = defined $level ? $level : 'null';
 
@@ -795,6 +824,13 @@ sub set_collection_permissions {
 sub get_collection_groups {
   my ($self, $collection, $level) = @_;
 
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+  $collection eq q{} and
+    $self->logconfess('A non-empty collection argument is required');
+
+  $collection = $self->_ensure_collection_path($collection);
+
   my $perm_str = defined $level ? $level : 'null';
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
@@ -830,8 +866,7 @@ sub get_collection_meta {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
-  $collection = $self->_ensure_absolute_path($collection);
+  $collection = $self->_ensure_collection_path($collection);
 
   my @avus = $self->meta_lister->list_collection_meta($collection);
 
@@ -871,9 +906,7 @@ sub add_collection_avu {
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
-  $collection = File::Spec->canonpath($collection);
-  $collection = $self->_ensure_absolute_path($collection);
-
+  $collection = $self->_ensure_collection_path($collection);
   $self->debug("Adding AVU ['$attribute', '$value', $units_str] ",
                "to '$collection'");
 
@@ -920,9 +953,7 @@ sub remove_collection_avu {
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
-  $collection = File::Spec->canonpath($collection);
-  $collection = $self->_ensure_absolute_path($collection);
-
+  $collection = $self->_ensure_collection_path($collection);
   $self->debug("Removing AVU ['$attribute', '$value', $units_str] ",
                "from '$collection'");
 
@@ -972,6 +1003,8 @@ sub make_collection_avu_history {
   $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
 
+  $collection = $self->_ensure_collection_path($collection);
+
   my @historic_avus = grep { $_->{attribute} eq $attribute }
     $self->get_collection_meta($collection);
   unless (@historic_avus) {
@@ -1006,8 +1039,9 @@ sub find_collections_by_meta {
   defined $root or $self->logconfess('A defined root argument is required');
   $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
-  $root = File::Spec->canonpath($root);
-  $root = $self->_ensure_absolute_path($root);
+  # $root = File::Spec->canonpath($root);
+  # $root = $self->_ensure_absolute_path($root);
+  $root = $self->_ensure_collection_path($root);
 
   # Ensure a single trailing slash for collection boundary matching.
   $root =~ s/\/*$/\//msx;
@@ -1040,6 +1074,31 @@ sub find_collections_by_meta {
   return grep { /^$root/msx } @sorted;
 }
 
+=head2 is_object
+
+  Arg [1]    : Str iRODS path.
+
+  Example    : $irods->is_object('/path')
+  Description: Return true if path is an iRODS data object.
+  Returntype : Bool
+
+=cut
+
+sub is_object {
+  my ($self, $path) = @_;
+
+  defined $path or
+    $self->logconfess('A defined path argument is required');
+
+  $path eq q{}
+    and $self->logconfess('A non-empty path argument is required');
+
+  $path = File::Spec->canonpath($path);
+  $path = $self->_ensure_absolute_path($path);
+
+  return $self->lister->is_object($path);
+}
+
 =head2 list_object
 
   Arg [1]    : iRODS data object path.
@@ -1060,6 +1119,10 @@ sub list_object {
     $self->logconfess('A non-empty object argument is required');
 
   $object = $self->_ensure_absolute_path($object);
+
+  # TODO: We could check that the object exists here. However, current
+  # behaviour is to return undef rather than raise an exception.
+
   $self->debug("Listing object '$object'");
 
   return $self->lister->list_object($object);
@@ -1084,7 +1147,8 @@ sub read_object {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_absolute_path($object);
+  # $object = $self->_ensure_absolute_path($object);
+  $object = $self->_ensure_object_path($object);
   $self->debug("Reading object '$object'");
 
   return $self->obj_reader->read_object($object);
@@ -1148,7 +1212,7 @@ sub replace_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
-  $target = $self->_ensure_absolute_path($target);
+  $target = $self->_ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
   WTSI::DNAP::Utilities::Runnable->new
@@ -1192,8 +1256,14 @@ sub copy_object {
       $self->logconfess("translator argument must be a CodeRef");
   }
 
-  $source = $self->_ensure_absolute_path($source);
+  $source = $self->_ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
+
+  if ($self->is_collection($target)) {
+    $self->logconfess("A target (object) argument may not be a collection: ",
+                      "received '$target'");
+  }
+
   $self->debug("Copying object from '$source' to '$target'");
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $ICP,
@@ -1240,7 +1310,7 @@ sub move_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
-  $source = $self->_ensure_absolute_path($source);
+  $source = $self->_ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
 
@@ -1275,6 +1345,9 @@ sub get_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (file) argument is required');
 
+  $source = $self->_ensure_object_path($source);
+  $target = $self->_ensure_absolute_path($target);
+
   my @args = ('-f', '-T', $source, $target);
   my $runnable = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGET,
@@ -1295,21 +1368,22 @@ sub get_object {
 =cut
 
 sub remove_object {
-  my ($self, $target) = @_;
+  my ($self, $object) = @_;
 
-  defined $target or
-    $self->logconfess('A defined target (object) argument is required');
+  defined $object or
+    $self->logconfess('A defined object argument is required');
 
-  $target eq q{} and
-    $self->logconfess('A non-empty target (object) argument is required');
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
 
-  $self->debug("Removing object '$target'");
+  $object = $self->_ensure_object_path($object);
+  $self->debug("Removing object '$object'");
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
-                                       arguments   => [$target],
+                                       arguments   => [$object],
                                        environment => $self->environment,
                                        logger      => $self->logger)->run;
-  return $target;
+  return $object;
 }
 
 =head2 slurp_object
@@ -1324,17 +1398,18 @@ sub remove_object {
 =cut
 
 sub slurp_object {
-  my ($self, $target) = @_;
+  my ($self, $object) = @_;
 
-  defined $target or
-    $self->logconfess('A defined target (object) argument is required');
+  defined $object or
+    $self->logconfess('A defined object argument is required');
 
-  $target eq q{} and
-    $self->logconfess('A non-empty target (object) argument is required');
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
 
-  $self->debug("Slurping object '$target'");
+  $object = $self->_ensure_object_path($object);
+  $self->debug("Slurping object '$object'");
 
-  return $self->read_object($target);
+  return $self->read_object($object);
 }
 
 =head2 get_object_permissions
@@ -1356,6 +1431,8 @@ sub get_object_permissions {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
+  $object = $self->_ensure_object_path($object);
+
   return $self->lister->get_object_acl($object);
 }
 
@@ -1371,6 +1448,8 @@ sub set_object_permissions {
     $self->logconfess('A non-empty owner argument is required');
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
 
   my $perm_str = defined $level ? $level : 'null';
 
@@ -1408,6 +1487,13 @@ sub set_object_permissions {
 sub get_object_groups {
   my ($self, $object, $level) = @_;
 
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
+
   my $perm_str = defined $level ? $level : 'null';
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
@@ -1441,6 +1527,8 @@ sub get_object_meta {
     $self->logconfess('A defined object argument is required');
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
 
   my @avus = $self->meta_lister->list_object_meta($object);
 
@@ -1477,6 +1565,8 @@ sub add_object_avu {
     $self->logconfess('A non-empty attribute argument is required');
   $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
+
+  $object = $self->_ensure_object_path($object);
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
@@ -1523,6 +1613,8 @@ sub remove_object_avu {
     $self->logconfess('A non-empty attribute argument is required');
   $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
+
+  $object = $self->_ensure_object_path($object);
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
@@ -1574,6 +1666,8 @@ sub make_object_avu_history {
   $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
 
+  $object = $self->_ensure_object_path($object);
+
   my @historic_avus = grep { $_->{attribute} eq $attribute }
     $self->get_object_meta($object);
   unless (@historic_avus) {
@@ -1609,8 +1703,7 @@ sub find_objects_by_meta {
   defined $root or $self->logconfess('A defined root argument is required');
   $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
-  $root = File::Spec->canonpath($root);
-  $root = $self->_ensure_absolute_path($root);
+  $root = $self->_ensure_collection_path($root);
 
   # Ensure a single trailing slash for collection boundary matching.
   $root =~ s/\/*$/\//msx;
@@ -1661,7 +1754,7 @@ sub checksum {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_absolute_path($object);
+  $object = $self->_ensure_object_path($object);
 
   return $self->lister->list_object_checksum($object);
 }
@@ -1686,7 +1779,7 @@ sub calculate_checksum {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_absolute_path($object);
+  $object = $self->_ensure_object_path($object);
 
   my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $ICHKSUM,
@@ -1716,6 +1809,14 @@ sub calculate_checksum {
 
 sub validate_checksum_metadata {
   my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
 
   my $identical = 0;
   my $key = $self->file_md5_attr;
@@ -1858,6 +1959,28 @@ sub _ensure_absolute_path {
   }
 
   return $absolute;
+}
+
+sub _ensure_collection_path {
+  my ($self, $target) = @_;
+
+  my $path = $self->_ensure_absolute_path($target);
+  if (not $self->is_collection($path)) {
+    $self->logconfess("A collection path is required: received '$path'");
+  }
+
+  return $path;
+}
+
+sub _ensure_object_path {
+  my ($self, $target) = @_;
+
+  my $path = $self->_ensure_absolute_path($target);
+  if (not $self->is_object($path)) {
+    $self->logconfess("A data object path is required: received '$path'");
+  }
+
+  return $path;
 }
 
 sub _meta_exists {

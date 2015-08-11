@@ -5,6 +5,8 @@ use FindBin qw($Bin);
 use lib ( -d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib" );
 use WTSI::NPG::iRODS::GroupAdmin;
 use npg_warehouse::Schema;
+use autodie;
+use List::MoreUtils qw(uniq);
 
 our $VERSION = '';
 
@@ -39,17 +41,32 @@ sub _uid_to_irods_uid {
   return grep {/^\Q$u\E#/smx} @public;
 }
 
-my%ug2id; #cache
+my%ug2id; #cache of group to users - populate here
+my%gid2group;
+open my$gfh, q(-|), q(getent group);
+while(<$gfh>){
+  chomp;
+  my@F=split q(:);
+  my$users=$ug2id{$F[0]}||=[];
+  push @{$users}, split q(,),$F[3]||q(); #fill with secondary groups for users
+  $gid2group{$F[2]}=$F[0];
+}
+close $gfh;
+open my$pfh, q(-|), q(getent passwd);
+while(<$pfh>){
+  chomp;
+  my@F=split q(:);
+  push @{$ug2id{$gid2group{$F[3]}||=q()}},$F[0]; #fill with primary group for users - empty strong used if no group found for gid
+}
+close $pfh;
+foreach my$users (values%ug2id){
+  $users=[uniq@{$users}];
+}
+
 sub ug2id {
   my$g=shift||return;
   if(my$gha=$ug2id{$g}){return @{$gha};}
-  $g=`getent group $g`;
-  chomp $g;
-
-  my@g = split /,/msx, (split /:/msx, $g)[-1] || q();
-
-  $ug2id{$g}=\@g;
-  return @g;
+  return;
 }
 
 my $s=npg_warehouse::Schema->connect();

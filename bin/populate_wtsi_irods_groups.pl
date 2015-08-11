@@ -66,12 +66,6 @@ foreach my$users (values%ug2id){
   $users=[uniq@{$users}];
 }
 
-sub ug2id {
-  my$g=shift||return;
-  if(my$gha=$ug2id{$g}){return @{$gha};}
-  return;
-}
-
 my $s=npg_warehouse::Schema->connect();
 my$rs=$s->resultset(q(CurrentStudy));
 
@@ -81,7 +75,7 @@ while (my$st=$rs->next){
   my$gs=$st->data_access_group();
   my@g= defined $gs ? $gs=~m/\S+/smxg : ();
   my$is_seq=($st->npg_information->count||$st->npg_plex_information->count)>0;
-  my@m=@g      ? map{ _uid_to_irods_uid($_) } map { ug2id($_) } @g :
+  my@m=@g      ? map{ _uid_to_irods_uid($_) } map { @{ $ug2id{$_} || [$_] } } @g : #if strings from data access group don't match any group name try treating as usernames
        $is_seq ? @public :
                  ();
   $altered_count += $iga->set_group_membership("ss_$study_id",@m) ? 1 : 0;

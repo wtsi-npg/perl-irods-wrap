@@ -7,6 +7,7 @@ use WTSI::NPG::iRODS::GroupAdmin;
 use npg_warehouse::Schema;
 use autodie;
 use List::MoreUtils qw(uniq);
+use Readonly;
 
 our $VERSION = '';
 
@@ -41,22 +42,24 @@ sub _uid_to_irods_uid {
   return grep {/^\Q$u\E#/smx} @public;
 }
 
+Readonly::Scalar my $GROUP_SECONDARY_MEMBERS_FIELD_INDEX => 3;
 my%ug2id; #cache of group to users - populate here
 my%gid2group;
 open my$gfh, q(-|), q(getent group);
 while(<$gfh>){
   chomp;
-  my@F=split q(:);
+  my@F=split /:/smx;
   my$users=$ug2id{$F[0]}||=[];
-  push @{$users}, split q(,),$F[3]||q(); #fill with secondary groups for users
+  push @{$users}, split /,/smx, $F[$GROUP_SECONDARY_MEMBERS_FIELD_INDEX]||q(); #fill with secondary groups for users
   $gid2group{$F[2]}=$F[0];
 }
 close $gfh;
+Readonly::Scalar my $PASSWD_PRIMARY_GID_FIELD_INDEX => 3;
 open my$pfh, q(-|), q(getent passwd);
 while(<$pfh>){
   chomp;
-  my@F=split q(:);
-  push @{$ug2id{$gid2group{$F[3]}||=q()}},$F[0]; #fill with primary group for users - empty strong used if no group found for gid
+  my@F=split /:/smx;
+  push @{$ug2id{$gid2group{$F[$PASSWD_PRIMARY_GID_FIELD_INDEX]}||=q()}},$F[0]; #fill with primary group for users - empty strong used if no group found for gid
 }
 close $pfh;
 foreach my$users (values%ug2id){

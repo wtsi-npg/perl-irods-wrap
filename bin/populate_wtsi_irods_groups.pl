@@ -5,6 +5,9 @@ use FindBin qw($Bin);
 use lib ( -d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib" );
 use WTSI::NPG::iRODS::GroupAdmin;
 use npg_warehouse::Schema;
+use autodie;
+use List::MoreUtils qw(uniq);
+use Readonly;
 
 our $VERSION = '';
 
@@ -39,17 +42,28 @@ sub _uid_to_irods_uid {
   return grep {/^\Q$u\E#/smx} @public;
 }
 
-my%ug2id; #cache
-sub ug2id {
-  my$g=shift||return;
-  if(my$gha=$ug2id{$g}){return @{$gha};}
-  $g=`getent group $g`;
-  chomp $g;
-
-  my@g = split /,/msx, (split /:/msx, $g)[-1] || q();
-
-  $ug2id{$g}=\@g;
-  return @g;
+Readonly::Scalar my $GROUP_SECONDARY_MEMBERS_FIELD_INDEX => 3;
+my%ug2id; #cache of group to users - populate here
+my%gid2group;
+open my$gfh, q(-|), q(getent group);
+while(<$gfh>){
+  chomp;
+  my@F=split /:/smx;
+  my$users=$ug2id{$F[0]}||=[];
+  push @{$users}, split /,/smx, $F[$GROUP_SECONDARY_MEMBERS_FIELD_INDEX]||q(); #fill with secondary groups for users
+  $gid2group{$F[2]}=$F[0];
+}
+close $gfh;
+Readonly::Scalar my $PASSWD_PRIMARY_GID_FIELD_INDEX => 3;
+open my$pfh, q(-|), q(getent passwd);
+while(<$pfh>){
+  chomp;
+  my@F=split /:/smx;
+  push @{$ug2id{$gid2group{$F[$PASSWD_PRIMARY_GID_FIELD_INDEX]}||=q()}},$F[0]; #fill with primary group for users - empty strong used if no group found for gid
+}
+close $pfh;
+foreach my$users (values%ug2id){
+  $users=[uniq@{$users}];
 }
 
 my $s=npg_warehouse::Schema->connect();
@@ -61,7 +75,7 @@ while (my$st=$rs->next){
   my$gs=$st->data_access_group();
   my@g= defined $gs ? $gs=~m/\S+/smxg : ();
   my$is_seq=($st->npg_information->count||$st->npg_plex_information->count)>0;
-  my@m=@g      ? map{ _uid_to_irods_uid($_) } map { ug2id($_) } @g :
+  my@m=@g      ? map{ _uid_to_irods_uid($_) } map { @{ $ug2id{$_} || [$_] } } @g : #if strings from data access group don't match any group name try treating as usernames
        $is_seq ? @public :
                  ();
   $altered_count += $iga->set_group_membership("ss_$study_id",@m) ? 1 : 0;

@@ -814,7 +814,7 @@ sub set_collection_permissions {
   Description: Return a list of the data access groups in the collection's ACL.
                If a permission level argument is supplied, only groups with
                that level of access will be returned. Only groups having a
-               group name matching the current group prefix will be returned.
+               group name matching the current group filter will be returned.
   Returntype : Array
 
 =cut
@@ -1434,9 +1434,9 @@ sub set_object_permissions {
 
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
-               If a permission leve argument is supplied, only groups with
+               If a permission level argument is supplied, only groups with
                that level of access will be returned. Only groups having a
-               group name matching the current group prefix will be returned.
+               group name matching the current group filter will be returned.
   Returntype : Array
 
 =cut

@@ -619,17 +619,15 @@ sub put_collection {
   defined $dir or
     $self->logconfess('A defined directory argument is required');
   defined $target or
-    $self->logconfess('A defined target (object) argument is required');
+    $self->logconfess('A defined target (collection) argument is required');
 
   $dir eq q{} and
     $self->logconfess('A non-empty directory argument is required');
   $target eq q{} and
-    $self->logconfess('A non-empty target (object) argument is required');
+    $self->logconfess('A non-empty target (collection) argument is required');
 
   # iput does not accept trailing slashes on directories
   $dir = File::Spec->canonpath($dir);
-  # $target = File::Spec->canonpath($target);
-  # $target = $self->_ensure_absolute_path($target);
   $target = $self->_ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
@@ -639,7 +637,6 @@ sub put_collection {
                                        environment => $self->environment,
                                        logger      => $self->logger)->run;
 
-  # FIXME - this is handling a case where the target collection exists
   return $target . q{/} . basename($dir);
 }
 
@@ -1039,8 +1036,6 @@ sub find_collections_by_meta {
   defined $root or $self->logconfess('A defined root argument is required');
   $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
-  # $root = File::Spec->canonpath($root);
-  # $root = $self->_ensure_absolute_path($root);
   $root = $self->_ensure_collection_path($root);
 
   # Ensure a single trailing slash for collection boundary matching.
@@ -1147,7 +1142,6 @@ sub read_object {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  # $object = $self->_ensure_absolute_path($object);
   $object = $self->_ensure_object_path($object);
   $self->debug("Reading object '$object'");
 

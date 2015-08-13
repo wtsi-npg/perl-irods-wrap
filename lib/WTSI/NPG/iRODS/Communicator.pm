@@ -12,7 +12,7 @@ sub communicate {
   my ($self, $spec) = @_;
 
   my $json = $self->encode($spec);
-  if (exists $spec->{data_object} and not $spec->{data_object}) {
+  if (exists $spec->{data_object} and not length $spec->{data_object}) {
     $self->logconfess("The data_object value was missing from $json");
   }
 

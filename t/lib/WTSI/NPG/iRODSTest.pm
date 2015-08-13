@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 202;
+use Test::More tests => 206;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -95,6 +95,13 @@ sub group_prefix : Test(6) {
 
   ok($irods->group_prefix('foo_'), 'Set group prefix');
   is($irods->make_group_name('bar'), 'foo_bar', 'Group prefix used')
+}
+
+sub group_filter : Test(2) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->group_filter->('ss_0'),   'Default group filter include');
+  ok(!$irods->group_filter->('public'), 'Default group filter exclude');
 }
 
 sub absolute_path : Test(2) {
@@ -236,13 +243,13 @@ sub set_object_permissions : Test(6) {
   ok($r2, 'Removed public read access');
 }
 
-sub get_object_groups : Test(6) {
+sub get_object_groups : Test(7) {
    my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
  SKIP: {
      if (not $irods->group_exists('ss_0')) {
-       skip "Skipping test requiring the test group ss_0", 5;
+       skip "Skipping test requiring the test group ss_0", 6;
      }
 
      ok($irods->set_object_permissions('read', 'public', $lorem_object));
@@ -258,6 +265,17 @@ sub get_object_groups : Test(6) {
      my @found_read = $irods->get_object_groups($lorem_object, 'read');
      is_deeply(\@found_read, $expected_read, 'Expected read groups')
        or diag explain \@found_read;
+
+     $irods->group_filter(sub {
+                            my ($owner) = @_;
+                            if ($owner =~ m{^(public|ss_)}) {
+                              return 1;
+                            }
+                          });
+     my $expected_filter = ['public', 'ss_0', 'ss_10'];
+     my @found_filter  = $irods->get_object_groups($lorem_object);
+     is_deeply(\@found_filter, $expected_filter, 'Expected filtered groups')
+       or diag explain \@found_filter;
    }
 
    my $expected_own = [];
@@ -307,13 +325,13 @@ sub set_collection_permissions : Test(6) {
   ok($r2, 'Removed public read access');
 }
 
-sub get_collection_groups : Test(6) {
+sub get_collection_groups : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
  SKIP: {
     if (not $irods->group_exists('ss_0')) {
-      skip "Skipping test requiring the test group ss_0", 5;
+      skip "Skipping test requiring the test group ss_0", 6;
     }
 
     ok($irods->set_collection_permissions('read', 'public', $coll));
@@ -329,6 +347,17 @@ sub get_collection_groups : Test(6) {
     my @found_read = $irods->get_collection_groups($coll, 'read');
     is_deeply(\@found_read, $expected_read, 'Expected read groups')
       or diag explain \@found_read;
+
+    $irods->group_filter(sub {
+                           my ($owner) = @_;
+                           if ($owner =~ m{^(public|ss_)}) {
+                             return 1;
+                           }
+                         });
+    my $expected_filter = ['public', 'ss_0', 'ss_10'];
+    my @found_filter  = $irods->get_collection_groups($coll);
+    is_deeply(\@found_filter, $expected_filter, 'Expected filtered groups')
+      or diag explain \@found_filter;
   }
 
   my $expected_own = [];

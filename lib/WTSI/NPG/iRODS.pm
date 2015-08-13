@@ -40,29 +40,55 @@ our $MD5SUM      = 'md5sum';
 our @VALID_PERMISSIONS = qw(null read write own);
 
 has 'strict_baton_version' =>
-  (is       => 'ro',
-   isa      => 'Bool',
-   required => 1,
-   default  => 1);
+  (is            => 'ro',
+   isa           => 'Bool',
+   required      => 1,
+   default       => 1,
+   documentation => 'Strictly check the baton version if true');
 
 has 'required_baton_version' =>
-  (is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-   init_arg => undef,
-   default  => $REQUIRED_BATON_VERSION);
+  (is            => 'ro',
+   isa           => 'Str',
+   required      => 1,
+   init_arg      => undef,
+   default       => $REQUIRED_BATON_VERSION,
+   documentation => 'The baton version required');
 
 has 'environment' =>
-  (is       => 'ro',
-   isa      => 'HashRef',
-   required => 1,
-   default  => sub { \%ENV });
+  (is            => 'ro',
+   isa           => 'HashRef',
+   required      => 1,
+   default       => sub { \%ENV },
+   documentation => 'The shell environment in which iRODS clients are run');
 
 has 'group_prefix' =>
-  (is       => 'rw',
-   isa      => NoWhitespaceStr,
-   required => 1,
-   default  => 'ss_');
+  (is            => 'rw',
+   isa           => NoWhitespaceStr,
+   required      => 1,
+   default       => 'ss_',
+   documentation => 'A prefix for group names used to distinguish ' .
+                    'iRODS groups from users');
+
+has 'group_filter' =>
+  (is            => 'rw',
+   isa           => 'Maybe[CodeRef]',
+   required      => 1,
+   lazy          => 1,
+   default       => sub {
+     my ($self) = @_;
+
+     my $prefix = $self->group_prefix;
+
+     return sub {
+       my ($owner) = @_;
+
+       if (defined $owner and $owner =~ m{^$prefix}msx) {
+         return 1;
+       }
+     }
+   },
+   documentation => 'A filter predicate that returns true when passed an ' .
+                    'iRODS owner that is a group name');
 
 has 'working_collection' =>
   (is        => 'rw',
@@ -786,8 +812,9 @@ sub set_collection_permissions {
 
   Example    : $irods->get_collection_groups($path)
   Description: Return a list of the data access groups in the collection's ACL.
-               If a permission leve argument is supplied, only groups with
-               that level of access will be returned.
+               If a permission level argument is supplied, only groups with
+               that level of access will be returned. Only groups having a
+               group name matching the current group prefix will be returned.
   Returntype : Array
 
 =cut
@@ -805,10 +832,18 @@ sub get_collection_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my $prefix = $self->group_prefix;
-  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
+  my @owners = map { $_->{owner} } @perms;
+  if ($self->group_filter) {
+    $self->debug("Pre-filter owners of '$collection': [",
+                 join(q{, }, @owners), q{]});
+    @owners = grep { $self->group_filter->($_) } @owners;
+    $self->debug("Post-filter owners of '$collection': [",
+                 join(q{, }, @owners), q{]});
+  }
 
-  return @sorted;
+  my @groups = sort @owners;
+
+  return @groups;
 }
 
 =head2 get_collection_meta
@@ -1400,7 +1435,8 @@ sub set_object_permissions {
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
                If a permission leve argument is supplied, only groups with
-               that level of access will be returned.
+               that level of access will be returned. Only groups having a
+               group name matching the current group prefix will be returned.
   Returntype : Array
 
 =cut
@@ -1418,10 +1454,18 @@ sub get_object_groups {
     @perms = grep { $_->{level} eq $perm_str } @perms;
   }
 
-  my $prefix = $self->group_prefix;
-  my @sorted = sort grep { m{^$prefix}msx } map { $_->{owner} } @perms;
+  my @owners = map { $_->{owner} } @perms;
+  if ($self->group_filter) {
+    $self->debug("Pre-filter owners of '$object': [",
+                 join(q{, }, @owners), q{]});
+    @owners = grep { $self->group_filter->($_) } @owners;
+    $self->debug("Post-filter owners of '$object': [",
+                 join(q{, }, @owners), q{]});
+  }
 
-  return @sorted;
+  my @groups = sort @owners;
+
+  return @groups;
 }
 
 =head2 get_object_meta

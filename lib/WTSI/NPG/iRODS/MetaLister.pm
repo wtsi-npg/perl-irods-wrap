@@ -50,6 +50,9 @@ sub list_object_meta {
   my ($volume, $collection, $data_name) = File::Spec->splitpath($object);
   $collection = File::Spec->canonpath($collection);
 
+  $data_name or $self->logconfess("An object path argument is required: ",
+                                  "received '$object'");
+
   my $spec = {collection  => $collection,
               data_object => $data_name};
 

@@ -5,7 +5,7 @@ use utf8;
 
 use strict;
 use warnings;
-use English;
+use English qw(-no_match_vars);
 use File::Spec;
 use File::Temp qw(tempdir);
 use List::AllUtils qw(all any none);
@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 202;
+use Test::More tests => 210;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -136,14 +136,18 @@ sub find_zone_name : Test(3) {
      'Falls back to current zone for relative paths');
 }
 
-sub working_collection : Test(4) {
+sub working_collection : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   like($irods->working_collection, qr{^/}, 'Found a working collection');
 
-  isnt($irods->working_collection, '/test');
-  ok($irods->working_collection('/test'), 'Set the working collection');
-  is($irods->working_collection, '/test', 'Working collection set');
+  isnt($irods->working_collection, $irods_tmp_coll);
+  ok($irods->working_collection($irods_tmp_coll), 'Set the working collection');
+  is($irods->working_collection, $irods_tmp_coll, 'Working collection set');
+
+  dies_ok {
+    $irods->working_collection('/no_such_collection')
+  } 'Expected to fail setting working collection to a non-existent collection';
 }
 
 sub list_groups : Test(1) {
@@ -337,6 +341,16 @@ sub get_collection_groups : Test(6) {
     or diag explain \@found_own;
 }
 
+sub is_collection : Test(3) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->is_collection($irods_tmp_coll), 'Is a collection');
+  ok(!$irods->is_collection("$irods_tmp_coll/irods/lorem.txt"),
+     'Object is not a collection');
+  ok(!$irods->is_collection('/no_such_collection'),
+     'Non-existent path is not a collection');
+}
+
 sub list_collection : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my ($objs, $colls, $checksums) =
@@ -360,8 +374,8 @@ sub list_collection : Test(7) {
              "500cec3fbb274064e2a25fa17a69638a"
              }) or diag explain $checksums;
 
-   ok(!$irods->list_collection('no_collection_exists'),
-      'Failed to list a non-existent collection');
+  ok(!$irods->list_collection('no_collection_exists'),
+     'Failed to list a non-existent collection');
 
   my ($objs_deep, $colls_deep, $checksums_deep) =
     $irods->list_collection("$irods_tmp_coll/irods", 'RECURSE');
@@ -625,12 +639,10 @@ sub find_collections_by_meta : Test(8) {
                                               ['a', 'x'], ['a', 'y'])],
             [$expected_coll]);
 
-  # All but the last character
-  my $part_collection_root = substr $irods_tmp_coll, 0, -1;
-
-  is_deeply([$irods->find_collections_by_meta($part_collection_root,
-                                              ['a', 'x'])], [],
-            'Collection query root is not a simple path string prefix');
+  dies_ok {
+    $irods->find_collections_by_meta($irods_tmp_coll . q{no_such_collection},
+                                     ['a', 'x'])
+  } 'Expected to fail using non-existent query root';
 
   my $new_coll = "$irods_tmp_coll/irods/new";
   ok($irods->add_collection($new_coll));
@@ -643,6 +655,15 @@ sub find_collections_by_meta : Test(8) {
   dies_ok { $irods->find_collections_by_meta($irods_tmp_coll,
                                              ["a", "x", 'invalid_operator']) }
     'Expected to fail using an invalid query operator';
+}
+
+sub is_object : Test(3) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok(!$irods->is_object($irods_tmp_coll), 'Collection not an object');
+  ok($irods->is_object("$irods_tmp_coll/irods/lorem.txt"), 'Is an object');
+  ok(!$irods->is_object('/no_such_object'),
+     'Non-existent path is not an object');
 }
 
 sub list_object : Test(4) {
@@ -721,7 +742,7 @@ sub replace_object : Test(3) {
     'Failed to replace an object with an undefined file';
 }
 
-sub copy_object : Test(15) {
+sub copy_object : Test(16) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   my $num_attrs = 8;
@@ -766,6 +787,11 @@ sub copy_object : Test(15) {
     'Failed to copy an object to an undefined place';
   dies_ok { $irods->copy_object(undef, $object_copied) }
     'Failed to copy an undefined object';
+
+  $irods->add_collection("$irods_tmp_coll/dest/");
+  dies_ok {
+    $irods->copy_object($object_to_copy, "$irods_tmp_coll/dest/"),
+  } 'Expected to fail copying data object to collection';
 }
 
 sub move_object : Test(5) {
@@ -928,12 +954,10 @@ sub find_objects_by_meta : Test(7) {
                                           ['a', 'x'], ['a', 'y'])],
             [$lorem_object]);
 
-  # All but the last character
-  my $part_collection_root = substr $irods_tmp_coll, 0, -1;
-
-  is_deeply([$irods->find_objects_by_meta($part_collection_root,
-                                          ['a', 'x'])], [],
-            'Object query root is not a simple path string prefix');
+  dies_ok {
+    $irods->find_objects_by_meta($irods_tmp_coll . 'no_such_collection',
+                                 ['a', 'x'])
+  } 'Expected to fail using non-existent query root';
 
   my $object = "$irods_tmp_coll/irods/test.txt";
   ok($irods->add_object_avu($object, 'a', 'x99'));

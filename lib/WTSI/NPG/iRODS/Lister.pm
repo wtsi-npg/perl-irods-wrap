@@ -16,7 +16,9 @@ has '+executable' => (default => 'baton-list');
 our $ITEM_DOES_NOT_EXIST = -310000;
 ##use critic
 
-around [qw(list_collection list_object
+around [qw(is_collection is_object
+           list_collection list_object
+           list_object_checksum
            get_collection_acl get_object_acl)] => sub {
   my ($orig, $self, @args) = @_;
 
@@ -27,6 +29,58 @@ around [qw(list_collection list_object
 
   return $self->$orig(@args);
 };
+
+sub is_object {
+  my ($self, $path) = @_;
+
+  my $response = $self->_list_path($path);
+  my $is_object;
+
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return undef
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    if (exists $response->{data_object}) {
+      $is_object = 1;
+    }
+    else {
+      $is_object = 0;
+    }
+  }
+
+  return $is_object;
+}
+
+sub is_collection {
+  my ($self, $path) = @_;
+
+  my $response = $self->_list_path($path);
+  my $is_collection;
+
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return undef
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    if (exists $response->{data_object}) {
+      $is_collection = 0;
+    }
+    else {
+      $is_collection = 1;
+    }
+  }
+
+  return $is_collection;
+}
 
 =head2 list_object
 
@@ -41,7 +95,7 @@ around [qw(list_collection list_object
 sub list_object {
   my ($self, $object) = @_;
 
-  my $response = $self->_list_object($object);
+  my $response = $self->_list_path($object);
   my $path;
 
   if (exists $response->{error}) {
@@ -62,7 +116,7 @@ sub list_object {
 sub list_object_checksum {
   my ($self, $object) = @_;
 
-  my $response = $self->_list_object($object);
+  my $response = $self->_list_path($object);
   my $checksum;
 
   if (exists $response->{error}) {
@@ -135,7 +189,7 @@ sub list_collection {
 sub get_object_acl {
   my ($self, $object) = @_;
 
-  my $response = $self->_list_object($object);
+  my $response = $self->_list_path($object);
   my $acl;
 
   if (exists $response->{error}) {
@@ -186,17 +240,17 @@ sub get_collection_acl {
   return @acl;
 }
 
-sub _list_object {
-  my ($self, $object) = @_;
+sub _list_path {
+  my ($self, $path) = @_;
 
-  defined $object or
-    $self->logconfess('A defined object argument is required');
+  defined $path or
+    $self->logconfess('A defined path argument is required');
 
-  $object =~ m{^/}msx or
-    $self->logconfess("An absolute object path argument is required: ",
-                      "received '$object'");
+  $path =~ m{^/}msx or
+    $self->logconfess("An absolute path argument is required: ",
+                      "received '$path'");
 
-  my ($volume, $collection, $data_name) = File::Spec->splitpath($object);
+  my ($volume, $collection, $data_name) = File::Spec->splitpath($path);
   $collection = File::Spec->canonpath($collection);
 
   my $spec = {collection  => $collection,

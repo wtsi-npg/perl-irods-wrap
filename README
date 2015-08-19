@@ -10,10 +10,14 @@ The clients wrapped are the iRODS icommand programs
 
 Dependencies:
 
+Perl    https://github.com/wtsi-npg/perl-dnap-utilities
+
+        Version described in Build.PL
+
 iRODS   https://github.com/irods/irods-legacy
 
         Versions 3.2, 3.3 or 3.3.1
 
 baton   https://github.com/wtsi-npg/baton
 
-        Version 0.13.0
+        Version 0.15.0

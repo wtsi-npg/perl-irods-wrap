@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 218;
+use Test::More tests => 219;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -351,10 +351,10 @@ sub is_collection : Test(3) {
      'Non-existent path is not a collection');
 }
 
-sub list_collection : Test(7) {
+sub list_collection : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-  my ($objs, $colls, $checksums) =
-    $irods->list_collection("$irods_tmp_coll/irods");
+
+  my ($objs, $colls) = $irods->list_collection("$irods_tmp_coll/irods");
 
   is_deeply($objs, ["$irods_tmp_coll/irods/lorem.txt",
                     "$irods_tmp_coll/irods/test.txt",
@@ -365,19 +365,10 @@ sub list_collection : Test(7) {
                      "$irods_tmp_coll/irods/md5sum",
                      "$irods_tmp_coll/irods/test"]) or diag explain $colls;
 
-  is_deeply($checksums,
-            {"$irods_tmp_coll/irods/lorem.txt" =>
-             "39a4aa291ca849d601e4e5b8ed627a04",
-             "$irods_tmp_coll/irods/test.txt" =>
-             "2205e48de5f93c784733ffcca841d2b5",
-             "$irods_tmp_coll/irods/utf-8.txt" =>
-             "500cec3fbb274064e2a25fa17a69638a"
-             }) or diag explain $checksums;
-
   ok(!$irods->list_collection('no_collection_exists'),
      'Failed to list a non-existent collection');
 
-  my ($objs_deep, $colls_deep, $checksums_deep) =
+  my ($objs_deep, $colls_deep) =
     $irods->list_collection("$irods_tmp_coll/irods", 'RECURSE');
 
   is_deeply($objs_deep, ["$irods_tmp_coll/irods/lorem.txt",
@@ -409,7 +400,26 @@ sub list_collection : Test(7) {
                           "$irods_tmp_coll/irods/test/dir1",
                           "$irods_tmp_coll/irods/test/dir2"])
     or diag explain $colls_deep;
+}
 
+sub collection_checksums : Test(3) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $checksums = $irods->collection_checksums("$irods_tmp_coll/irods");
+  is_deeply($checksums,
+            {"$irods_tmp_coll/irods/lorem.txt" =>
+             "39a4aa291ca849d601e4e5b8ed627a04",
+             "$irods_tmp_coll/irods/test.txt" =>
+             "2205e48de5f93c784733ffcca841d2b5",
+             "$irods_tmp_coll/irods/utf-8.txt" =>
+             "500cec3fbb274064e2a25fa17a69638a"
+             }) or diag explain $checksums;
+
+  dies_ok{ $irods->collection_checksums('no_collection_exists') }
+    'Failed to list checksums in a non-existent collection';
+
+  my $checksums_deep = $irods->collection_checksums("$irods_tmp_coll/irods",
+                                                    'RECURSE');
   is_deeply($checksums_deep,
             {"$irods_tmp_coll/irods/lorem.txt" =>
              "39a4aa291ca849d601e4e5b8ed627a04",
@@ -470,12 +480,7 @@ sub put_collection : Test(2) {
 
              ["$irods_tmp_coll/put_collection/test",
               "$irods_tmp_coll/put_collection/test/dir1",
-              "$irods_tmp_coll/put_collection/test/dir2"],
-
-             {"$irods_tmp_coll/put_collection/test/file1.txt" =>
-              "d41d8cd98f00b204e9800998ecf8427e",
-              "$irods_tmp_coll/put_collection/test/file2.txt" =>
-              "d41d8cd98f00b204e9800998ecf8427e"}])
+              "$irods_tmp_coll/put_collection/test/dir2"]])
     or diag explain \@contents;
 }
 

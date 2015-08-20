@@ -156,33 +156,38 @@ sub make_avu_history {
   Example    : my ($objs, $cols) = $coll->get_contents
   Description: Return the contents of the collection as two arrayrefs,
                the first listing data objects, the second listing nested
-               collections. This method is preferred if the checksums of
-               a large number of data objects are to be tested because it
-               populates the data object checksum attribute as it reads the
-               collection.
+               collections.
   Returntype : Array
 
 =cut
 
 sub get_contents {
-   my ($self, $recurse) = @_;
+   my ($self, $recurse, $checksums) = @_;
 
    my $irods = $self->irods;
    my $path = $self->str;
-   my ($objs, $colls, $checksums) =
-     $self->irods->list_collection($path, $recurse);
+   my ($objs, $colls) = $self->irods->list_collection($path, $recurse);
+
+   my $object_checksums;
+   if ($checksums) {
+     $object_checksums = $self->irods->collection_checksums
+       ($self->str, $recurse);
+   }
 
    my @objects;
    my @collections;
 
    foreach my $obj (@$objs) {
      my $object = WTSI::NPG::iRODS::DataObject->new($irods, $obj);
-     if (exists $checksums->{$obj}) {
-       $object->checksum($checksums->{$obj});
-     }
-     else {
-       $self->logwarn("Failed to find a checksum for '$obj' when getting ",
-                      "the contents of '", $self->str, q{'});
+
+     if ($checksums) {
+       if (exists $object_checksums->{$obj}) {
+         $object->checksum($checksums->{$obj});
+       }
+       else {
+         $self->logwarn("Failed to find a checksum for '$obj' when getting ",
+                        "the contents of '", $self->str, q{'});
+       }
      }
 
      push @objects, $object;
@@ -275,17 +280,18 @@ sub set_content_permissions {
   my $path = $self->str;
   my ($objects, $collections) = $self->irods->list_collection($path, 'RECURSE');
 
- foreach my $owner (@owners) {
-   foreach my $object (@$objects) {
-     $self->info("Giving owner '$owner' '$permission' access to '$object'");
-     $self->irods->set_object_permissions($perm_str, $owner, $object);
-   }
+  foreach my $owner (@owners) {
+    foreach my $object (@$objects) {
+      $self->info("Giving owner '$owner' '$permission' access to '$object'");
+      $self->irods->set_object_permissions($perm_str, $owner, $object);
+    }
 
-   foreach my $collection (@$collections) {
-     $self->info("Giving owner '$owner' '$permission' access to '$collection'");
-     $self->irods->set_collection_permissions($perm_str, $owner, $collection);
-   }
- }
+    foreach my $collection (@$collections) {
+      $self->info("Giving owner '$owner' '$permission' access ",
+                  "to '$collection'");
+      $self->irods->set_collection_permissions($perm_str, $owner, $collection);
+    }
+  }
 
   return $self;
 }

@@ -1,7 +1,6 @@
 
 package WTSI::NPG::iRODS::MetaSearcher;
 
-use Data::Dump qw(dump);
 use File::Spec;
 use Moose;
 
@@ -30,22 +29,24 @@ sub search {
 
   my $i = 0;
   foreach my $avu (@avus) {
-    ##no critic (CodeLayout::ProhibitParensWithBuiltins)
     unless (ref $avu eq 'HASH') {
-      $self->logconfess("A query AVU must be a HashRef: AVU #$i was not: ",
-                        dump($avu));
+      $self->logconfess("A query AVU must be a HashRef: AVU #$i was not");
     }
+
+    my $astr = defined $avu->{attribute} ? $avu->{attribute} : 'undef';
+    my $vstr = defined $avu->{value}     ? $avu->{value}     : 'undef';
+    my $ustr = defined $avu->{units}     ? $avu->{units}     : 'undef';
 
     # Zero length keys and values are rejected by iRODS
     unless (length $avu->{attribute}) {
-      $self->logconfess("A query AVU must have an attribute: AVU #$i did not:",
-                        dump($avu));
+      $self->logconfess("A query AVU must have an attribute: AVU #$i did not: ",
+                        "{$astr, $vstr, $ustr}");
     }
     unless (length $avu->{value}) {
-      $self->logconfess("A query AVU must have a value: AVU #$i did not:",
-                        dump($avu));
+      $self->logconfess("A query AVU must have a value: AVU #$i did not: ",
+                        "{$astr, $vstr, $ustr}");
     }
-    ##use critic
+
     $i++;
   }
 

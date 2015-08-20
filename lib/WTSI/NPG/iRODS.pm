@@ -79,7 +79,35 @@ has 'lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--contents', '--checksum'],
+       (arguments   => ['--unbuffered',],
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+has 'contents_lister' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::Lister',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::Lister->new
+       (arguments   => ['--unbuffered', '--contents'],
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+has 'checksum_lister' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::Lister',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::Lister->new
+       (arguments   => ['--unbuffered', '--checksum', '--contents'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -94,20 +122,6 @@ has 'acl_lister' =>
 
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--acl', '--contents'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
-   });
-
-has 'content_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--contents', '--checksum'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -597,7 +611,7 @@ sub list_collection {
   my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
 
-  return $self->content_lister->list_collection($collection, $recurse);
+  return $self->contents_lister->list_collection($collection, $recurse);
 }
 
 =head2 add_collection
@@ -1500,7 +1514,7 @@ sub set_object_permissions {
 
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
-               If a permission leve argument is supplied, only groups with
+               If a permission level argument is supplied, only groups with
                that level of access will be returned.
   Returntype : Array
 
@@ -1778,7 +1792,22 @@ sub checksum {
 
   $object = $self->_ensure_object_path($object);
 
-  return $self->lister->list_object_checksum($object);
+  return $self->checksum_lister->list_object_checksum($object);
+}
+
+sub collection_checksums {
+  my ($self, $collection, $recurse) = @_;
+
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+
+  $collection eq q{} and
+    $self->logconfess('A non-empty collection argument is required');
+
+  $collection = $self->_ensure_collection_path($collection);
+
+  return $self->checksum_lister->list_collection_checksums
+    ($collection, $recurse);
 }
 
 =head2 calculate_checksum

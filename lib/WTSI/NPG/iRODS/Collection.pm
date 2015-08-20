@@ -170,8 +170,7 @@ sub get_contents {
 
    my $object_checksums;
    if ($checksums) {
-     $object_checksums = $self->irods->collection_checksums
-       ($self->str, $recurse);
+     $object_checksums = $self->irods->collection_checksums($path, $recurse);
    }
 
    my @objects;
@@ -186,7 +185,7 @@ sub get_contents {
        }
        else {
          $self->logwarn("Failed to find a checksum for '$obj' when getting ",
-                        "the contents of '", $self->str, q{'});
+                        "the contents of '$path'");
        }
      }
 

@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 210;
+use Test::More tests => 218;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -937,6 +937,32 @@ sub make_object_avu_history : Test(4) {
   dies_ok {
     $irods->make_object_avu_history($lorem_object, 'no_such_attribute');
   }
+}
+
+sub add_remove_perl_false_avu : Test(8) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  ok($irods->add_object_avu($lorem_object, 0, 0, 0),
+     'Add 0 int object AVU');
+  ok($irods->remove_object_avu($lorem_object, 0, 0, 0),
+     'Remove 0 int object AVU');
+
+  ok($irods->add_object_avu($lorem_object, '0', '0', '0'),
+     'Add 0 string object AVU');
+  ok($irods->remove_object_avu($lorem_object, '0', '0', '0'),
+     'Remove 0 string object AVU');
+
+  my $test_coll = $irods_tmp_coll;
+  ok($irods->add_collection_avu($test_coll, 0, 0, 0),
+     'Add 0 int collection AVU');
+  ok($irods->remove_collection_avu($test_coll, 0, 0, 0),
+     'Remove 0 int collection AVU');
+
+  ok($irods->add_collection_avu($test_coll, '0', '0', '0'),
+     'Add 0 string collection AVU');
+  ok($irods->remove_collection_avu($test_coll, '0', '0', '0'),
+     'Remove 0 string collection AVU');
 }
 
 sub find_objects_by_meta : Test(7) {

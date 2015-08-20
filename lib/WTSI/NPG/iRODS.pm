@@ -79,7 +79,35 @@ has 'lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--acl', '--contents', '--checksum'],
+       (arguments   => ['--unbuffered', '--contents', '--checksum'],
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+has 'acl_lister' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::Lister',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::Lister->new
+       (arguments   => ['--unbuffered', '--acl', '--contents'],
+        environment => $self->environment,
+        logger      => $self->logger)->start;
+   });
+
+has 'content_lister' =>
+  (is       => 'ro',
+   isa      => 'WTSI::NPG::iRODS::Lister',
+   required => 1,
+   lazy     => 1,
+   default  => sub {
+     my ($self) = @_;
+
+     return WTSI::NPG::iRODS::Lister->new
+       (arguments   => ['--unbuffered', '--contents', '--checksum'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -569,7 +597,7 @@ sub list_collection {
   my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
 
-  return $self->lister->list_collection($collection, $recurse);
+  return $self->content_lister->list_collection($collection, $recurse);
 }
 
 =head2 add_collection
@@ -764,7 +792,7 @@ sub get_collection_permissions {
 
   $collection = $self->_ensure_collection_path($collection);
 
-  return $self->lister->get_collection_acl($collection);
+  return $self->acl_lister->get_collection_acl($collection);
 }
 
 sub set_collection_permissions {
@@ -1427,7 +1455,7 @@ sub get_object_permissions {
 
   $object = $self->_ensure_object_path($object);
 
-  return $self->lister->get_object_acl($object);
+  return $self->acl_lister->get_object_acl($object);
 }
 
 sub set_object_permissions {

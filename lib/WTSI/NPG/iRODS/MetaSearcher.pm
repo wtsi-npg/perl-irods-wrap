@@ -32,12 +32,21 @@ sub search {
     unless (ref $avu eq 'HASH') {
       $self->logconfess("A query AVU must be a HashRef: AVU #$i was not");
     }
-    unless ($avu->{attribute}) {
-      $self->logconfess("A query AVU must have an attribute: AVU #$i did not");
+
+    my $astr = defined $avu->{attribute} ? $avu->{attribute} : 'undef';
+    my $vstr = defined $avu->{value}     ? $avu->{value}     : 'undef';
+    my $ustr = defined $avu->{units}     ? $avu->{units}     : 'undef';
+
+    # Zero length keys and values are rejected by iRODS
+    unless (length $avu->{attribute}) {
+      $self->logconfess("A query AVU must have an attribute: AVU #$i did not: ",
+                        "{$astr, $vstr, $ustr}");
     }
-    unless ($avu->{value}) {
-      $self->logconfess("A query AVU must have a value: AVU #$i did not");
+    unless (length $avu->{value}) {
+      $self->logconfess("A query AVU must have a value: AVU #$i did not: ",
+                        "{$astr, $vstr, $ustr}");
     }
+
     $i++;
   }
 

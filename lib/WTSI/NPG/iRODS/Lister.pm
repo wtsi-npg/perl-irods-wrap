@@ -165,12 +165,32 @@ sub list_collection {
   if ($obj_specs and $coll_specs) {
     my @data_objects = map { $self->path_spec_str($_) } @$obj_specs;
     my @collections  = map { $self->path_spec_str($_) } @$coll_specs;
-    my %checksums    = map { $self->path_spec_str($_) =>
-                             $self->path_spec_checksum($_) } @$obj_specs;
-    @paths = (\@data_objects, \@collections, \%checksums);
+    @paths = (\@data_objects, \@collections);
   }
 
   return @paths;
+}
+
+sub list_collection_checksums {
+  my ($self, $collection, $recur) = @_;
+
+  my $obj_specs;
+  my $coll_specs; # Ignore
+
+  if ($recur) {
+    ($obj_specs, $coll_specs) = $self->_list_collection_recur($collection);
+  }
+  else {
+    ($obj_specs, $coll_specs) = $self->_list_collection($collection);
+  }
+
+  my %checksums;
+  if ($obj_specs) {
+    %checksums = map { $self->path_spec_str($_) =>
+                       $self->path_spec_checksum($_) } @$obj_specs;
+  }
+
+  return \%checksums;
 }
 
 =head2 get_object_acl

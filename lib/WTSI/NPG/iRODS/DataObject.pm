@@ -280,7 +280,8 @@ sub set_permissions {
   Example    : $obj->get_object_groups('read')
   Description: Return a list of the data access groups in the object's ACL.
                If a permission level argument is supplied, only groups with
-               that level of access will be returned.
+               that level of access will be returned. Only groups having a
+               group name matching the current group filter will be returned.
   Returntype : Array
 
 =cut

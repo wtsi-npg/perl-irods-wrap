@@ -247,8 +247,9 @@ sub set_permissions {
 
   Example    : $coll->get_groups('read')
   Description: Return a list of the data access groups in the collection's ACL.
-               If a permission leve argument is supplied, only groups with
-               that level of access will be returned.
+               If a permission level argument is supplied, only groups with
+               that level of access will be returned. Only groups having a
+               group name matching the current group filter will be returned.
   Returntype : Array
 
 =cut

@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 52;
+use Test::More tests => 53;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -315,7 +315,7 @@ sub set_permissions : Test(7) {
     'Fails to set permission for bogus group';
 }
 
-sub get_groups : Test(6) {
+sub get_groups : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
@@ -338,6 +338,17 @@ sub get_groups : Test(6) {
     my @found_read = $coll->get_groups('read');
     is_deeply(\@found_read, $expected_read, 'Expected read groups')
       or diag explain \@found_read;
+
+    $irods->group_filter(sub {
+                           my ($owner) = @_;
+                           if ($owner =~ m{^(public|ss_)}) {
+                             return 1;
+                           }
+                         });
+    my $expected_filter = ['public', 'ss_0', 'ss_10'];
+    my @found_filter  = $coll->get_groups;
+    is_deeply(\@found_filter, $expected_filter, 'Expected filtered groups')
+      or diag explain \@found_filter;
   }
 
   my $expected_own = [];

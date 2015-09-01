@@ -8,7 +8,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 91;
+use Test::More tests => 89;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -159,10 +159,11 @@ sub get_avu : Test(3) {
   is_deeply($avu, {attribute => 'a', value => 'x', units => 'cm'},
             'Matched one AVU 1');
 
-  ok(!$obj->get_avu('does_not_exist', 'does_not_exist'), 'Handles missing AVU');
+  ok(!$obj->get_avu('does_not_exist', 'does_not_exist'),
+     'Handles missing AVU');
 
   dies_ok { $obj_path->get_avu('a') }
-    "Expected to fail getting ambiguous AVU";
+    'Expected to fail getting ambiguous AVU';
 }
 
 sub add_avu : Test(5) {
@@ -301,7 +302,7 @@ sub supersede_avus : Test(10) {
     or diag explain $meta3;
 }
 
-sub supersede_multivalue_avus : Test(7) {
+sub supersede_multivalue_avus : Test(6) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
   my $history_timestamp1 = DateTime->now;
@@ -487,7 +488,7 @@ sub get_groups : Test(7) {
 
  SKIP: {
     if (not $irods->group_exists('ss_0')) {
-      skip "Skipping test requiring the test group ss_0", 5;
+      skip "Skipping test requiring the test group ss_0", 6;
     }
 
     ok($irods->set_object_permissions('read', 'public', $obj_path));
@@ -522,14 +523,14 @@ sub get_groups : Test(7) {
     or diag explain \@found_own;
 }
 
-sub update_group_permissions : Test(13) {
+sub update_group_permissions : Test(12) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
  SKIP: {
     if (not $irods->group_exists('ss_0')) {
-      skip "Skipping test requiring the test group ss_0", 13;
+      skip "Skipping test requiring the test group ss_0", 12;
     }
 
     # Begin
@@ -571,7 +572,7 @@ sub update_group_permissions : Test(13) {
     # mode
     dies_ok {
       my $strict_groups = 1;
-      ok($obj->update_group_permissions($strict_groups));
+      $obj->update_group_permissions($strict_groups);
     } 'An unknown iRODS group causes failure';
   }
 }

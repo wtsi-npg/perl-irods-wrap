@@ -2,6 +2,6 @@
 use strict;
 use warnings;
 
-use WTSI::NPG::iRODSTest;;
+use WTSI::NPG::iRODSTest;
 
 Test::Class->runtests;

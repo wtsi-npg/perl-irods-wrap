@@ -1,0 +1,14 @@
+
+Release 1.8.0
+
+ - New methods WTSI::NPG::iRODS::is_collection and
+   WTSI::NPG::iRODS::is_object.
+
+ - New attribute WTSI::NPG::iRODS::group_filter.
+
+ - Checking of string arguments representing iRODS paths is now
+   tighter where they are expected specifically to be a collection or
+   data object.
+
+ - Metadata values are now able to be set to '0' (bug fix).
+

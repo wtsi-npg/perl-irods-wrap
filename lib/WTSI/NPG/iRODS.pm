@@ -6,7 +6,7 @@ use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
-use List::AllUtils qw(any);
+use List::AllUtils qw(any uniq);
 use Moose;
 
 use WTSI::DNAP::Utilities::Runnable;
@@ -37,7 +37,13 @@ our $IPUT        = 'iput';
 our $IRM         = 'irm';
 our $MD5SUM      = 'md5sum';
 
-our @VALID_PERMISSIONS = qw(null read write own);
+our $READ_PERMISSION  = 'read';
+our $WRITE_PERMISSION = 'write';
+our $OWN_PERMISSION   = 'own';
+our $NULL_PERMISSION  = 'null';
+
+our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
+                          $WRITE_PERMISSION, $OWN_PERMISSION);
 
 has 'strict_baton_version' =>
   (is            => 'ro',
@@ -538,11 +544,15 @@ sub remove_group {
 
 =head2 set_group_access
 
-  Arg [1]    : A permission string, 'read', 'write', 'own' or undef ('null')
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
   Arg [2]    : An iRODS group name.
   Arg [3]    : One or more data objects or collections.
 
-  Example    : $irods->set_group_access('read', 'public', $object1, $object2)
+  Example    : $irods->set_group_access($WTSI::NPG::iRODS::READ_PERMISSION,
+                                        'public', $object1, $object2)
   Description: Set the access rights on one or more objects for a group,
                returning the objects.
   Returntype : Array
@@ -552,7 +562,7 @@ sub remove_group {
 sub set_group_access {
   my ($self, $permission, $group, @objects) = @_;
 
-  my $perm_str = defined $permission ? $permission : 'null';
+  my $perm_str = defined $permission ? $permission : $NULL_PERMISSION;
 
   foreach my $object (@objects) {
     $self->set_object_permissions($perm_str, $group, $object);
@@ -875,8 +885,10 @@ sub set_collection_permissions {
 =head2 get_collection_groups
 
   Arg [1]    : iRODS collection path.
-  Arg [2]    : Permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [2]    : Permission, Str.  One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
   Example    : $irods->get_collection_groups($path)
   Description: Return a list of the data access groups in the collection's ACL.
@@ -897,7 +909,7 @@ sub get_collection_groups {
 
   $collection = $self->_ensure_collection_path($collection);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -944,7 +956,7 @@ sub get_collection_meta {
 
   my @avus = $self->meta_lister->list_collection_meta($collection);
 
-  return _sort_avus(@avus);
+  return $self->sort_avus(@avus);
 }
 
 =head2 add_collection_avu
@@ -1522,7 +1534,7 @@ sub set_object_permissions {
 
   $object = $self->_ensure_object_path($object);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -1544,8 +1556,10 @@ sub set_object_permissions {
 =head2 get_object_groups
 
   Arg [1]    : iRODS data object path.
-  Arg [2]    : permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [2]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
@@ -1566,7 +1580,7 @@ sub get_object_groups {
 
   $object = $self->_ensure_object_path($object);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -1612,7 +1626,7 @@ sub get_object_meta {
 
   my @avus = $self->meta_lister->list_object_meta($object);
 
-  return _sort_avus(@avus);
+  return $self->sort_avus(@avus);
 }
 
 =head2 add_object_avu
@@ -2045,6 +2059,116 @@ sub is_avu_history_attr {
   return $attribute =~ m{.*_history$}msx;
 }
 
+=head2 make_avu
+
+  Arg [1]    : An attribute, Str
+  Arg [2]    : A value, Str
+  Arg [3]    : Units, Str or undef. (Optional, defaults to undef)
+
+  Example    : my $avu = $irods->make_avu($attr, $value);
+  Description: Return a new AVU of the form
+                 {attribute => $attribute,
+                  value     => $value,
+                  units     => $units}
+  Returntype : HashRef
+
+=cut
+
+sub make_avu {
+  my ($self, $attribute, $value, $units) = @_;
+
+  defined $attribute or
+    $self->logconfess('A defined attribute argument is required');
+  defined $value or
+    $self->logconfess('A defined value argument is required');
+
+  $attribute eq q{} and
+    $self->logconfess('A non-empty attribute argument is required');
+  $value eq q{} and
+    $self->logconfess('A non-empty value argument is required');
+
+  return {attribute => $attribute,
+          value     => $value,
+          units     => $units};
+}
+
+=head2 remove_duplicate_avus
+
+  Arg [1]    : Array of AVUs, Array[HashRef].
+
+  Example    : my @unique = $irods->remove_duplicate_avus
+                  ({attribute => $attribute1,
+                    value     => $value1},
+                   {attribute => $attribute2,
+                    value     => $value2,
+                    units     => $units2});
+
+  Description: Return a new Array of AVUs, without duplicates.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub remove_duplicate_avus {
+  my ($self, @avus) = @_;
+
+  my %metadata_tree;
+  foreach my $avu (@avus) {
+    my $a = $avu->{attribute};
+    my $u = $avu->{units} || q{}; # Empty string as a hash key proxy
+                                  # for undef
+
+    if (exists $metadata_tree{$a}{$u}) {
+      push @{$metadata_tree{$a}{$u}}, $avu->{value}
+    }
+    else {
+      $metadata_tree{$a}{$u} = [$avu->{value}]
+    }
+  }
+
+  my @uniq;
+  foreach my $a (keys %metadata_tree) {
+    foreach my $u (keys $metadata_tree{$a}) {
+      my @values = uniq @{$metadata_tree{$a}{$u}};
+
+      foreach my $v (@values) {
+        push @uniq, $self->make_avu($a, $v, $u ? $u : undef);
+      }
+    }
+  }
+
+  return $self->sort_avus(@uniq);
+}
+
+=head2 sort_avus
+
+  Arg [1]    : Array of AVUs, Array[HashRef].
+
+  Example    : my @sortef = $irods->sort_avus
+                  ({attribute => $attribute1,
+                    value     => $value1},
+                   {attribute => $attribute2,
+                    value     => $value2,
+                    units     => $units2});
+
+  Description: Return a new Array of AVUs, sorted first by attribute,
+               then by value, then by units.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub sort_avus {
+  my ($self, @avus) = @_;
+
+  my @sorted = sort {
+     $a->{attribute} cmp $b->{attribute}                    ||
+     $a->{value}     cmp $b->{value}                        ||
+     (( defined $a->{units} && !defined $b->{units}) && -1) ||
+     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
+     $a->{units}     cmp $b->{units} } @avus;
+
+  return @sorted;
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -2113,19 +2237,6 @@ sub _make_avu_history {
   return {attribute => $history_attribute,
           value     => $history_value,
           units     => undef};
-}
-
-sub _sort_avus {
-  my (@avus) = @_;
-
-  my @sorted = sort {
-     $a->{attribute} cmp $b->{attribute}                    ||
-     $a->{value}     cmp $b->{value}                        ||
-     (( defined $a->{units} && !defined $b->{units}) && -1) ||
-     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
-     $a->{units}     cmp $b->{units} } @avus;
-
-  return @sorted;
 }
 
 __PACKAGE__->meta->make_immutable;

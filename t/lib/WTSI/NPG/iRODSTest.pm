@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 223;
+use Test::More tests => 233;
 
 use Test::Exception;
 
@@ -1150,6 +1150,69 @@ sub slurp_object : Test(1) {
   }
 
   ok(Unicode::Collate->new->eq($data, $original), 'Slurped copy is identical');
+}
+
+sub make_avu : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $expected1 = {attribute => 'a', value => 'b', units => 'c'};
+  my $avu1 = $irods->make_avu('a', 'b', 'c');
+  is_deeply($avu1, $expected1, 'AVU with units') or diag explain $avu1;
+
+  my $expected2 = {attribute => 'a', value => 'b', units => undef};
+  my $avu2 = $irods->make_avu('a', 'b');
+  is_deeply($avu2, $expected2, 'AVU without units') or diag explain $avu2;
+
+  dies_ok {
+    $irods->make_avu(undef, 'b');
+  } 'AVU must have a defined attribute';
+
+  dies_ok {
+    $irods->make_avu('a', undef);
+  } 'AVU must have a defined value';
+
+  dies_ok {
+    $irods->make_avu(q{}, 'b');
+  } 'AVU must have a non-empty attribute';
+
+  dies_ok {
+    $irods->make_avu('a', q{});
+  } 'AVU must have a non-empty value';
+}
+
+sub remote_duplicate_avus : Test(4) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  # Single AVU (no-op)
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b')]);
+
+  # Only a duplicate
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b')]);
+
+  # Single plus a duplicate, illustrating sorting
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('c', 'd'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b'),
+             $irods->make_avu('c', 'd')]);
+
+  # Multiple duplicates, illustrating sorting
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('c', 'd'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('c', 'e'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('c', 'd'),
+                                           $irods->make_avu('c', 'e'))],
+            [$irods->make_avu('a', 'b'),
+             $irods->make_avu('a', 'c'),
+             $irods->make_avu('c', 'd'),
+             $irods->make_avu('c', 'e')]);
 }
 
 1;

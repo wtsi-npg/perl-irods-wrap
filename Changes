@@ -1,4 +1,21 @@
 
+Since release
+
+ - New methods WTSI::NPG::iRODS::make_avu, WTSI::NPG::iRODS::sort_avus and
+   WTSI::NPG::iRODS::remove_duplicate_avus.
+
+ - New package WTSI::NPG::iRODS::Metadata which exports values to describe
+   metadata. Use these in conjunction with WTSI::NPG::iRODS::Annotation to
+   consistently describe metadata attributes.
+
+ - Moved WTSI::NPG::Annotation to WTSI::NPG::iRODS::Annotation.
+
+ - Removed Moose role WTSI::NPG::Annotatable.
+
+ - Support both $WTSI::NPG::iRODS::Metadata::SAMPLE_CONSENT and
+   $WTSI::NPG::iRODS::Metadata::SAMPLE_CONSENT_WITHDRAWN in updating
+   ACLs from study metadata.
+
 Release 1.8.0
 
  - New methods WTSI::NPG::iRODS::is_collection and

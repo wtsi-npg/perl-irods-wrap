@@ -14,7 +14,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 233;
+use Test::More tests => 242;
 
 use Test::Exception;
 
@@ -1214,5 +1214,46 @@ sub remote_duplicate_avus : Test(4) {
              $irods->make_avu('c', 'd'),
              $irods->make_avu('c', 'e')]);
 }
+
+sub avus_equal : Test(9) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                        {attribute => 'a', value => 'v', units => 'u'}),
+     'AVUs =');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'b', value => 'v', units => 'u'}),
+     'AVUs != on a');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'w', units => 'u'}),
+     'AVUs != on v');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'v', units => 'v'}),
+     'AVUs != on u');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'a', value => 'v', units => 'u'}),
+     'AVU != AV');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'v'}),
+     'AV != AVU');
+
+  ok($irods->avus_equal({attribute => 'a', value => 'v'},
+                        {attribute => 'a', value => 'v'}),
+     'AVs =');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'b', value => 'v'}),
+     'AVs != on a');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'a', value => 'w'}),
+     'AVs != on u');
+}
+
 
 1;

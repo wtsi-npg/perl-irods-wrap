@@ -314,7 +314,10 @@ sub update_group_permissions {
   $self->debug("Permissions before: [", join(", ", @groups_permissions), "]");
   $self->debug("Updated annotations: [", join(", ", @groups_annotated), "]");
 
-  if ($self->get_avu($self->sample_consent_attr, 0)) {
+  my $true  = 1;
+  my $false = 0;
+  if ($self->get_avu($self->metadata_attr('sample_consent'), $false) or
+      $self->get_avu($self->metadata_attr('sample_consent_withdrawn'), $true)) {
     $self->info("Data is marked as CONSENT WITHDRAWN; ",
                 "all permissions will be withdrawn");
     @groups_annotated = (); # Emptying this means all will be removed

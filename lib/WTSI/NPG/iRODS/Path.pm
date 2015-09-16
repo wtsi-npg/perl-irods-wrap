@@ -6,11 +6,12 @@ use List::AllUtils qw(any notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 
 our $VERSION = '';
 
-with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotatable',
-  'WTSI::DNAP::Utilities::JSONCodec';
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::DNAP::Utilities::JSONCodec',
+  'WTSI::NPG::iRODS::Utilities', 'WTSI::NPG::iRODS::Annotation';
 
 has 'collection' =>
   (is        => 'ro',
@@ -279,7 +280,7 @@ sub supersede_multivalue_avus {
 
   Example    : @groups = $path->expected_groups
   Description: Return an array of iRODS group names given metadata containing
-               >=1 study_id under the key Annotation::study_id_attr
+               >=1 study_id.
   Returntype : Array
 
 =cut
@@ -287,7 +288,7 @@ sub supersede_multivalue_avus {
 sub expected_groups {
   my ($self) = @_;
 
-  my @ss_study_avus = $self->find_in_metadata($self->study_id_attr);
+  my @ss_study_avus = $self->find_in_metadata($self->metadata_attr($STUDY_ID));
 
   my @groups;
   foreach my $avu (@ss_study_avus) {
@@ -370,15 +371,15 @@ sub _update_multivalue_avus {
   foreach my $old_avu (@old_avus) {
     $num_old_processed++;
 
-    if (any { _avus_equal($old_avu, $_) } @new_avus) {
+    if (any { $self->avus_equal($old_avu, $_) } @new_avus) {
       $self->debug("Not updating (retaining) old AVU ",
-                   _avu_str($old_avu), " on '", $self->str,
+                   $self->avu_str($old_avu), " on '", $self->str,
                    "' [$num_old_processed / $num_old]");
       push @retained_avus, $old_avu;
     }
     else {
       $self->debug("Updating (removing) old AVU ",
-                   _avu_str($old_avu), " from '", $self->str,
+                   $self->avu_str($old_avu), " from '", $self->str,
                    "' [$num_old_processed / $num_old]");
       $self->remove_avu($old_avu->{attribute},
                         $old_avu->{value},
@@ -397,15 +398,15 @@ sub _update_multivalue_avus {
   foreach my $new_avu (@new_avus) {
     $num_new_processed++;
 
-    if (any { _avus_equal($new_avu, $_) } @retained_avus) {
+    if (any { $self->avus_equal($new_avu, $_) } @retained_avus) {
       $self->debug("Updating (using retained) new AVU ",
-                   _avu_str($new_avu), " on '", $self->str,
+                   $self->avu_str($new_avu), " on '", $self->str,
                    "' [$num_new_processed / $num_new]");
     }
     else {
       # If we can't re-use a retained AVU, we must add this one
       $self->debug("Updating (adding) new AVU ",
-                   _avu_str($new_avu), " to '", $self->str,
+                   $self->avu_str($new_avu), " to '", $self->str,
                    "' [$num_new_processed / $num_new]");
       $self->add_avu($new_avu->{attribute},
                      $new_avu->{value},
@@ -416,35 +417,12 @@ sub _update_multivalue_avus {
 
   # Only add history if some AVUs were removed or added
   if (($num_old_removed > 0 || $num_new_added > 0) && defined $history_avu) {
-    $self->debug("Adding history AVU ", _avu_str($history_avu),
+    $self->debug("Adding history AVU ", $self->avu_str($history_avu),
                  " to ", $self->str);
     $self->add_avu($history_avu->{attribute}, $history_avu->{value});
   }
 
   return $self;
-}
-
-sub _avus_equal {
-  my ($new_avu, $old_avu) = @_;
-
-  return ((defined $new_avu->{units} && defined $old_avu->{units} &&
-           $new_avu->{attribute} eq $old_avu->{attribute} &&
-           $new_avu->{value}     eq $old_avu->{value} &&
-           $new_avu->{units}     eq $old_avu->{units})
-          ||
-          (!defined $new_avu->{units} && !defined $old_avu->{units} &&
-           $new_avu->{attribute} eq $old_avu->{attribute} &&
-           $new_avu->{value}     eq $old_avu->{value}));
-}
-
-sub _avu_str {
-  my ($avu) = @_;
-
-  my ($attribute, $value, $units) =
-    map { defined $_ ? $_ : 'undef' }
-      ($avu->{attribute}, $avu->{value}, $avu->{units});
-
-  return sprintf "{'%s', '%s', '%s'}", $attribute, $value, $units;
 }
 
 no Moose;

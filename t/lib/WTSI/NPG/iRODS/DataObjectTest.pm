@@ -16,6 +16,7 @@ Log::Log4perl::init('./etc/log4perl_tests.conf');
 BEGIN { use_ok('WTSI::NPG::iRODS::DataObject'); }
 
 use WTSI::NPG::iRODS::DataObject;
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 
 my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
@@ -540,7 +541,7 @@ sub update_group_permissions : Test(12) {
     ok($r0, 'No ss_0 read access');
 
     # Add a study 0 AVU and use it to update (add) permissions
-    ok($obj->add_avu('study_id', '0'));
+    ok($obj->add_avu($obj->metadata_attr($STUDY_ID), '0'));
     ok($obj->update_group_permissions);
 
     my $r1 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
@@ -549,7 +550,7 @@ sub update_group_permissions : Test(12) {
     ok($r1, 'Added ss_0 read access');
 
     # Remove the study 0 AVU and use it to update (remove) permissions
-    ok($obj->remove_avu('study_id', '0'));
+    ok($obj->remove_avu($obj->metadata_attr($STUDY_ID), '0'));
     ok($obj->update_group_permissions);
 
     my $r2 = none { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
@@ -559,8 +560,8 @@ sub update_group_permissions : Test(12) {
 
     # Add a study 0 AVU and use it to update (add) permissions
     # in the presence of anAVU that will infer a non-existent group
-    ok($obj->add_avu('study_id', '0'));
-    ok($obj->add_avu('study_id', 'no_such_group'));
+    ok($obj->add_avu($obj->metadata_attr($STUDY_ID), '0'));
+    ok($obj->add_avu($obj->metadata_attr($STUDY_ID), 'no_such_study'));
     ok($obj->update_group_permissions);
 
     my $r3 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&

@@ -8,6 +8,8 @@ use Set::Scalar;
 use Try::Tiny;
 
 use WTSI::NPG::iRODS;
+use WTSI::NPG::iRODS::Metadata qw($SAMPLE_CONSENT
+                                  $SAMPLE_CONSENT_WITHDRAWN);
 
 our $VERSION = '';
 
@@ -316,8 +318,8 @@ sub update_group_permissions {
 
   my $true  = 1;
   my $false = 0;
-  if ($self->get_avu($self->metadata_attr('sample_consent'), $false) or
-      $self->get_avu($self->metadata_attr('sample_consent_withdrawn'), $true)) {
+  if ($self->get_avu($self->metadata_attr($SAMPLE_CONSENT),          $false) or
+      $self->get_avu($self->metadata_attr($SAMPLE_CONSENT_WITHDRAWN), $true)) {
     $self->info("Data is marked as CONSENT WITHDRAWN; ",
                 "all permissions will be withdrawn");
     @groups_annotated = (); # Emptying this means all will be removed

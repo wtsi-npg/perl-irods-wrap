@@ -11,6 +11,7 @@ use Moose;
 
 use WTSI::DNAP::Utilities::Runnable;
 
+use WTSI::NPG::iRODS::Metadata qw($FILE_MD5);
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -1928,7 +1929,7 @@ sub validate_checksum_metadata {
   $object = $self->_ensure_object_path($object);
 
   my $identical = 0;
-  my $key = $self->metadata_attr('file_md5');
+  my $key = $self->metadata_attr($FILE_MD5);
   my @md5 = grep { $_->{attribute} eq $key } $self->get_object_meta($object);
 
   unless (@md5) {

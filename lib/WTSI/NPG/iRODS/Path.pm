@@ -6,6 +6,7 @@ use List::AllUtils qw(any notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 
 our $VERSION = '';
 
@@ -287,7 +288,7 @@ sub supersede_multivalue_avus {
 sub expected_groups {
   my ($self) = @_;
 
-  my @ss_study_avus = $self->find_in_metadata($self->metadata_attr('study_id'));
+  my @ss_study_avus = $self->find_in_metadata($self->metadata_attr($STUDY_ID));
 
   my @groups;
   foreach my $avu (@ss_study_avus) {

@@ -5,8 +5,36 @@ use strict;
 use warnings;
 use Moose::Role;
 
-our $VERSION = '';
+use WTSI::NPG::iRODS::Metadata qw(
+                                   $DCTERMS_AUDIENCE
+                                   $DCTERMS_CREATED
+                                   $DCTERMS_CREATOR
+                                   $DCTERMS_IDENTIFIER
+                                   $DCTERMS_MODIFIED
+                                   $DCTERMS_PUBLISHER
+                                   $DCTERMS_TITLE
+                                   $FILE_MD5
+                                   $FILE_TYPE
+                                   $REFERENCE_GENOME_NAME
+                                   $RT_TICKET
+                                   $SAMPLE_ACCESSION_NUMBER
+                                   $SAMPLE_COHORT
+                                   $SAMPLE_COMMON_NAME
+                                   $SAMPLE_CONSENT
+                                   $SAMPLE_CONSENT_WITHDRAWN
+                                   $SAMPLE_CONTROL
+                                   $SAMPLE_DONOR_ID
+                                   $SAMPLE_ID
+                                   $SAMPLE_NAME
+                                   $SAMPLE_PLUBLIC_NAME
+                                   $SAMPLE_SUPPLIER_NAME
+                                   $STUDY_ACCESSION_NUMBER
+                                   $STUDY_ID
+                                   $STUDY_NAME
+                                   $STUDY_TITLE
+                                );
 
+our $VERSION = '';
 
 has 'metadata_attributes' =>
   (is            => 'ro',
@@ -14,28 +42,32 @@ has 'metadata_attributes' =>
    required      => 1,
    default       => sub {
      return {
-             dcterms_audience        => 'dcterms:audience',
-             dcterms_created         => 'dcterms:created',
-             dcterms_creator         => 'dcterms:creator',
-             dcterms_identifier      => 'dcterms:identifier',
-             dcterms_modified        => 'dcterms:modified',
-             dcterms_publisher       => 'dcterms:publisher',
-             dcterms_title           => 'dcterms:title',
-             file_md5                => 'md5',
-             file_type               => 'type',
-             reference_genome_name   => 'reference_name',
-             rt_ticket               => 'rt_ticket',
-             sample_accession_number => 'sample_accession_number',
-             sample_cohort           => 'sample_cohort',
-             sample_common_name      => 'sample_common_name',
-             sample_control          => 'sample_control',
-             sample_donor_id         => 'sample_donor_id',
-             sample_id               => 'sample_id',
-             sample_name             => 'sample',
-             sample_supplier_name    => 'sample_supplier_name',
-             study_id                => 'study_id',
-             study_id                => 'study_id',
-             study_title             => 'study_title'
+             $DCTERMS_AUDIENCE         => 'dcterms:audience',
+             $DCTERMS_CREATED          => 'dcterms:created',
+             $DCTERMS_CREATOR          => 'dcterms:creator',
+             $DCTERMS_IDENTIFIER       => 'dcterms:identifier',
+             $DCTERMS_MODIFIED         => 'dcterms:modified',
+             $DCTERMS_PUBLISHER        => 'dcterms:publisher',
+             $DCTERMS_TITLE            => 'dcterms:title',
+             $FILE_MD5                 => 'md5',
+             $FILE_TYPE                => 'type',
+             $REFERENCE_GENOME_NAME    => 'reference_name',
+             $RT_TICKET                => 'rt_ticket',
+             $SAMPLE_ACCESSION_NUMBER  => 'sample_accession_number',
+             $SAMPLE_COHORT            => 'sample_cohort',
+             $SAMPLE_COMMON_NAME       => 'sample_common_name',
+             $SAMPLE_CONSENT           => 'sample_consent',
+             $SAMPLE_CONSENT_WITHDRAWN => 'sample_consent_withdrawn',
+             $SAMPLE_CONTROL           => 'sample_control',
+             $SAMPLE_DONOR_ID          => 'sample_donor_id',
+             $SAMPLE_ID                => 'sample_id',
+             $SAMPLE_NAME              => 'sample',
+             $SAMPLE_PLUBLIC_NAME      => 'sample_public_name',
+             $SAMPLE_SUPPLIER_NAME     => 'sample_supplier_name',
+             $STUDY_ACCESSION_NUMBER   => 'study_accession_number',
+             $STUDY_ID                 => 'study_id',
+             $STUDY_NAME               => 'study',
+             $STUDY_TITLE              => 'study_title'
             }
    },
    documentation => 'A mapping of metadata name to the attribute under ' .
@@ -45,7 +77,7 @@ has 'metadata_attributes' =>
 
   Arg [1]    : None.
 
-  Example    : my @valid_names  = $obj->metadata_names;
+  Example    : my @valid_names = $obj->metadata_names;
   Description: Returns a sorted list of all the valis metadata names.
   Returntype : Array[Str].
 
@@ -64,7 +96,7 @@ sub metadata_names {
 
   Arg [1]    : Name, Str.
 
-  Example    : $obj->is_metadata_attr('sample_name');
+  Example    : $obj->is_metadata_attr($WTSI::NPG::iRODS::Metadata::SAMPLE_ID);
   Description: Returns true if the argument names a valid type of metadata
                attribute.
   Returntype : Bool.
@@ -81,12 +113,12 @@ sub is_metadata_attr {
 
   Arg [1]    : Name, Str
 
-  Example    : my $attr = $obj->metadata_attr('sample_name');
+  Example    : my $attr = $obj->metadata_attr
+                   ($WTSI::NPG::iRODS::Metadata::SAMPLE_ID);
   Description: Return the metadata attribute under which the named
                data are stored. The name and attribute may be the
-               same. However, sometimes the attribute is different e.g.
-               the 'sample_name' has historically been stored under
-               the 'sample' attribute.
+               same. However, the default behaviour for the names
+               to be those exported from WTSI::NPG::iRODS::Metadata.
   Returntype : Str
 
 =cut

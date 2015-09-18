@@ -26,7 +26,7 @@ our @EXPORT_OK = qw(
                      $SAMPLE_DONOR_ID
                      $SAMPLE_ID
                      $SAMPLE_NAME
-                     $SAMPLE_PLUBLIC_NAME
+                     $SAMPLE_PUBLIC_NAME
                      $SAMPLE_SUPPLIER_NAME
                      $STUDY_ACCESSION_NUMBER
                      $STUDY_ID
@@ -56,7 +56,7 @@ our $SAMPLE_CONTROL           = __PACKAGE__ . '::sample_control';
 our $SAMPLE_DONOR_ID          = __PACKAGE__ . '::sample_donor_id';
 our $SAMPLE_ID                = __PACKAGE__ . '::sample_id';
 our $SAMPLE_NAME              = __PACKAGE__ . '::sample_name';
-our $SAMPLE_PLUBLIC_NAME      = __PACKAGE__ . '::sample_plublic_name';
+our $SAMPLE_PUBLIC_NAME       = __PACKAGE__ . '::sample_public_name';
 our $SAMPLE_SUPPLIER_NAME     = __PACKAGE__ . '::sample_supplier_name';
 our $STUDY_ACCESSION_NUMBER   = __PACKAGE__ . '::study_accession_number';
 our $STUDY_ID                 = __PACKAGE__ . '::study_id';

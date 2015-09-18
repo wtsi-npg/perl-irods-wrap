@@ -26,7 +26,7 @@ use WTSI::NPG::iRODS::Metadata qw(
                                    $SAMPLE_DONOR_ID
                                    $SAMPLE_ID
                                    $SAMPLE_NAME
-                                   $SAMPLE_PLUBLIC_NAME
+                                   $SAMPLE_PUBLIC_NAME
                                    $SAMPLE_SUPPLIER_NAME
                                    $STUDY_ACCESSION_NUMBER
                                    $STUDY_ID
@@ -62,7 +62,7 @@ has 'metadata_attributes' =>
              $SAMPLE_DONOR_ID          => 'sample_donor_id',
              $SAMPLE_ID                => 'sample_id',
              $SAMPLE_NAME              => 'sample',
-             $SAMPLE_PLUBLIC_NAME      => 'sample_public_name',
+             $SAMPLE_PUBLIC_NAME       => 'sample_public_name',
              $SAMPLE_SUPPLIER_NAME     => 'sample_supplier_name',
              $STUDY_ACCESSION_NUMBER   => 'study_accession_number',
              $STUDY_ID                 => 'study_id',

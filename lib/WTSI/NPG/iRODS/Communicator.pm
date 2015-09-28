@@ -1,6 +1,7 @@
 
 package WTSI::NPG::iRODS::Communicator;
 
+use Encode;
 use Moose;
 use Try::Tiny;
 
@@ -26,7 +27,22 @@ sub communicate {
   try {
     # baton sends JSON responses on a single line
     $self->harness->pump until ${$self->stdout} =~ m{[\r\n]$}msx;
+
+    if ($self->logger->is_debug) {
+      my $octets = q{} . ${$self->stdout};
+      $self->debug("Got response octets: ", $octets);
+
+      my $chars = Encode::decode('UTF-8', $octets);
+      if (defined $chars) {
+        $self->debug("Got response characters: ", $chars);
+      }
+      else {
+        $self->debug("Failed to decode any UTF-8 characters from octets");
+      }
+    }
+
     $response = $self->decode(${$self->stdout});
+
     ${$self->stdout} = q{};
   } catch {
     $self->error("JSON parse error on: '", ${$self->stdout}, "': ", $_);
@@ -34,8 +50,6 @@ sub communicate {
 
   defined $response or
     $self->logconfess("Failed to get a response from JSON spec '$json'");
-
-  $self->debug("Got a response of ", $self->encode($response));
 
   return $response;
 }

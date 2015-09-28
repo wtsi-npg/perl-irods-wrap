@@ -217,7 +217,10 @@ sub get_permissions {
 
 =head2 set_permissions
 
-  Arg [1]    : permission Str, one of 'null', 'read', 'write' or 'own'
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
   Arg [2]    : Array of owners (users and /or groups).
 
   Example    : $coll->set_permissions('read', 'user1', 'group1')
@@ -229,7 +232,8 @@ sub get_permissions {
 sub set_permissions {
   my ($self, $permission, @owners) = @_;
 
-  my $perm_str = defined $permission ? $permission : 'null';
+  my $perm_str = defined $permission ? $permission :
+    $WTSI::NPG::iRODS::NULL_PERMISSION;
 
   my $path = $self->str;
   foreach my $owner (@owners) {
@@ -242,10 +246,12 @@ sub set_permissions {
 
 =head2 get_groups
 
-  Arg [1]    : Permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
-  Example    : $coll->get_groups('read')
+  Example    : $coll->get_groups($WTSI::NPG::iRODS::READ_PERMISSION)
   Description: Return a list of the data access groups in the collection's ACL.
                If a permission level argument is supplied, only groups with
                that level of access will be returned. Only groups having a
@@ -262,10 +268,14 @@ sub get_groups {
 
 =head2 set_content_permissions
 
-  Arg [1]    : permission Str, one of 'null', 'read', 'write' or 'own'
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
   Arg [2]    : Array of owners (users and /or groups).
 
-  Example    : $coll->set_content_permissions('read', 'user1', 'group1')
+  Example    : $coll->set_content_permissions
+                 ($WTSI::NPG::iRODS::READ_PERMISSION, 'user1', 'group1')
   Description: Recursively set access permissions on the collection and
                its contents. Return self.
   Returntype : WTSI::NPG::iRODS::Collection
@@ -275,7 +285,8 @@ sub get_groups {
 sub set_content_permissions {
   my ($self, $permission, @owners) = @_;
 
-  my $perm_str = defined $permission ? $permission : 'null';
+  my $perm_str = defined $permission ? $permission :
+    $WTSI::NPG::iRODS::NULL_PERMISSION;
 
   my $path = $self->str;
   my ($objects, $collections) = $self->irods->list_collection($path, 'RECURSE');

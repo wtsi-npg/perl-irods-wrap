@@ -1,16 +1,17 @@
-
 package WTSI::NPG::iRODS;
 
+use namespace::autoclean;
 use DateTime;
 use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
-use List::AllUtils qw(any);
+use List::AllUtils qw(any uniq);
 use Moose;
 
 use WTSI::DNAP::Utilities::Runnable;
 
+use WTSI::NPG::iRODS::Metadata qw($FILE_MD5);
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -19,7 +20,7 @@ use WTSI::NPG::iRODS::MetaModifier;
 use WTSI::NPG::iRODS::MetaSearcher;
 use WTSI::NPG::iRODS::Types qw(:all);
 
-with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::Annotation';
+with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
@@ -35,9 +36,14 @@ our $IMKDIR      = 'imkdir';
 our $IMV         = 'imv';
 our $IPUT        = 'iput';
 our $IRM         = 'irm';
-our $MD5SUM      = 'md5sum';
 
-our @VALID_PERMISSIONS = qw(null read write own);
+our $READ_PERMISSION  = 'read';
+our $WRITE_PERMISSION = 'write';
+our $OWN_PERMISSION   = 'own';
+our $NULL_PERMISSION  = 'null';
+
+our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
+                          $WRITE_PERMISSION, $OWN_PERMISSION);
 
 has 'strict_baton_version' =>
   (is            => 'ro',
@@ -538,11 +544,15 @@ sub remove_group {
 
 =head2 set_group_access
 
-  Arg [1]    : A permission string, 'read', 'write', 'own' or undef ('null')
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
   Arg [2]    : An iRODS group name.
   Arg [3]    : One or more data objects or collections.
 
-  Example    : $irods->set_group_access('read', 'public', $object1, $object2)
+  Example    : $irods->set_group_access($WTSI::NPG::iRODS::READ_PERMISSION,
+                                        'public', $object1, $object2)
   Description: Set the access rights on one or more objects for a group,
                returning the objects.
   Returntype : Array
@@ -552,7 +562,7 @@ sub remove_group {
 sub set_group_access {
   my ($self, $permission, $group, @objects) = @_;
 
-  my $perm_str = defined $permission ? $permission : 'null';
+  my $perm_str = defined $permission ? $permission : $NULL_PERMISSION;
 
   foreach my $object (@objects) {
     $self->set_object_permissions($perm_str, $group, $object);
@@ -875,8 +885,10 @@ sub set_collection_permissions {
 =head2 get_collection_groups
 
   Arg [1]    : iRODS collection path.
-  Arg [2]    : Permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [2]    : Permission, Str.  One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
   Example    : $irods->get_collection_groups($path)
   Description: Return a list of the data access groups in the collection's ACL.
@@ -897,7 +909,7 @@ sub get_collection_groups {
 
   $collection = $self->_ensure_collection_path($collection);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -944,7 +956,7 @@ sub get_collection_meta {
 
   my @avus = $self->meta_lister->list_collection_meta($collection);
 
-  return _sort_avus(@avus);
+  return $self->sort_avus(@avus);
 }
 
 =head2 add_collection_avu
@@ -1522,7 +1534,7 @@ sub set_object_permissions {
 
   $object = $self->_ensure_object_path($object);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -1544,8 +1556,10 @@ sub set_object_permissions {
 =head2 get_object_groups
 
   Arg [1]    : iRODS data object path.
-  Arg [2]    : permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [2]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
   Example    : $irods->get_object_groups($path)
   Description: Return a list of the data access groups in the object's ACL.
@@ -1566,7 +1580,7 @@ sub get_object_groups {
 
   $object = $self->_ensure_object_path($object);
 
-  my $perm_str = defined $level ? $level : 'null';
+  my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
   any { $perm_str eq $_ } @VALID_PERMISSIONS or
     $self->logconfess("Invalid permission level '$perm_str'");
@@ -1612,7 +1626,7 @@ sub get_object_meta {
 
   my @avus = $self->meta_lister->list_object_meta($object);
 
-  return _sort_avus(@avus);
+  return $self->sort_avus(@avus);
 }
 
 =head2 add_object_avu
@@ -1914,8 +1928,8 @@ sub validate_checksum_metadata {
   $object = $self->_ensure_object_path($object);
 
   my $identical = 0;
-  my $key = $self->file_md5_attr;
-  my @md5 = grep { $_->{attribute} eq $key } $self->get_object_meta($object);
+  my @md5 = grep { $_->{attribute} eq $FILE_MD5 }
+    $self->get_object_meta($object);
 
   unless (@md5) {
     $self->logconfess("Failed to validate MD5 metadata for '$object' ",
@@ -1942,67 +1956,12 @@ sub validate_checksum_metadata {
   return $identical;
 }
 
-=head2 md5sum
-
-  Arg [1]    : String path to a file.
-
-  Example    : my $md5 = $irods->md5sum($filename)
-  Description: Calculate the MD5 checksum of a local file.
-  Returntype : Str
-
-=cut
-
-sub md5sum {
-  my ($self, $file) = @_;
-
-  defined $file or $self->logconfess('A defined file argument is required');
-  $file eq q{} and $self->logconfess('A non-empty file argument is required');
-
-  my @result = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $MD5SUM,
-     arguments   => [$file],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
-  my $raw = shift @result;
-
-  my ($md5) = $raw =~ m{^(\S+)\s+.*}msx;
-
-  return $md5;
-}
-
-=head2 hash_path
-
-  Arg [1]    : String path to a file.
-  Arg [2]    : MD5 checksum (optional).
-
-  Example    : my $path = $irods->hash_path($filename)
-  Description: Return a hashed path 3 directories deep, each level having
-               a maximum of 256 subdirectories, calculated from the file's
-               MD5. If the optional MD5 argument is supplied, the MD5
-               calculation is skipped and the provided value is used instead.
-  Returntype : Str
-
-=cut
-
-sub hash_path {
-  my ($self, $file, $md5sum) = @_;
-
-  $md5sum ||= $self->md5sum($file);
-  unless ($md5sum) {
-    $self->logconfess("Failed to caculate an MD5 for $file");
-  }
-
-  my @levels = $md5sum =~ m{\G(..)}gmsx;
-
-  return (join q{/}, @levels[0..2]);
-}
-
 =head2 avu_history_attr
 
   Arg [1]    : iRODS data object path.
   Arg [2]    : attribute.
 
-  Example    : $irods->make_avu_history_attr('/my/path/lorem.txt', 'id');
+  Example    : $irods->avu_history_attr('/my/path/lorem.txt', 'id');
   Description: Return the new history AVU attribute corresponding to the
                specified attribute.
   Returntype : Str
@@ -2113,19 +2072,6 @@ sub _make_avu_history {
   return {attribute => $history_attribute,
           value     => $history_value,
           units     => undef};
-}
-
-sub _sort_avus {
-  my (@avus) = @_;
-
-  my @sorted = sort {
-     $a->{attribute} cmp $b->{attribute}                    ||
-     $a->{value}     cmp $b->{value}                        ||
-     (( defined $a->{units} && !defined $b->{units}) && -1) ||
-     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
-     $a->{units}     cmp $b->{units} } @avus;
-
-  return @sorted;
 }
 
 __PACKAGE__->meta->make_immutable;

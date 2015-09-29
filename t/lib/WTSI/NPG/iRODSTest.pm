@@ -1,4 +1,3 @@
-
 package WTSI::NPG::iRODSTest;
 
 use utf8;
@@ -14,7 +13,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 223;
+use Test::More tests => 242;
 
 use Test::Exception;
 
@@ -34,7 +33,7 @@ my $irods_tmp_coll;
 my @groups_added;
 
 my $have_admin_rights =
-  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -1151,5 +1150,109 @@ sub slurp_object : Test(1) {
 
   ok(Unicode::Collate->new->eq($data, $original), 'Slurped copy is identical');
 }
+
+sub make_avu : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $expected1 = {attribute => 'a', value => 'b', units => 'c'};
+  my $avu1 = $irods->make_avu('a', 'b', 'c');
+  is_deeply($avu1, $expected1, 'AVU with units') or diag explain $avu1;
+
+  my $expected2 = {attribute => 'a', value => 'b', units => undef};
+  my $avu2 = $irods->make_avu('a', 'b');
+  is_deeply($avu2, $expected2, 'AVU without units') or diag explain $avu2;
+
+  dies_ok {
+    $irods->make_avu(undef, 'b');
+  } 'AVU must have a defined attribute';
+
+  dies_ok {
+    $irods->make_avu('a', undef);
+  } 'AVU must have a defined value';
+
+  dies_ok {
+    $irods->make_avu(q{}, 'b');
+  } 'AVU must have a non-empty attribute';
+
+  dies_ok {
+    $irods->make_avu('a', q{});
+  } 'AVU must have a non-empty value';
+}
+
+sub remote_duplicate_avus : Test(4) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  # Single AVU (no-op)
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b')]);
+
+  # Only a duplicate
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b')]);
+
+  # Single plus a duplicate, illustrating sorting
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('c', 'd'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'b'))],
+            [$irods->make_avu('a', 'b'),
+             $irods->make_avu('c', 'd')]);
+
+  # Multiple duplicates, illustrating sorting
+  is_deeply([$irods->remove_duplicate_avus($irods->make_avu('c', 'd'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('c', 'e'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('a', 'b'),
+                                           $irods->make_avu('a', 'c'),
+                                           $irods->make_avu('c', 'd'),
+                                           $irods->make_avu('c', 'e'))],
+            [$irods->make_avu('a', 'b'),
+             $irods->make_avu('a', 'c'),
+             $irods->make_avu('c', 'd'),
+             $irods->make_avu('c', 'e')]);
+}
+
+sub avus_equal : Test(9) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                        {attribute => 'a', value => 'v', units => 'u'}),
+     'AVUs =');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'b', value => 'v', units => 'u'}),
+     'AVUs != on a');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'w', units => 'u'}),
+     'AVUs != on v');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'v', units => 'v'}),
+     'AVUs != on u');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'a', value => 'v', units => 'u'}),
+     'AVU != AV');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
+                         {attribute => 'a', value => 'v'}),
+     'AV != AVU');
+
+  ok($irods->avus_equal({attribute => 'a', value => 'v'},
+                        {attribute => 'a', value => 'v'}),
+     'AVs =');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'b', value => 'v'}),
+     'AVs != on a');
+
+  ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
+                         {attribute => 'a', value => 'w'}),
+     'AVs != on u');
+}
+
 
 1;

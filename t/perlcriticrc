@@ -11,7 +11,7 @@ script_sections = NAME | SYNOPSIS | DESCRIPTION | AUTHOR
 
 [-ControlStructures::ProhibitUnlessBlocks]
 [ControlStructures::ProhibitPostfixControls]
-allow = if unless until
+allow = until
 
 [NamingConventions::Capitalization]
 packages = :no_restriction
@@ -21,7 +21,6 @@ private_name_regex = _(?!build_)\w+
 
 [-InputOutput::RequireBriefOpen]
 [-InputOutput::ProhibitBacktickOperators]
-[-InputOutput::RequireBracedFileHandleWithPrint]
 
 [InputOutput::RequireCheckedSyscalls]
 functions = open opendir read readline readdir close closedir

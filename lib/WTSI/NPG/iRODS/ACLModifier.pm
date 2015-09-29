@@ -1,6 +1,6 @@
-
 package WTSI::NPG::iRODS::ACLModifier;
 
+use namespace::autoclean;
 use File::Spec;
 use Moose;
 

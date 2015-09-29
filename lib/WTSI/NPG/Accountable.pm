@@ -1,4 +1,3 @@
-
 package WTSI::NPG::Accountable;
 
 use strict;
@@ -82,12 +81,14 @@ sub accountee_name {
   my ($name) = ($msg->entries)[0]->get('cn');
 
   $ldap->unbind;
-  $self->logcroak("Failed to find $uri in LDAP") unless $name;
+  if (not $name) {
+    $self->logcroak("Failed to find $uri in LDAP");
+  }
 
   return $name;
 }
 
-no Moose;
+no Moose::Role;
 
 1;
 

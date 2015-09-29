@@ -1,6 +1,6 @@
-
 package WTSI::NPG::iRODS::MetaSearcher;
 
+use namespace::autoclean;
 use File::Spec;
 use Moose;
 

@@ -2,10 +2,9 @@
 bin/miget.pl
 bin/populate_wtsi_irods_groups.pl
 Build.PL
+Changes
 etc/log4perl_tests.conf
 lib/WTSI/NPG/Accountable.pm
-lib/WTSI/NPG/Annotatable.pm
-lib/WTSI/NPG/Annotation.pm
 lib/WTSI/NPG/iRODS.pm
 lib/WTSI/NPG/iRODS/ACLModifier.pm
 lib/WTSI/NPG/iRODS/Collection.pm
@@ -14,12 +13,14 @@ lib/WTSI/NPG/iRODS/DataObject.pm
 lib/WTSI/NPG/iRODS/DataObjectReader.pm
 lib/WTSI/NPG/iRODS/GroupAdmin.pm
 lib/WTSI/NPG/iRODS/Lister.pm
+lib/WTSI/NPG/iRODS/Metadata.pm
 lib/WTSI/NPG/iRODS/MetaLister.pm
 lib/WTSI/NPG/iRODS/MetaModifier.pm
 lib/WTSI/NPG/iRODS/MetaSearcher.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Types.pm
+lib/WTSI/NPG/iRODS/Utilities.pm
 lib/WTSI/NPG/iRODS/Version.pm
 MANIFEST			This list of files
 META.json
@@ -55,5 +56,7 @@ t/irods_path_test/test_dir/contents/c/z/3.txt
 t/irods_path_test/test_dir/test_file.txt
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
+t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
 t/lib/WTSI/NPG/iRODSTest.pm
+t/performance.t
 t/perlcriticrc

@@ -1,4 +1,3 @@
-
 package WTSI::NPG::iRODS::CollectionTest;
 
 use strict;
@@ -26,7 +25,7 @@ my $pid = $$;
 my @groups_added;
 
 my $have_admin_rights =
-  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);

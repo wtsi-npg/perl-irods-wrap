@@ -5,12 +5,8 @@ Since release
    WTSI::NPG::iRODS::remove_duplicate_avus.
 
  - New package WTSI::NPG::iRODS::Metadata which exports values to describe
-   metadata. Use these in conjunction with WTSI::NPG::iRODS::Annotation to
-   consistently describe metadata attributes.
-
- - Moved WTSI::NPG::Annotation to WTSI::NPG::iRODS::Annotation.
-
- - Removed Moose role WTSI::NPG::Annotatable.
+   metadata. Removed Moose roles WTSI::NPG::iRODS::Annotation and
+   WTSI::NPG::Annotatable.
 
  - Support both $WTSI::NPG::iRODS::Metadata::SAMPLE_CONSENT and
    $WTSI::NPG::iRODS::Metadata::SAMPLE_CONSENT_WITHDRAWN in updating

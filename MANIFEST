@@ -18,6 +18,7 @@ lib/WTSI/NPG/iRODS/MetaLister.pm
 lib/WTSI/NPG/iRODS/MetaModifier.pm
 lib/WTSI/NPG/iRODS/MetaSearcher.pm
 lib/WTSI/NPG/iRODS/Path.pm
+lib/WTSI/NPG/iRODS/Replicate.pm
 lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Types.pm
 lib/WTSI/NPG/iRODS/Utilities.pm

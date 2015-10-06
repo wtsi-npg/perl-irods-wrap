@@ -13,7 +13,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 242;
+use Test::More tests => 261;
 
 use Test::Exception;
 
@@ -80,6 +80,59 @@ sub teardown : Test(teardown) {
 
 sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
+}
+
+sub parse_baton_version : Test(5) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $versions = {'0.1.0'          => [0,   1,  0,          ''],
+                  '0.1.0-abcdef'   => [0,   1,  0,   '-abcdef'],
+                  '0.1.0-1-abcdef' => [0,   1,  0, '-1-abcdef'],
+                  '1.1.1'          => [1,   1,  1,          ''],
+                  '10.10.10'       => [10, 10, 10,          '']};
+
+  foreach my $str (keys %$versions) {
+    my $expected = $versions->{$str};
+    my @version = $irods->parse_baton_version($str);
+    is_deeply(\@version, $expected, "Parsed $str");
+  }
+}
+
+sub match_baton_version : Test(8) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  ok($irods->match_baton_version($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
+                                 $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
+                                 $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
+  ok($irods->match_baton_version($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
+                                 $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
+                                 $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
+
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION + 1,
+      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
+      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
+      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION + 1,
+      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
+      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
+      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION + 1));
+
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION - 1,
+      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
+      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
+      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION - 1,
+      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
+  ok(not $irods->match_baton_version
+     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
+      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
+      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION - 1));
 }
 
 sub group_prefix : Test(6) {
@@ -543,7 +596,7 @@ sub get_collection : Test(4) {
   dies_ok { $irods->get_collection('/no_such_collection', $tmpdir) }
     'Failed to download a non-existent collection';
   dies_ok { $irods->get_collection(undef, $tmpdir) }
-    'Failed to donwload an undefined collection';
+    'Failed to download an undefined collection';
 }
 
 sub remove_collection : Test(4) {
@@ -1071,6 +1124,28 @@ sub validate_checksum_metadata : Test(8) {
   ok($irods->add_object_avu($lorem_object, 'md5', $invalid_checksum));
   dies_ok { $irods->validate_checksum_metadata($lorem_object) }
     "Validation fails with multiple metadata values";
+}
+
+sub replicates : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+
+  my @replicates = $irods->replicates($lorem_object);
+  cmp_ok(1, '==', scalar @replicates, 'One replicate is present');
+
+  my $replicate = $replicates[0];
+
+  is($replicate->{checksum}, $expected_checksum,
+     'Replicate checksum is correct');
+  cmp_ok(length $replicate->{location}, '>', 0,
+         'Replicate has a location');
+  cmp_ok($replicate->{number}, '==', 0,
+         'Replicate has correct number');
+  cmp_ok(length $replicate->{resource}, '>', 0,
+         'Replicate has a resource');
+  ok($replicate->{valid}, 'Replicate is valid');
 }
 
 sub md5sum : Test(1) {

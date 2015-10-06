@@ -16,10 +16,17 @@ has '+executable' => (default => 'baton-list');
 our $ITEM_DOES_NOT_EXIST = -310000;
 ##use critic
 
-around [qw(is_collection is_object
-           list_collection list_object
-           list_object_checksum
-           get_collection_acl get_object_acl)] => sub {
+my @wrapped_methods = qw(
+                          get_collection_acl
+                          get_object_acl
+                          is_collection
+                          is_object
+                          list_collection
+                          list_object
+                          list_object_checksum
+                          list_object_replicates
+                       );
+around [@wrapped_methods] => sub {
   my ($orig, $self, @args) = @_;
 
   unless ($self->started) {
@@ -113,6 +120,17 @@ sub list_object {
   return $path;
 }
 
+=head2 list_object_checksum
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my $checksum = $irods->list_object_checksum('/path/to/object')
+  Description: Return the checksum of the data object. This method uses
+               the same iRODS API as the 'ichksum' client program.
+  Returntype : Str
+
+=cut
+
 sub list_object_checksum {
   my ($self, $object) = @_;
 
@@ -132,6 +150,56 @@ sub list_object_checksum {
   }
 
   return $checksum;
+}
+
+=head2 list_object_replicates
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @replicates =
+                 $irods->list_object_replicates('/path/to/object')
+  Description: Return the replicates of the data object. Each replicate
+               is represented as a HashRef of the form:
+                   {
+                     checksum => <checksum Str>,
+                     location => <location Str>,
+                     number   => <replicate number Int>,
+                     resource => <resource name Str>,
+                     valid    => <is valid Int>,
+                   }
+
+                The checksum of each replicate is reported using the iRODS
+                GenQuery API.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub list_object_replicates {
+  my ($self, $object) = @_;
+
+  my $response = $self->_list_path($object);
+  my @replicates;
+
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return an empty array
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    if (ref $response->{replicates} eq 'ARRAY') {
+      @replicates = @{$response->{replicates}};
+    }
+    else {
+      $self->logconfess('The returned path spec did not have a "replicates" ',
+                        'key with an ArrayRef value: ',
+                        $self->encode($response));
+    }
+  }
+
+  return @replicates;
 }
 
 =head2 list_collection

@@ -6,7 +6,7 @@ use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
-use List::AllUtils qw(any uniq);
+use List::AllUtils qw(all any uniq);
 use Moose;
 
 use WTSI::DNAP::Utilities::Runnable;
@@ -24,7 +24,19 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $REQUIRED_BATON_VERSION = '0.15.0';
+our $MAX_BATON_MAJOR_VERSION = 0;
+our $MIN_BATON_MAJOR_VERSION = 0;
+
+our $MAX_BATON_MINOR_VERSION = 16;
+our $MIN_BATON_MINOR_VERSION = 16;
+
+our $MAX_BATON_PATCH_VERSION = 0;
+our $MIN_BATON_PATCH_VERSION = 0;
+
+our $MAX_BATON_VERSION = sprintf "%d.%d.%d", $MAX_BATON_MAJOR_VERSION,
+  $MAX_BATON_MINOR_VERSION, $MAX_BATON_PATCH_VERSION;
+our $MIN_BATON_VERSION = sprintf "%d.%d.%d", $MAX_BATON_MAJOR_VERSION,
+  $MAX_BATON_MINOR_VERSION, $MAX_BATON_PATCH_VERSION;
 
 our $IADMIN      = 'iadmin';
 our $ICHKSUM     = 'ichksum';
@@ -57,7 +69,7 @@ has 'required_baton_version' =>
    isa           => 'Str',
    required      => 1,
    init_arg      => undef,
-   default       => $REQUIRED_BATON_VERSION,
+   default       => sub { return ($MAX_BATON_VERSION, $MIN_BATON_VERSION) },
    documentation => 'The baton version required');
 
 has 'environment' =>
@@ -130,7 +142,7 @@ has 'contents_lister' =>
         logger      => $self->logger)->start;
    });
 
-has 'checksum_lister' =>
+has 'detailed_lister' =>
   (is       => 'ro',
    isa      => 'WTSI::NPG::iRODS::Lister',
    required => 1,
@@ -139,7 +151,8 @@ has 'checksum_lister' =>
      my ($self) = @_;
 
      return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--checksum', '--contents'],
+       (arguments   => ['--unbuffered', '--checksum', '--contents',
+                        '--replicate'],
         environment => $self->environment,
         logger      => $self->logger)->start;
    });
@@ -265,10 +278,12 @@ sub BUILD {
      environment => $self->environment,
      logger      => $self->logger)->run->split_stdout;
 
-  unless ($installed_baton_version eq $self->required_baton_version) {
+  if (not $self->match_baton_version($self->parse_baton_version
+                                     ($installed_baton_version))) {
+    my $required_range = join q{-}, uniq $self->required_baton_version;
     my $msg = sprintf "The installed baton release version %s is " .
-      "not supported by this wrapper (requires version %s )",
-      $installed_baton_version, $self->required_baton_version;
+      "not supported by this wrapper (requires version %s)",
+      $installed_baton_version, $required_range;
 
     if ($self->strict_baton_version) {
       $self->logdie($msg);
@@ -279,6 +294,54 @@ sub BUILD {
   }
 
   return $self;
+}
+
+sub parse_baton_version {
+  my ($self, $version) = @_;
+
+  defined $version or
+    $self->logconfess('A defined version argument is required');
+
+  my ($major, $minor, $patch, $commits) = $version
+    =~ m{^(\d+)[.](\d+)[.](\d+)(\S*)$}msx;
+
+  if (not all { defined $_ } ($major, $minor, $patch)) {
+    $self->logconfess("Failed to parse baton version '$version'");
+  }
+
+  if ($MIN_BATON_MAJOR_VERSION > $MAX_BATON_MAJOR_VERSION) {
+    $self->logconfess('MIN_BATON_MAJOR_VERSION must be <= ',
+                      "MAX_BATON_MAJOR_VERSION ($MAX_BATON_MAJOR_VERSION)");
+  }
+  if ($MIN_BATON_MINOR_VERSION > $MAX_BATON_MINOR_VERSION) {
+    $self->logconfess('MIN_BATON_MINOR_VERSION must be <= ',
+                      "MAX_BATON_MINOR_VERSION ($MAX_BATON_MINOR_VERSION)");
+  }
+  if ($MIN_BATON_PATCH_VERSION > $MAX_BATON_PATCH_VERSION) {
+    $self->logconfess('MIN_BATON_PATCH_VERSION must be <= ',
+                      "MAX_BATON_PATCH_VERSION ($MAX_BATON_PATCH_VERSION)");
+  }
+
+  $self->debug('Parsed baton version as major: ',
+               "$major minor: $minor patch: $patch");
+
+  return ($major, $minor, $patch, $commits);
+}
+
+sub match_baton_version {
+  my ($self, $major, $minor, $patch) = @_;
+
+  defined $major or $self->logconfess('A defined major argument is required');
+  defined $minor or $self->logconfess('A defined minor argument is required');
+  defined $patch or $self->logconfess('A defined patch argument is required');
+
+  return
+    $major <= $MAX_BATON_MAJOR_VERSION &&
+    $major >= $MIN_BATON_MAJOR_VERSION &&
+    $minor <= $MAX_BATON_MINOR_VERSION &&
+    $minor >= $MIN_BATON_MINOR_VERSION &&
+    $patch <= $MAX_BATON_PATCH_VERSION &&
+    $patch >= $MIN_BATON_PATCH_VERSION;
 }
 
 around 'working_collection' => sub {
@@ -373,7 +436,6 @@ sub get_irods_user {
 
   return $user;
 }
-
 
 =head2 get_irods_home
 
@@ -1850,7 +1912,7 @@ sub checksum {
 
   $object = $self->_ensure_object_path($object);
 
-  return $self->checksum_lister->list_object_checksum($object);
+  return $self->detailed_lister->list_object_checksum($object);
 }
 
 sub collection_checksums {
@@ -1864,7 +1926,7 @@ sub collection_checksums {
 
   $collection = $self->_ensure_collection_path($collection);
 
-  return $self->checksum_lister->list_collection_checksums
+  return $self->detailed_lister->list_collection_checksums
     ($collection, $recurse);
 }
 
@@ -1954,6 +2016,41 @@ sub validate_checksum_metadata {
   }
 
   return $identical;
+}
+
+=head2 replicates
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @replicates = $irods->replicates('/my/path/lorem.txt')
+  Description: Return an array of replicate descriptors for a data object.
+               Each replicate is represented as a HashRef of the form:
+                   {
+                     checksum => <checksum Str>,
+                     location => <location Str>,
+                     number   => <replicate number Int>,
+                     resource => <resource name Str>,
+                     valid    => <is valid Int>,
+                   }
+
+                The checksum of each replicate is reported using the iRODS
+                GenQuery API.
+  Returntype : Array[Hashref]
+
+=cut
+
+sub replicates {
+  my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
+
+  return $self->detailed_lister->list_object_replicates($object);
 }
 
 =head2 avu_history_attr

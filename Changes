@@ -1,6 +1,16 @@
 
 Since release
 
+ - New methods WTSI::NPG::iRODS::replicates. New attribute
+   WTSI::NPG::iRODS::DataObject::replicates. New class
+   WTSI::NPG::iRODS::Replicate.
+
+ - Requires baton >= 0.16.0.
+
+ - New methods WTSI::NPG::iRODS::parse_baton_version,
+   WTSI::NPG::iRODS::match_baton_version to permit version ranges of
+   compatible baton installations to be specified.
+
  - New methods WTSI::NPG::iRODS::make_avu, WTSI::NPG::iRODS::sort_avus and
    WTSI::NPG::iRODS::remove_duplicate_avus.
 

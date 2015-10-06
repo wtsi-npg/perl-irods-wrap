@@ -7,7 +7,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 89;
+use Test::More tests => 96;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -434,6 +434,30 @@ sub checksum : Test(1) {
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
   is($obj->checksum, "d41d8cd98f00b204e9800998ecf8427e",
      'Has correct checksum');
+}
+
+sub replicates : Test(7) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+  my @replicates = @{$obj->replicates};
+  cmp_ok(1, '==', scalar @replicates, 'One replicate is present');
+
+  my $replicate = $replicates[0];
+  ok($replicate->isa('WTSI::NPG::iRODS::Replicate'), 'Replicate isa correct')
+    or diag explain $replicate;
+
+  is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+     'Replicate has correct checksum');
+  cmp_ok(length $replicate->location, '>', 0,
+         'Replicate has a location');
+  cmp_ok($replicate->number, '==', 0,
+         'Replicate has correct number');
+  cmp_ok(length $replicate->resource, '>', 0,
+         'Replicate has a resource');
+  ok($replicate->is_valid, 'Replicate is valid');
 }
 
 sub get_permissions : Test(1) {

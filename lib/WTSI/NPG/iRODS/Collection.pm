@@ -360,6 +360,8 @@ WTSI::NPG::iRODS::Collection - An iRODS collection.
 Represents a collection and provides methods for adding and removing
 metdata and setting access permissions.
 
+See also WTSI::NPG::iRODS::Path.
+
 =head1 AUTHOR
 
 Keith James <kdj@sanger.ac.uk>

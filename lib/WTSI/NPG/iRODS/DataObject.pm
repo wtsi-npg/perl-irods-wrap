@@ -10,23 +10,35 @@ use Try::Tiny;
 use WTSI::NPG::iRODS;
 use WTSI::NPG::iRODS::Metadata qw($SAMPLE_CONSENT
                                   $SAMPLE_CONSENT_WITHDRAWN);
+use WTSI::NPG::iRODS::Replicate;
+use WTSI::NPG::iRODS::Types qw(ArrayRefOfReplicate);
 
 our $VERSION = '';
 
 with 'WTSI::NPG::iRODS::Path';
 
 has 'data_object' =>
-  (is        => 'ro',
-   isa       => 'Str',
-   required  => 1,
-   lazy      => 1,
-   default   => q{.},
-   predicate => 'has_data_object');
+  (is            => 'ro',
+   isa           => 'Str',
+   required      => 1,
+   lazy          => 1,
+   default       => q{.},
+   predicate     => 'has_data_object',
+   documentation => 'The data object component of the iRODS path.');
 
-has 'checksum' => (is        => 'rw',
-                   isa       => 'Str',
-                   predicate => 'has_checksum',
-                   clearer   => 'clear_checksum');
+has 'checksum' =>
+  (is            => 'rw',
+   isa           => 'Str',
+   predicate     => 'has_checksum',
+   clearer       => 'clear_checksum',
+   documentation => 'The checksum of thie data object.');
+
+has 'replicates' =>
+  (is            => 'rw',
+   isa           => ArrayRefOfReplicate,
+   predicate     => 'has_replicates',
+   clearer       => 'clear_replicates',
+   documentation => 'The replicate information about this data object.');
 
 # TODO: Add a check so that a DataObject cannot be built from a path
 # that is in fact a collection.
@@ -66,6 +78,19 @@ around 'checksum' => sub {
   unless ($self->has_checksum) {
     my $checksum = $self->irods->checksum($self->str);
     $self->$orig($checksum);
+  }
+
+  return $self->$orig;
+};
+
+# Lazily load replicates from iRODS
+around 'replicates' => sub {
+  my ($orig, $self) = @_;
+
+  unless ($self->has_replicates) {
+    my @replicates = map { WTSI::NPG::iRODS::Replicate->new($_) }
+      $self->irods->replicates($self->str);
+    $self->$orig(\@replicates);
   }
 
   return $self->$orig;
@@ -454,6 +479,8 @@ WTSI::NPG::iRODS::DataObject - An iRODS data object.
 
 Represents a data object and provides methods for adding and removing
 metdata, applying checksums and setting access permissions.
+
+See also WTSI::NPG::iRODS::Path.
 
 =head1 AUTHOR
 

@@ -305,7 +305,7 @@ sub parse_baton_version {
   my ($major, $minor, $patch, $commits) = $version
     =~ m{^(\d+)[.](\d+)[.](\d+)(\S*)$}msx;
 
-  if (not all { defined $_ } ($major, $minor, $patch)) {
+  if (not all { defined } ($major, $minor, $patch)) {
     $self->logconfess("Failed to parse baton version '$version'");
   }
 

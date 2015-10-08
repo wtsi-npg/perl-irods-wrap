@@ -10,13 +10,11 @@ use MooseX::Types -declare =>
    qw(
        AbsolutePath
        ArrayRefOfReplicate
-       BoolInt
        Collection
        CoreMetadataAttr
        DataObject
        GTYMetadataAttr
        HTSMetadataAttr
-       JSONBool
        NoWhitespaceStr
        Replicate
      )
@@ -119,7 +117,7 @@ subtype HTSMetadataAttr,
 subtype GTYMetadataAttr,
   as Str,
   where { exists $GTY_METADATA_INDEX->{$_} },
-  message { "'$_' is not a valid HTS metadata attribute" };
+  message { "'$_' is not a valid genotyping metadata attribute" };
 
 class_type DataObject, { class => 'WTSI::NPG::iRODS::DataObject' };
 
@@ -127,20 +125,8 @@ class_type Collection, { class => 'WTSI::NPG::iRODS::Collection' };
 
 class_type Replicate,  { class => 'WTSI::NPG::iRODS::Replicate' };
 
-class_type JSONBool,   { class => 'JSON::XS::Boolean' };
-
 subtype ArrayRefOfReplicate,
   as ArrayRef[Replicate];
-
-subtype BoolInt,
-  as Int,
-  where { $_ == 0 or $_ == 1 },
-  message { "'$_' is not 0 or 1" };
-
-coerce BoolInt,
-  from JSONBool,
-  via { $_ + 0 };
-
 
 1;
 

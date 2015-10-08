@@ -3,8 +3,6 @@ package WTSI::NPG::iRODS::Replicate;
 use namespace::autoclean;
 use Moose;
 
-use WTSI::NPG::iRODS::Types qw(BoolInt);
-
 our $VERSION = '';
 
 has 'number' =>
@@ -33,9 +31,8 @@ has 'location' =>
 
 has 'valid' =>
   (is            => 'ro',
-   isa           => BoolInt,
+   isa           => 'Bool',
    required      => 1,
-   coerce        => 1,
    documentation => 'The state of the replicate as reported by iRODS.');
 
 sub is_valid {

@@ -199,6 +199,12 @@ sub list_object_replicates {
     }
   }
 
+  # Ensure the Bool property 'valid' is a Perl boolean, not a
+  # JSON::XS::Boolean proxy (which upsets Moose).
+  foreach my $rep (@replicates) {
+    $rep->{valid} = int $rep->{valid};
+  }
+
   return @replicates;
 }
 

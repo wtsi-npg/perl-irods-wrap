@@ -1,6 +1,7 @@
 package WTSI::NPG::iRODS;
 
 use namespace::autoclean;
+use version;
 use DateTime;
 use Encode qw(decode);
 use English qw(-no_match_vars);
@@ -24,19 +25,8 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_MAJOR_VERSION = 0;
-our $MIN_BATON_MAJOR_VERSION = 0;
-
-our $MAX_BATON_MINOR_VERSION = 16;
-our $MIN_BATON_MINOR_VERSION = 16;
-
-our $MAX_BATON_PATCH_VERSION = 0;
-our $MIN_BATON_PATCH_VERSION = 0;
-
-our $MAX_BATON_VERSION = sprintf "%d.%d.%d", $MAX_BATON_MAJOR_VERSION,
-  $MAX_BATON_MINOR_VERSION, $MAX_BATON_PATCH_VERSION;
-our $MIN_BATON_VERSION = sprintf "%d.%d.%d", $MAX_BATON_MAJOR_VERSION,
-  $MAX_BATON_MINOR_VERSION, $MAX_BATON_PATCH_VERSION;
+our $MAX_BATON_VERSION = '0.16.0';
+our $MIN_BATON_VERSION = '0.16.0';
 
 our $IADMIN      = 'iadmin';
 our $ICHKSUM     = 'ichksum';
@@ -63,14 +53,6 @@ has 'strict_baton_version' =>
    required      => 1,
    default       => 1,
    documentation => 'Strictly check the baton version if true');
-
-has 'required_baton_version' =>
-  (is            => 'ro',
-   isa           => 'Str',
-   required      => 1,
-   init_arg      => undef,
-   default       => sub { return ($MAX_BATON_VERSION, $MIN_BATON_VERSION) },
-   documentation => 'The baton version required');
 
 has 'environment' =>
   (is            => 'ro',
@@ -278,9 +260,8 @@ sub BUILD {
      environment => $self->environment,
      logger      => $self->logger)->run->split_stdout;
 
-  if (not $self->match_baton_version($self->parse_baton_version
-                                     ($installed_baton_version))) {
-    my $required_range = join q{-}, uniq $self->required_baton_version;
+  if (not $self->match_baton_version($installed_baton_version)) {
+    my $required_range = join q{ - }, $MIN_BATON_VERSION, $MAX_BATON_VERSION;
     my $msg = sprintf "The installed baton release version %s is " .
       "not supported by this wrapper (requires version %s)",
       $installed_baton_version, $required_range;
@@ -296,52 +277,30 @@ sub BUILD {
   return $self;
 }
 
-sub parse_baton_version {
+sub match_baton_version {
   my ($self, $version) = @_;
 
   defined $version or
     $self->logconfess('A defined version argument is required');
 
-  my ($major, $minor, $patch, $commits) = $version
-    =~ m{^(\d+)[.](\d+)[.](\d+)(\S*)$}msx;
+  my ($dotted_version, $commits) = $version =~ m{^(\d+[.]\d+[.]\d+)(\S*)$}msx;
+  defined $dotted_version or
+    $self->logconfess("Failed to baton parse version string '$version'");
 
-  if (not all { defined } ($major, $minor, $patch)) {
-    $self->logconfess("Failed to parse baton version '$version'");
+  my $min = version->parse($MIN_BATON_VERSION);
+  my $max = version->parse($MAX_BATON_VERSION);
+  my $candidate = version->parse($dotted_version);
+
+  my $match = ($candidate <= $max and $candidate >= $min);
+  my $required_range = join q{ - }, uniq $MIN_BATON_VERSION, $MAX_BATON_VERSION;
+  if ($match) {
+    $self->debug("baton version $version matches $required_range");
+  }
+  else {
+    $self->debug("baton version $version does not match $required_range");
   }
 
-  if ($MIN_BATON_MAJOR_VERSION > $MAX_BATON_MAJOR_VERSION) {
-    $self->logconfess('MIN_BATON_MAJOR_VERSION must be <= ',
-                      "MAX_BATON_MAJOR_VERSION ($MAX_BATON_MAJOR_VERSION)");
-  }
-  if ($MIN_BATON_MINOR_VERSION > $MAX_BATON_MINOR_VERSION) {
-    $self->logconfess('MIN_BATON_MINOR_VERSION must be <= ',
-                      "MAX_BATON_MINOR_VERSION ($MAX_BATON_MINOR_VERSION)");
-  }
-  if ($MIN_BATON_PATCH_VERSION > $MAX_BATON_PATCH_VERSION) {
-    $self->logconfess('MIN_BATON_PATCH_VERSION must be <= ',
-                      "MAX_BATON_PATCH_VERSION ($MAX_BATON_PATCH_VERSION)");
-  }
-
-  $self->debug('Parsed baton version as major: ',
-               "$major minor: $minor patch: $patch");
-
-  return ($major, $minor, $patch, $commits);
-}
-
-sub match_baton_version {
-  my ($self, $major, $minor, $patch) = @_;
-
-  defined $major or $self->logconfess('A defined major argument is required');
-  defined $minor or $self->logconfess('A defined minor argument is required');
-  defined $patch or $self->logconfess('A defined patch argument is required');
-
-  return
-    $major <= $MAX_BATON_MAJOR_VERSION &&
-    $major >= $MIN_BATON_MAJOR_VERSION &&
-    $minor <= $MAX_BATON_MINOR_VERSION &&
-    $minor >= $MIN_BATON_MINOR_VERSION &&
-    $patch <= $MAX_BATON_PATCH_VERSION &&
-    $patch >= $MIN_BATON_PATCH_VERSION;
+  return $match;
 }
 
 around 'working_collection' => sub {

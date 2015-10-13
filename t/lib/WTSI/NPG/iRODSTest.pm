@@ -13,7 +13,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 261;
+use Test::More tests => 260;
 
 use Test::Exception;
 
@@ -82,57 +82,26 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub parse_baton_version : Test(5) {
+sub match_baton_version : Test(12) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  my $versions = {'0.1.0'          => [0,   1,  0,          ''],
-                  '0.1.0-abcdef'   => [0,   1,  0,   '-abcdef'],
-                  '0.1.0-1-abcdef' => [0,   1,  0, '-1-abcdef'],
-                  '1.1.1'          => [1,   1,  1,          ''],
-                  '10.10.10'       => [10, 10, 10,          '']};
+  {
+    local $WTSI::NPG::iRODS::MAX_BATON_VERSION = '1.2.2';
+    local $WTSI::NPG::iRODS::MIN_BATON_VERSION = '1.1.1';
 
-  foreach my $str (keys %$versions) {
-    my $expected = $versions->{$str};
-    my @version = $irods->parse_baton_version($str);
-    is_deeply(\@version, $expected, "Parsed $str");
+    ok(!$irods->match_baton_version('2.2.2'), 'Too new, major version');
+    ok(!$irods->match_baton_version('1.3.2',  'Too new, minor version'));
+    ok(!$irods->match_baton_version('1.2.3'), 'Too new, patch version');
+    ok($irods->match_baton_version('1.2.2'),     'In range, max version');
+    ok($irods->match_baton_version('1.2.0'),     'In range version');
+    ok($irods->match_baton_version('1.1.1'),     'In range, min version');
+    ok(!$irods->match_baton_version('1.1.0'), 'Too old, patch version');
+    ok(!$irods->match_baton_version('1.0.1'), 'Too old, minor version');
+    ok(!$irods->match_baton_version('0.1.1'), 'Too old, major version');
+
+    ok($irods->match_baton_version('1.2.0-abcdef'));
+    ok($irods->match_baton_version('1.2.0-1-abcdef'));
   }
-}
-
-sub match_baton_version : Test(8) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-
-  ok($irods->match_baton_version($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
-                                 $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
-                                 $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
-  ok($irods->match_baton_version($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
-                                 $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
-                                 $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
-
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION + 1,
-      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
-      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
-      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION + 1,
-      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION));
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MAX_BATON_MAJOR_VERSION,
-      $WTSI::NPG::iRODS::MAX_BATON_MINOR_VERSION,
-      $WTSI::NPG::iRODS::MAX_BATON_PATCH_VERSION + 1));
-
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION - 1,
-      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
-      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
-      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION - 1,
-      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION));
-  ok(not $irods->match_baton_version
-     ($WTSI::NPG::iRODS::MIN_BATON_MAJOR_VERSION,
-      $WTSI::NPG::iRODS::MIN_BATON_MINOR_VERSION,
-      $WTSI::NPG::iRODS::MIN_BATON_PATCH_VERSION - 1));
 }
 
 sub group_prefix : Test(6) {

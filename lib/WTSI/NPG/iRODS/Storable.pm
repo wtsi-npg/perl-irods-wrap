@@ -1,4 +1,3 @@
-
 package WTSI::NPG::iRODS::Storable;
 
 use strict;
@@ -57,7 +56,7 @@ sub str {
   }
 }
 
-no Moose;
+no Moose::Role;
 
 1;
 

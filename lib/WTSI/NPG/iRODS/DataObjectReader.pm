@@ -1,6 +1,6 @@
-
 package WTSI::NPG::iRODS::DataObjectReader;
 
+use namespace::autoclean;
 use Moose;
 
 our $VERSION = '';

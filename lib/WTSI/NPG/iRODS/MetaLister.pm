@@ -1,6 +1,6 @@
-
 package WTSI::NPG::iRODS::MetaLister;
 
+use namespace::autoclean;
 use Moose;
 
 our $VERSION = '';
@@ -69,12 +69,16 @@ sub _list_path_meta {
   $self->validate_response($response);
   $self->report_error($response);
 
-  if (!exists $response->{avus}) {
-    $self->logconfess('The returned path spec did not have an "avus" key: ',
-                      $self->encode($response));
+  my @avus;
+  if (ref $response->{avus} eq 'ARRAY') {
+    @avus = @{$response->{avus}};
+  }
+  else {
+    $self->logconfess('The returned path spec did not have an "avus" key ',
+                      'with an ArrayRef value: ', $self->encode($response));
   }
 
-  return @{$response->{avus}};
+  return @avus;
 }
 
 __PACKAGE__->meta->make_immutable;

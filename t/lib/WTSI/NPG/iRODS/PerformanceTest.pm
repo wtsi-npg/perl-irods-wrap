@@ -1,4 +1,3 @@
-
 package WTSI::NPG::iRODS::PerformanceTest;
 
 use strict;

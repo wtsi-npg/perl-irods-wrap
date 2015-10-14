@@ -1,4 +1,6 @@
 package WTSI::NPG::iRODS::GroupAdmin;
+
+use namespace::autoclean;
 use Moose;
 use IPC::Run qw(start run);
 use File::Which qw(which);
@@ -209,6 +211,7 @@ sub DEMOLISH {
   return;
 }
 
+no Moose;
 
 1;
 __END__

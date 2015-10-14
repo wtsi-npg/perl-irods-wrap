@@ -1,4 +1,3 @@
-
 package WTSI::NPG::iRODS::DataObjectTest;
 
 use strict;
@@ -8,7 +7,7 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 89;
+use Test::More tests => 96;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -16,6 +15,7 @@ Log::Log4perl::init('./etc/log4perl_tests.conf');
 BEGIN { use_ok('WTSI::NPG::iRODS::DataObject'); }
 
 use WTSI::NPG::iRODS::DataObject;
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 
 my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
@@ -26,7 +26,7 @@ my $pid = $$;
 my @groups_added;
 
 my $have_admin_rights =
-  system(qq{$WTSI::NPG::iRODS::IADMIN lu 2>&1 /dev/null}) == 0;
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -436,6 +436,30 @@ sub checksum : Test(1) {
      'Has correct checksum');
 }
 
+sub replicates : Test(7) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+  my @replicates = @{$obj->replicates};
+  cmp_ok(1, '==', scalar @replicates, 'One replicate is present');
+
+  my $replicate = $replicates[0];
+  ok($replicate->isa('WTSI::NPG::iRODS::Replicate'), 'Replicate isa correct')
+    or diag explain $replicate;
+
+  is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+     'Replicate has correct checksum');
+  cmp_ok(length $replicate->location, '>', 0,
+         'Replicate has a location');
+  cmp_ok($replicate->number, '==', 0,
+         'Replicate has correct number');
+  cmp_ok(length $replicate->resource, '>', 0,
+         'Replicate has a resource');
+  ok($replicate->is_valid, 'Replicate is valid');
+}
+
 sub get_permissions : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
   my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
@@ -540,7 +564,7 @@ sub update_group_permissions : Test(12) {
     ok($r0, 'No ss_0 read access');
 
     # Add a study 0 AVU and use it to update (add) permissions
-    ok($obj->add_avu('study_id', '0'));
+    ok($obj->add_avu($STUDY_ID, '0'));
     ok($obj->update_group_permissions);
 
     my $r1 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
@@ -549,7 +573,7 @@ sub update_group_permissions : Test(12) {
     ok($r1, 'Added ss_0 read access');
 
     # Remove the study 0 AVU and use it to update (remove) permissions
-    ok($obj->remove_avu('study_id', '0'));
+    ok($obj->remove_avu($STUDY_ID, '0'));
     ok($obj->update_group_permissions);
 
     my $r2 = none { exists $_->{owner} && $_->{owner} eq 'ss_0' &&
@@ -559,8 +583,8 @@ sub update_group_permissions : Test(12) {
 
     # Add a study 0 AVU and use it to update (add) permissions
     # in the presence of anAVU that will infer a non-existent group
-    ok($obj->add_avu('study_id', '0'));
-    ok($obj->add_avu('study_id', 'no_such_group'));
+    ok($obj->add_avu($STUDY_ID, '0'));
+    ok($obj->add_avu($STUDY_ID, 'no_such_study'));
     ok($obj->update_group_permissions);
 
     my $r3 = any { exists $_->{owner} && $_->{owner} eq 'ss_0' &&

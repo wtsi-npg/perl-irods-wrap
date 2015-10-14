@@ -1,6 +1,6 @@
-
 package WTSI::NPG::iRODS::DataObject;
 
+use namespace::autoclean;
 use File::Spec;
 use List::AllUtils qw(any uniq);
 use Moose;
@@ -8,23 +8,37 @@ use Set::Scalar;
 use Try::Tiny;
 
 use WTSI::NPG::iRODS;
+use WTSI::NPG::iRODS::Metadata qw($SAMPLE_CONSENT
+                                  $SAMPLE_CONSENT_WITHDRAWN);
+use WTSI::NPG::iRODS::Replicate;
+use WTSI::NPG::iRODS::Types qw(ArrayRefOfReplicate);
 
 our $VERSION = '';
 
 with 'WTSI::NPG::iRODS::Path';
 
 has 'data_object' =>
-  (is        => 'ro',
-   isa       => 'Str',
-   required  => 1,
-   lazy      => 1,
-   default   => q{.},
-   predicate => 'has_data_object');
+  (is            => 'ro',
+   isa           => 'Str',
+   required      => 1,
+   lazy          => 1,
+   default       => q{.},
+   predicate     => 'has_data_object',
+   documentation => 'The data object component of the iRODS path.');
 
-has 'checksum' => (is        => 'rw',
-                   isa       => 'Str',
-                   predicate => 'has_checksum',
-                   clearer   => 'clear_checksum');
+has 'checksum' =>
+  (is            => 'rw',
+   isa           => 'Str',
+   predicate     => 'has_checksum',
+   clearer       => 'clear_checksum',
+   documentation => 'The checksum of thie data object.');
+
+has 'replicates' =>
+  (is            => 'rw',
+   isa           => ArrayRefOfReplicate,
+   predicate     => 'has_replicates',
+   clearer       => 'clear_replicates',
+   documentation => 'The replicate information about this data object.');
 
 # TODO: Add a check so that a DataObject cannot be built from a path
 # that is in fact a collection.
@@ -64,6 +78,19 @@ around 'checksum' => sub {
   unless ($self->has_checksum) {
     my $checksum = $self->irods->checksum($self->str);
     $self->$orig($checksum);
+  }
+
+  return $self->$orig;
+};
+
+# Lazily load replicates from iRODS
+around 'replicates' => sub {
+  my ($orig, $self) = @_;
+
+  unless ($self->has_replicates) {
+    my @replicates = map { WTSI::NPG::iRODS::Replicate->new($_) }
+      $self->irods->replicates($self->str);
+    $self->$orig(\@replicates);
   }
 
   return $self->$orig;
@@ -249,10 +276,14 @@ sub get_permissions {
 
 =head2 set_permissions
 
-  Arg [1]    : Str permission, one of 'null', 'read', 'write' or 'own'
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
   Arg [2]    : Array of owners (users and /or groups).
 
-  Example    : $obj->set_permissions('read', 'user1', 'group1')
+  Example    : $obj->set_permissions($WTSI::NPG::iRODS::READ_PERMISSION,
+                                     'user1', 'group1')
   Description: Set access permissions on the object. Return self.
   Returntype : WTSI::NPG::iRODS::DataObject
 
@@ -261,7 +292,8 @@ sub get_permissions {
 sub set_permissions {
   my ($self, $permission, @owners) = @_;
 
-  my $perm_str = defined $permission ? $permission : 'null';
+  my $perm_str = defined $permission ? $permission :
+    $WTSI::NPG::iRODS::NULL_PERMISSION;
 
   my $path = $self->str;
   foreach my $owner (@owners) {
@@ -274,10 +306,12 @@ sub set_permissions {
 
 =head2 get_groups
 
-  Arg [1]      permission Str, one of 'null', 'read', 'write' or 'own',
-               optional.
+  Arg [1]      Permission, Str.  One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
-  Example    : $obj->get_object_groups('read')
+  Example    : $obj->get_object_groups($WTSI::NPG::iRODS::READ_PERMISSION)
   Description: Return a list of the data access groups in the object's ACL.
                If a permission level argument is supplied, only groups with
                that level of access will be returned. Only groups having a
@@ -307,7 +341,10 @@ sub update_group_permissions {
   $self->debug("Permissions before: [", join(", ", @groups_permissions), "]");
   $self->debug("Updated annotations: [", join(", ", @groups_annotated), "]");
 
-  if ($self->get_avu($self->sample_consent_attr, 0)) {
+  my $true  = 1;
+  my $false = 0;
+  if ($self->get_avu($SAMPLE_CONSENT,          $false) or
+      $self->get_avu($SAMPLE_CONSENT_WITHDRAWN, $true)) {
     $self->info("Data is marked as CONSENT WITHDRAWN; ",
                 "all permissions will be withdrawn");
     @groups_annotated = (); # Emptying this means all will be removed
@@ -329,7 +366,7 @@ sub update_group_permissions {
   foreach my $group (@to_remove) {
     if (not $strict_groups or any { $group eq $_ } @all_groups) {
       try {
-        $self->set_permissions('null', $group);
+        $self->set_permissions($WTSI::NPG::iRODS::NULL_PERMISSION, $group);
       } catch {
         $num_errors++;
         $self->error("Failed to remove permissions for group '$group' from '",
@@ -348,7 +385,7 @@ sub update_group_permissions {
   foreach my $group (@to_add) {
     if (not $strict_groups or any { $group eq $_ } @all_groups) {
       try {
-        $self->set_permissions('read', $group);
+        $self->set_permissions($WTSI::NPG::iRODS::READ_PERMISSION, $group);
       } catch {
         $num_errors++;
         $self->error("Failed to add read permissions for group '$group' to '",
@@ -442,6 +479,8 @@ WTSI::NPG::iRODS::DataObject - An iRODS data object.
 
 Represents a data object and provides methods for adding and removing
 metdata, applying checksums and setting access permissions.
+
+See also WTSI::NPG::iRODS::Path.
 
 =head1 AUTHOR
 

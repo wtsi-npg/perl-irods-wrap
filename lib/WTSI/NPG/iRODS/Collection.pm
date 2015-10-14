@@ -11,17 +11,11 @@ our $VERSION = '';
 
 with 'WTSI::NPG::iRODS::Path';
 
-# Lazily load metadata from iRODS
-around 'metadata' => sub {
-  my ($orig, $self) = @_;
+sub get_metadata {
+  my ($self) = @_;
 
-  unless ($self->has_metadata) {
-    my @meta = $self->irods->get_collection_meta($self->str);
-    $self->$orig(\@meta);
-  }
-
-  return $self->$orig;
-};
+  return [$self->irods->get_collection_meta($self->str)];
+}
 
 =head2 is_present
 

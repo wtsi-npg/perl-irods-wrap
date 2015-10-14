@@ -27,15 +27,19 @@ has 'data_object' =>
    documentation => 'The data object component of the iRODS path.');
 
 has 'checksum' =>
-  (is            => 'rw',
+  (is            => 'ro',
    isa           => 'Str',
+   lazy          => 1,
+   builder       => '_build_checksum',
    predicate     => 'has_checksum',
    clearer       => 'clear_checksum',
-   documentation => 'The checksum of thie data object.');
+   documentation => 'The checksum of the data object.');
 
 has 'replicates' =>
-  (is            => 'rw',
+  (is            => 'ro',
    isa           => ArrayRefOfReplicate,
+   lazy          => 1,
+   builder       => '_build_replicates',
    predicate     => 'has_replicates',
    clearer       => 'clear_replicates',
    documentation => 'The replicate information about this data object.');
@@ -59,42 +63,27 @@ around BUILDARGS => sub {
   }
 };
 
-# Lazily load metadata from iRODS
-around 'metadata' => sub {
-  my ($orig, $self) = @_;
-
-  unless ($self->has_metadata) {
-    my @meta = $self->irods->get_object_meta($self->str);
-    $self->$orig(\@meta);
-  }
-
-  return $self->$orig;
-};
-
 # Lazily load checksum from iRODS
-around 'checksum' => sub {
-  my ($orig, $self) = @_;
+sub _build_checksum {
+  my ($self) = @_;
 
-  unless ($self->has_checksum) {
-    my $checksum = $self->irods->checksum($self->str);
-    $self->$orig($checksum);
-  }
-
-  return $self->$orig;
-};
+  return $self->irods->checksum($self->str);
+}
 
 # Lazily load replicates from iRODS
-around 'replicates' => sub {
-  my ($orig, $self) = @_;
+sub _build_replicates {
+  my ($self) = @_;
 
-  unless ($self->has_replicates) {
-    my @replicates = map { WTSI::NPG::iRODS::Replicate->new($_) }
-      $self->irods->replicates($self->str);
-    $self->$orig(\@replicates);
-  }
+  my @replicates = map { WTSI::NPG::iRODS::Replicate->new($_) }
+    $self->irods->replicates($self->str);
+  return \@replicates;
+}
 
-  return $self->$orig;
-};
+sub get_metadata {
+  my ($self) = @_;
+
+  return [$self->irods->get_object_meta($self->str)];
+}
 
 =head2 is_present
 

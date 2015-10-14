@@ -25,20 +25,38 @@ has 'irods' =>
    isa      => 'WTSI::NPG::iRODS',
    required => 1);
 
-has 'metadata' => (is        => 'rw',
-                   isa       => 'ArrayRef',
-                   predicate => 'has_metadata',
-                   clearer   => 'clear_metadata');
+has 'metadata' => (is            => 'ro',
+                   isa           => 'ArrayRef',
+                   lazy          => 1,
+                   builder       => 'get_metadata',
+                   predicate     => 'has_metadata',
+                   clearer       => 'clear_metadata',
+                   documentation => 'iRODS metadata as AVU HashRefs');
 
 requires
   'absolute',
   'add_avu',
+  'get_metadata',
   'get_groups',
   'get_permissions',
   'is_present',
   'make_avu_history',
   'remove_avu',
   'set_permissions';
+
+# TODO: In next major version, make method names more consistent and
+# document the conventions used. e.g. checksum accessor is 'checksum',
+# not 'get_checksum'.
+#
+# Maybe the 'get_' prefix could be removed? It's there at the moment
+# because I wanted 'get' and 'set' operations to be clearly different
+# methods. Maybe the 'get_' prefix should be added to those methods
+# (like 'checksum') that do not have it? Maybe groups and permissions
+# should be attributes?
+#
+# There should be a convention for methods that fetch fresh data from
+# iRODS and those that may cache the values from iRODS (until
+# cleared).
 
 around BUILDARGS => sub {
   my ($orig, $class, @args) = @_;

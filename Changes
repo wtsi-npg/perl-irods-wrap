@@ -1,11 +1,15 @@
 
+Release 2.0.1
+
+ - Requires baton 0.16.0 or 0.16.1
+
 Release 2.0.0
 
  - New methods WTSI::NPG::iRODS::replicates. New attribute
    WTSI::NPG::iRODS::DataObject::replicates. New class
    WTSI::NPG::iRODS::Replicate.
 
- - Requires baton >= 0.16.0.
+ - Requires baton 0.16.0
 
  - New method WTSI::NPG::iRODS::match_baton_version to permit version
    ranges of compatible baton installations to be specified.

@@ -1213,7 +1213,7 @@ sub make_avu : Test(6) {
   my $avu1 = $irods->make_avu('a', 'b', 'c');
   is_deeply($avu1, $expected1, 'AVU with units') or diag explain $avu1;
 
-  my $expected2 = {attribute => 'a', value => 'b', units => undef};
+  my $expected2 = {attribute => 'a', value => 'b'};
   my $avu2 = $irods->make_avu('a', 'b');
   is_deeply($avu2, $expected2, 'AVU without units') or diag explain $avu2;
 

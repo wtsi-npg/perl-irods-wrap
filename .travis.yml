@@ -12,7 +12,7 @@ env:
     - PGVERSION="9.3"
     - JANSSON_VERSION="2.7"
     - DNAP_UTILITIES_VERSION="0.4.2"
-    - BATON_VERSION="0.16.0"
+    - BATON_VERSION="0.16.1"
     - CK_DEFAULT_TIMEOUT=10
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
 

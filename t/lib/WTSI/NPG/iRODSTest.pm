@@ -13,7 +13,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 260;
+use Test::More tests => 261;
 
 use Test::Exception;
 
@@ -82,7 +82,18 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub match_baton_version : Test(12) {
+sub compatible_baton_versions : Test(2) {
+  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+
+  my @compatible_versions = qw(0.16.0 0.16.1);
+
+  foreach my $version (@compatible_versions) {
+    ok($irods->match_baton_version($version),
+       "Compatible with baton $version");
+  }
+}
+
+sub match_baton_version : Test(11) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   {

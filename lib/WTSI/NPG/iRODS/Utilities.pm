@@ -79,6 +79,7 @@ sub md5sum {
                  {attribute => $attribute,
                   value     => $value,
                   units     => $units}
+               The units key is absent if units are not defined.
   Returntype : HashRef
 
 =cut
@@ -96,9 +97,13 @@ sub make_avu {
   $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
-  return {attribute => $attribute,
-          value     => $value,
-          units     => $units};
+  my $avu = {attribute => $attribute,
+             value     => $value};
+  if (defined $units) {
+    $avu->{units} = $units;
+  }
+
+  return $avu;
 }
 
 =head2 avus_equal
@@ -123,7 +128,7 @@ sub avus_equal {
   defined $avu_y or $self->logconfess('A defined avu_y argument is required');
 
   ref $avu_x eq 'HASH' or
-    $self->logconfess('The avu_x argument mus be a HashRef');
+    $self->logconfess('The avu_x argument must be a HashRef');
   ref $avu_y eq 'HASH' or
     $self->logconfess('The avu_y argument mus be a HashRef');
 

@@ -79,19 +79,6 @@ sub BUILD {
   return $self;
 }
 
-around 'metadata' => sub {
-   my ($orig, $self, @args) = @_;
-
-   my @sorted = sort {
-     $a->{attribute} cmp $b->{attribute}                    ||
-     $a->{value}     cmp $b->{value}                        ||
-     (( defined $a->{units} && !defined $b->{units}) && -1) ||
-     ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
-     $a->{units}     cmp $b->{units} } @{$self->$orig(@args)};
-
-   return \@sorted;
-};
-
 =head2 get_avu
 
   Arg [1]    : attribute
@@ -366,9 +353,7 @@ sub _update_multivalue_avus {
   $self->debug("Updating all '$attribute' AVUs on '", $self->str, q{'});
 
   my @old_avus = $self->find_in_metadata($attribute);
-  my @new_avus = map { {attribute => $attribute,
-                        value     => $_,
-                        units     => $units} } @values;
+  my @new_avus = map { $self->make_avu($attribute, $_, $units) } @values;
 
   # Compare old AVUS to new; if any of the new ones are already
   # present, leave the old copy, otherwise remove the old AVU

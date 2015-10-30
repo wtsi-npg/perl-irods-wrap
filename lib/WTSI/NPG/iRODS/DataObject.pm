@@ -49,7 +49,7 @@ has 'replicates' =>
 around BUILDARGS => sub {
   my ($orig, $class, @args) = @_;
 
-  if (@args == 2 && ref $args[0] eq 'WTSI::NPG::iRODS') {
+  if (@args == 2 && ref $args[0]) {
     my ($volume, $collection, $data_name) = File::Spec->splitpath($args[1]);
     $collection = File::Spec->canonpath($collection);
     $collection ||= q{.};

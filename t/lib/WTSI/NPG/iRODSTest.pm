@@ -13,7 +13,7 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 261;
+use Test::More tests => 263;
 
 use Test::Exception;
 
@@ -42,13 +42,12 @@ sub make_fixture : Test(setup) {
   $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
-  my $i = 0;
+  my $test_coll = "$irods_tmp_coll/irods";
+  my $test_obj = File::Spec->join($test_coll, 'lorem.txt');
+
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
-      my $test_coll = "$irods_tmp_coll/irods";
-      my $test_obj = File::Spec->join($test_coll, 'lorem.txt');
       my $units = $value eq 'x' ? 'cm' : undef;
-
       $irods->add_collection_avu($test_coll, $attr, $value, $units);
       $irods->add_object_avu($test_obj, $attr, $value, $units);
     }
@@ -790,18 +789,25 @@ sub add_object : Test(3) {
     'Failed to add an undefined object';
 }
 
-sub replace_object : Test(3) {
+sub replace_object : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
   $irods->add_object($lorem_file, $to_replace);
-  is($irods->replace_object($lorem_file, $to_replace), $to_replace,
+  my $checksum_before = $irods->calculate_checksum($to_replace);
+
+  my $tmp = File::Temp->new;
+  my $empty_file = $tmp->filename;
+
+  is($irods->replace_object($empty_file, $to_replace), $to_replace,
      'Replaced a data object');
 
-  # Improve this test by replacing with a different file and comparing
-  # checksums
+  my $checksum_after = $irods->calculate_checksum($to_replace);
+  isnt($checksum_after, $checksum_before, 'Data object was replaced');
+  is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
+     'Data object was replaced with an empty file');
 
   dies_ok { $irods->replace_object($lorem_file, undef) }
     'Failed to replace an undefined object';

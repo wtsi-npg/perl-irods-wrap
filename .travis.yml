@@ -36,6 +36,7 @@ install:
   - tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
   - cd /tmp/baton-${BATON_VERSION} ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
   - sudo ldconfig
+  - cpanm --quiet --notest Data::Dump
   - cpanm --quiet --notest IO::Pty
   - cpanm --quiet --notest Readonly
   - cpanm --quiet --notest Set::Scalar

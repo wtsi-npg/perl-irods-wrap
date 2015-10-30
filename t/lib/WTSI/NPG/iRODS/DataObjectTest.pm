@@ -2,6 +2,7 @@ package WTSI::NPG::iRODS::DataObjectTest;
 
 use strict;
 use warnings;
+use English qw(-no_match_vars);
 use File::Spec;
 use List::AllUtils qw(all any none);
 use Log::Log4perl;
@@ -21,12 +22,17 @@ my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
 
-my $pid = $$;
-
-my @groups_added;
+my $pid = $PID;
 
 my $have_admin_rights =
   system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
+
+# Prefix for test iRODS data access groups
+my $group_prefix = 'ss_';
+# Groups to be added to the test iRODS
+my @irods_groups = map { $group_prefix . $_ } (10, 100);
+# Groups added to the test iRODS in fixture setup
+my @groups_added;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -36,7 +42,6 @@ sub make_fixture : Test(setup) {
   $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 
-  my $i = 0;
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
       my $test_coll = "$irods_tmp_coll/irods_path_test/test_dir";
@@ -47,9 +52,9 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  if ($have_admin_rights) {
-    foreach my $group (qw(ss_0 ss_10)) {
-      unless ($irods->group_exists($group)) {
+  foreach my $group (@irods_groups) {
+    if (not $irods->group_exists($group)) {
+      if ($have_admin_rights) {
         push @groups_added, $irods->add_group($group);
       }
     }

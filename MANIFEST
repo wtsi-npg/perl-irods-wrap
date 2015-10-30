@@ -5,6 +5,7 @@ Build.PL
 Changes
 etc/log4perl_tests.conf
 lib/WTSI/NPG/Accountable.pm
+lib/WTSI/NPG/DriRODS.pm
 lib/WTSI/NPG/iRODS.pm
 lib/WTSI/NPG/iRODS/ACLModifier.pm
 lib/WTSI/NPG/iRODS/Collection.pm
@@ -28,6 +29,7 @@ META.json
 META.yml
 README
 t/critic.t
+t/drirods.t
 t/irods.t
 t/irods/collect_files/a/10.txt
 t/irods/collect_files/a/x/1.txt
@@ -55,6 +57,7 @@ t/irods_path_test/test_dir/contents/b/y/2.txt
 t/irods_path_test/test_dir/contents/c/30.txt
 t/irods_path_test/test_dir/contents/c/z/3.txt
 t/irods_path_test/test_dir/test_file.txt
+t/lib/WTSI/NPG/DriRODSTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm

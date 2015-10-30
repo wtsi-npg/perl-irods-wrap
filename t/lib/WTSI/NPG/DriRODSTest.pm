@@ -26,6 +26,16 @@ my $fixture_counter = 0;
 my $data_path = './t/irods';
 my $irods_tmp_coll;
 
+my $have_admin_rights =
+  system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
+
+# Prefix for test iRODS data access groups
+my $group_prefix = 'ss_';
+# Groups to be added to the test iRODS
+my @irods_groups = map { $group_prefix . $_ } (0);
+# Groups added to the test iRODS in fixture setup
+my @groups_added;
+
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
@@ -41,6 +51,14 @@ sub make_fixture : Test(setup) {
       my $units = $value eq 'x' ? 'cm' : undef;
       $irods->add_collection_avu($test_coll, $attr, $value, $units);
       $irods->add_object_avu($test_obj, $attr, $value, $units);
+    }
+  }
+
+  foreach my $group (@irods_groups) {
+    if (not $irods->group_exists($group)) {
+      if ($have_admin_rights) {
+        push @groups_added, $irods->add_group($group);
+      }
     }
   }
 }

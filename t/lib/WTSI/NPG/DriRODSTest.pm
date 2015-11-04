@@ -35,6 +35,8 @@ my $group_prefix = 'ss_';
 my @irods_groups = map { $group_prefix . $_ } (0);
 # Groups added to the test iRODS in fixture setup
 my @groups_added;
+# Enable group tests
+my $group_tests_enabled = 0;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -54,12 +56,21 @@ sub make_fixture : Test(setup) {
     }
   }
 
+  my $group_count = 0;
   foreach my $group (@irods_groups) {
-    if (not $irods->group_exists($group)) {
+    if ($irods->group_exists($group)) {
+      $group_count++;
+    }
+    else {
       if ($have_admin_rights) {
         push @groups_added, $irods->add_group($group);
+        $group_count++;
       }
     }
+  }
+
+  if ($group_count == scalar @irods_groups) {
+    $group_tests_enabled = 1;
   }
 }
 
@@ -74,18 +85,32 @@ sub add_group : Test(3) {
   my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
 
   my $test_group = "test_group." . $PID;
-  ok(!$drirods->group_exists($test_group), 'Test group not present');
-  ok($drirods->add_group($test_group), 'Dry run add_group');
-  ok(!$drirods->group_exists($test_group), 'Test group not added');
+
+ SKIP: {
+    if (not $have_admin_rights and $group_tests_enabled) {
+      skip 'iRODS group tests were not enabled with admin rights', 3;
+    }
+
+    ok(!$drirods->group_exists($test_group), 'Test group not present');
+    ok($drirods->add_group($test_group), 'Dry run add_group');
+    ok(!$drirods->group_exists($test_group), 'Test group not added');
+  }
 }
 
 sub remove_group : Test(3) {
   my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
 
   my $test_group = "ss_0";
-  ok($drirods->group_exists($test_group), 'Test group present');
-  ok($drirods->remove_group($test_group), 'Dry run remove_group');
-  ok($drirods->group_exists($test_group), 'Test group not removed');
+
+ SKIP: {
+    if (not $have_admin_rights and $group_tests_enabled) {
+      skip 'iRODS group tests were not enabled with admin rights', 3;
+    }
+
+    ok($drirods->group_exists($test_group), 'Test group present');
+    ok($drirods->remove_group($test_group), 'Dry run remove_group');
+    ok($drirods->group_exists($test_group), 'Test group not removed');
+  }
 }
 
 sub set_group_access : Test(3) {
@@ -304,9 +329,5 @@ sub remove_object_avu : Test(3) {
   is_deeply(\@observed_meta, $expected_meta,
             'Metadata not removed') or diag explain \@observed_meta;
 }
-
-# sub calculate_checksum : Test(1) {
-
-# }
 
 1;

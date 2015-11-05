@@ -8,7 +8,7 @@ use File::Temp qw(tempdir);
 use List::AllUtils qw(any);
 
 use base qw(Test::Class);
-use Test::More tests => 9;
+use Test::More;
 
 use WTSI::NPG::iRODS;
 

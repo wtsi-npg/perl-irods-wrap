@@ -13,13 +13,10 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 263;
-
+use Test::More;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
-
-BEGIN { use_ok('WTSI::NPG::iRODS'); }
 
 use WTSI::NPG::iRODS;
 
@@ -36,9 +33,11 @@ my $have_admin_rights =
 # Prefix for test iRODS data access groups
 my $group_prefix = 'ss_';
 # Groups to be added to the test iRODS
-my @irods_groups = map { $group_prefix . $_ } (10, 100);
+my @irods_groups = map { $group_prefix . $_ } (0, 10, 100);
 # Groups added to the test iRODS in fixture setup
 my @groups_added;
+# Enable group tests
+my $group_tests_enabled = 0;
 
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
@@ -58,12 +57,21 @@ sub make_fixture : Test(setup) {
     }
   }
 
+  my $group_count = 0;
   foreach my $group (@irods_groups) {
-    if (not $irods->group_exists($group)) {
+    if ($irods->group_exists($group)) {
+      $group_count++;
+    }
+    else {
       if ($have_admin_rights) {
         push @groups_added, $irods->add_group($group);
+        $group_count++;
       }
     }
+  }
+
+  if ($group_count == scalar @irods_groups) {
+    $group_tests_enabled = 1;
   }
 }
 
@@ -289,8 +297,8 @@ sub get_object_groups : Test(7) {
    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
  SKIP: {
-     if (not $irods->group_exists('ss_0')) {
-       skip "Skipping test requiring the test group ss_0", 6;
+     if (not $group_tests_enabled) {
+       skip 'iRODS test groups were not present', 6;
      }
 
      ok($irods->set_object_permissions('read', 'public', $lorem_object));
@@ -371,8 +379,8 @@ sub get_collection_groups : Test(7) {
   my $coll = "$irods_tmp_coll/irods";
 
  SKIP: {
-    if (not $irods->group_exists('ss_0')) {
-      skip "Skipping test requiring the test group ss_0", 6;
+    if (not $group_tests_enabled) {
+      skip 'iRODS test groups were not present', 6;
     }
 
     ok($irods->set_collection_permissions('read', 'public', $coll));
@@ -1319,6 +1327,5 @@ sub avus_equal : Test(9) {
                          {attribute => 'a', value => 'w'}),
      'AVs != on u');
 }
-
 
 1;

@@ -8,12 +8,10 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 96;
+use Test::More;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
-
-BEGIN { use_ok('WTSI::NPG::iRODS::DataObject'); }
 
 use WTSI::NPG::iRODS::DataObject;
 use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);

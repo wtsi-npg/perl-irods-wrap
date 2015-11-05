@@ -13,13 +13,10 @@ use Try::Tiny;
 use Unicode::Collate;
 
 use base qw(Test::Class);
-use Test::More tests => 263;
-
+use Test::More;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
-
-BEGIN { use_ok('WTSI::NPG::iRODS'); }
 
 use WTSI::NPG::iRODS;
 

@@ -8,11 +8,9 @@ use List::AllUtils qw(none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 54;
+use Test::More;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
-
-BEGIN { use_ok('WTSI::NPG::DriRODS'); }
 
 use WTSI::NPG::DriRODS;
 use WTSI::NPG::iRODS;
@@ -87,7 +85,7 @@ sub add_group : Test(3) {
   my $test_group = "test_group." . $PID;
 
  SKIP: {
-    if (not $have_admin_rights and $group_tests_enabled) {
+    if (not ($have_admin_rights and $group_tests_enabled)) {
       skip 'iRODS group tests were not enabled with admin rights', 3;
     }
 
@@ -103,7 +101,7 @@ sub remove_group : Test(3) {
   my $test_group = "ss_0";
 
  SKIP: {
-    if (not $have_admin_rights and $group_tests_enabled) {
+    if (not ($have_admin_rights and $group_tests_enabled)) {
       skip 'iRODS group tests were not enabled with admin rights', 3;
     }
 
@@ -263,7 +261,7 @@ sub add_object : Test(2) {
   ok(!$drirods->list_object($lorem_object), 'Data object not added');
 }
 
-sub replace_object : Test(3) {
+sub replace_object : Test(2) {
   my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
 
   my $tmp = File::Temp->new;

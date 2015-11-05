@@ -8,12 +8,10 @@ use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(Test::Class);
-use Test::More tests => 53;
+use Test::More;
 use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
-
-BEGIN { use_ok('WTSI::NPG::iRODS::Collection'); }
 
 use WTSI::NPG::iRODS::Collection;
 

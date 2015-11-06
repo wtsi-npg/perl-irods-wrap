@@ -2,6 +2,9 @@ use strict;
 use Test::More tests => 12;
 use Test::Exception;
 
+use Log::Log4perl;
+
+Log::Log4perl::init('./etc/log4perl_tests.conf');
 
 use_ok 'WTSI::NPG::iRODS::GroupAdmin';
 

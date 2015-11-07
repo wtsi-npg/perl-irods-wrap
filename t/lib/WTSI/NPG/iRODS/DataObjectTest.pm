@@ -13,6 +13,8 @@ use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
+sub use_class : Test(1) { use_ok('WTSI::NPG::iRODS::DataObject'); }
+
 use WTSI::NPG::iRODS::DataObject;
 use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 

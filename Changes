@@ -1,3 +1,5 @@
+ - Require explicit declaration of the test iRODS environment rather than
+   using the user's default
 
 Release 2.0.1
 

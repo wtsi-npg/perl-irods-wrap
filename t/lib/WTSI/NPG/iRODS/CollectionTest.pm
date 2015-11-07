@@ -13,6 +13,8 @@ use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
+sub use_class : Test(1) { use_ok('WTSI::NPG::iRODS::Collection'); }
+
 use WTSI::NPG::iRODS::Collection;
 
 my $fixture_counter = 0;

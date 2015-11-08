@@ -18,6 +18,8 @@ use Test::Exception;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
+sub use_class : Test(1) { use_ok('WTSI::NPG::iRODS'); }
+
 use WTSI::NPG::iRODS;
 
 my $pid = $PID;

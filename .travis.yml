@@ -57,6 +57,7 @@ before_script:
 script:
   - perl Build.PL
   - ./Build clean
+  - export WTSI_NPG_iRODS_Test_irodsEnvFile=$irodsEnvFile
   - ./Build test
 
 after_script:

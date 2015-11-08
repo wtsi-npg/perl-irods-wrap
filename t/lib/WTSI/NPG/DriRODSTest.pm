@@ -12,6 +12,8 @@ use Test::More;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
+sub use_class : Test(0) { use_ok('WTSI::NPG::DriRODS'); }
+
 use WTSI::NPG::DriRODS;
 use WTSI::NPG::iRODS;
 use WTSI::NPG::iRODS::DataObject;

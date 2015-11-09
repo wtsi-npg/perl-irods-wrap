@@ -4,4 +4,4 @@ use warnings;
 
 use WTSI::NPG::iRODS::DataObjectTest;
 
-Test::Class->runtests;
+WTSI::NPG::iRODS::DataObjectTest->runtests;

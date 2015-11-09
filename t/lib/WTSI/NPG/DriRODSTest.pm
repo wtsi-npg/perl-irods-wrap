@@ -7,7 +7,7 @@ use File::Temp;
 use List::AllUtils qw(none);
 use Log::Log4perl;
 
-use base qw(Test::Class);
+use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -39,7 +39,7 @@ my $group_tests_enabled = 0;
 sub make_fixture : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
 
-  $irods_tmp_coll = $irods->add_collection("iRODSTest.$pid.$fixture_counter");
+  $irods_tmp_coll = $irods->add_collection("DriRODSTest.$pid.$fixture_counter");
   $fixture_counter++;
   $irods->put_collection($data_path, $irods_tmp_coll);
 

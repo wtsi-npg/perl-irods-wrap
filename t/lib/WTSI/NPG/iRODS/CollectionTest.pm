@@ -7,7 +7,7 @@ use File::Spec;
 use List::AllUtils qw(all any none);
 use Log::Log4perl;
 
-use base qw(Test::Class);
+use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
 use Test::Exception;
 

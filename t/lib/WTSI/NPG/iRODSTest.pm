@@ -12,7 +12,7 @@ use Log::Log4perl;
 use Try::Tiny;
 use Unicode::Collate;
 
-use base qw(Test::Class);
+use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
 use Test::Exception;
 

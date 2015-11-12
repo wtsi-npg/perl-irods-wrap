@@ -1,3 +1,8 @@
+ - Added support for the TEST_AUTHOR environment variable. If set and
+   the iRODS test environment is not declared, the tests will fail. If
+   not set and the iRODS test environment is not declared, the tests
+   will skip.
+
  - Tests now require explict declaration of the iRODS test environment.
 
 Release 2.0.1

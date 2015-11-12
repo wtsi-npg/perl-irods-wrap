@@ -4,4 +4,4 @@ use warnings;
 
 use WTSI::NPG::iRODS::CollectionTest;
 
-Test::Class->runtests;
+WTSI::NPG::iRODS::CollectionTest->runtests;

@@ -61,6 +61,7 @@ t/lib/WTSI/NPG/DriRODSTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
+t/lib/WTSI/NPG/iRODS/Test.pm
 t/lib/WTSI/NPG/iRODSTest.pm
 t/performance.t
 t/perlcriticrc

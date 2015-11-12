@@ -1,3 +1,4 @@
+ - Tests now require explict declaration of the iRODS test environment.
 
 Release 2.0.1
 

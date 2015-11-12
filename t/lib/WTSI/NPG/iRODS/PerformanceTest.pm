@@ -7,7 +7,7 @@ use English qw(-no_match_vars);
 use File::Temp qw(tempdir);
 use List::AllUtils qw(any);
 
-use base qw(Test::Class);
+use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
 
 use WTSI::NPG::iRODS;

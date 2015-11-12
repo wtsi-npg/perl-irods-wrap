@@ -57,7 +57,7 @@ before_script:
 script:
   - perl Build.PL
   - ./Build clean
-  - ./Build test
+  - TEST_AUTHOR=1 WTSI_NPG_iRODS_Test_irodsEnvFile=${irodsEnvFile} ./Build test
 
 after_script:
   - $TRAVIS_BUILD_DIR/irodscontrol istop

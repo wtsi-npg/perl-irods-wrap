@@ -4,4 +4,4 @@ use warnings;
 
 use WTSI::NPG::DriRODSTest;
 
-Test::Class->runtests;
+WTSI::NPG::DriRODSTest->runtests;

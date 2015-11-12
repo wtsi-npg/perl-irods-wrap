@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use English qw(-no_match_vars);
 use FindBin qw($Bin);
 use lib ( -d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib" );
 
@@ -57,23 +58,36 @@ Script runs to perform such updates when no arguments are given.
 Options:
 
   --debug       Enable debug level logging. Optional, defaults to false.
+  --dry-run     Report the proposed changes. Optional.
+  --dry_run
+  --force       Force an update, even if the script suspects that the
+                results of getent and incomplete.
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
+  --study       Restrict updates to a study. May be used multiple times
+                to select more than one study. Optional.
   --verbose     Print messages while processing. Optional.
 
 WOE
 
+Readonly::Scalar my $GETENT_GROUP_ALERT_THRESH  => 200;
+Readonly::Scalar my $GETENT_PASSWD_ALERT_THRESH => 2000;
+
 my $debug;
+my $dry_run = 1;
 my $log4perl_config;
 my $verbose;
+my @studies;
 
-GetOptions('debug'     => \$debug,
-           'help'      => sub {
+GetOptions('debug'             => \$debug,
+           'dry-run|dry_run'   => \$dry_run,
+           'help'              => sub {
              print {*STDERR} $what_on_earth;
              exit 0;
            },
-           'logconf=s' => \$log4perl_config,
-           'verbose'   => \$verbose);
+           'logconf=s'         => \$log4perl_config,
+           'study=s'           => \@studies,
+           'verbose'           => \$verbose);
 
 if ($log4perl_config) {
   Log::Log4perl::init($log4perl_config);
@@ -91,7 +105,11 @@ elsif ($debug) {
 }
 
 my $iga = WTSI::NPG::iRODS::GroupAdmin->new(logger => $log);
-my@public=$iga->lg(q(public));
+
+my @public = $iga->lg(q(public));
+$log->info("The iRODS public group has ", scalar @public, ' members');
+$log->debug("iRODS public group membership: ", join q(, ), @public);
+
 sub _uid_to_irods_uid {
   my($u)=@_;
   return grep {/^\Q$u\E#/smx} @public;
@@ -100,52 +118,96 @@ sub _uid_to_irods_uid {
 Readonly::Scalar my $GROUP_SECONDARY_MEMBERS_FIELD_INDEX => 3;
 my%ug2id; #cache of group to users - populate here
 my%gid2group;
-open my$gfh, q(-|), q(getent group);
+my $num_group_lines = 0;
+open my$gfh, q(-|), q(getent group) or
+  $log->logcroak("Opening pipe to getent group failed: $ERRNO");
 while(<$gfh>){
+  $num_group_lines++;
   chomp;
-  $log->debug("getent group: " . $_);
+  $log->debug("getent group: ", $_);
   my@F=split /:/smx;
   my$users=$ug2id{$F[0]}||=[];
   push @{$users}, split /,/smx, $F[$GROUP_SECONDARY_MEMBERS_FIELD_INDEX]||q(); #fill with secondary groups for users
   $gid2group{$F[2]}=$F[0];
 }
-close $gfh;
+close $gfh or
+  $log->logcroak("Closing pipe to getent group failed: $ERRNO");
+
+if ($num_group_lines < $GETENT_GROUP_ALERT_THRESH) {
+  $log->logcroak("Output of 'getent group' appears truncated ",
+                 "($num_group_lines lines)");
+}
+
 Readonly::Scalar my $PASSWD_PRIMARY_GID_FIELD_INDEX => 3;
-open my$pfh, q(-|), q(getent passwd);
+
+my $num_passwd_lines = 0;
+open my$pfh, q(-|), q(getent passwd) or
+  $log->logcroak("Opening pipe to getent passwd failed: $ERRNO");
 while(<$pfh>){
+  $num_passwd_lines++;
   chomp;
-  $log->debug("getent passwd: " . $_);
+  $log->debug("getent passwd: ", $_);
   my@F=split /:/smx;
   push @{$ug2id{$gid2group{$F[$PASSWD_PRIMARY_GID_FIELD_INDEX]}||=q()}},$F[0]; #fill with primary group for users - empty strong used if no group found for gid
 }
-close $pfh;
-foreach my$users (values%ug2id){
-  $users=[uniq@{$users}];
+close $pfh or
+  $log->logcroak("Closing pipe to getent passwd failed: $ERRNO");
+
+if ($num_passwd_lines < $GETENT_PASSWD_ALERT_THRESH) {
+  $log->logcroak("Output of 'getent passwd' appears truncated ",
+                 "($num_passwd_lines lines)");
 }
 
-my $s=npg_warehouse::Schema->connect();
-my$rs=$s->resultset(q(CurrentStudy));
+foreach my $users (values%ug2id){
+  $users = [uniq @{$users}];
+}
 
-my($group_count,$altered_count)= (0,0);
-while (my$st=$rs->next){
-  my$study_id=$st->internal_id;
-  my$gs=$st->data_access_group();
-  $log->debug("Working on study $study_id, SScape data access: ",
-              defined $gs ? $gs : q());
-  my@g= defined $gs ? $gs=~m/\S+/smxg : ();
-  my$is_seq=($st->npg_information->count||$st->npg_plex_information->count)>0;
-  my@m=@g      ? map{ _uid_to_irods_uid($_) } map { @{ $ug2id{$_} || [$_] } } @g : #if strings from data access group don't match any group name try treating as usernames
-       $is_seq ? @public :
-       ();
-  $log->debug('Membership: ', join q(, ), @m);
-  $altered_count += $iga->set_group_membership("ss_$study_id",@m) ? 1 : 0;
+my $schema = npg_warehouse::Schema->connect;
+my $rs;
+if (@studies) {
+  $rs = $schema->resultset(q(CurrentStudy))->search({internal_id => \@studies});
+}
+else {
+  $rs = $schema->resultset(q(CurrentStudy));
+}
+
+my ($group_count, $altered_count) = (0, 0);
+while (my $study = $rs->next){
+  my $study_id = $study->internal_id;
+  my $dag_str  = $study->data_access_group || q();
+  my $is_seq   = $study->npg_information->count ||
+    $study->npg_plex_information->count;
+
+  $log->debug("Working on study $study_id, SScape data access: '$dag_str'");
+
+  my @dags = $dag_str =~ m/\S+/smxg;
+
+  my @members;
+  if (@dags) {
+    # if strings from data access group don't match any group name try
+    # treating as usernames
+    @members = map { _uid_to_irods_uid($_)   }
+               map { @{ $ug2id{$_} || [$_] } } @dags;
+  }
+  elsif ($is_seq) {
+    @members = @public;
+  }
+  else {
+    # remains empty
+  }
+
+  $log->info("Study $study_id has ", scalar @members, ' members');
+  $log->debug('Members: ', join q(, ), @members);
+
+  if (!$dry_run && $iga->set_group_membership("ss_$study_id", @members)) {
+    $altered_count++;
+  }
+
   $group_count++;
 }
 
 $log->debug("Altered $altered_count groups");
 
-if($altered_count){
-  $log->info("When considering $group_count Sequencescape studies, ",
-             "$altered_count iRODS groups were created or their ",
-             'membership altered (by ', $iga->_user, ')');
-}
+$log->info("When considering $group_count Sequencescape studies, ",
+           "$altered_count iRODS groups were created or their ",
+           'membership altered (by ', $iga->_user, ')');

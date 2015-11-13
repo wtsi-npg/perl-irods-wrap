@@ -58,10 +58,8 @@ Script runs to perform such updates when no arguments are given.
 Options:
 
   --debug       Enable debug level logging. Optional, defaults to false.
-  --dry-run     Report the proposed changes. Optional.
+  --dry-run     Report proposed changes, do not perform them. Optional.
   --dry_run
-  --force       Force an update, even if the script suspects that the
-                results of getent and incomplete.
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
   --study       Restrict updates to a study. May be used multiple times
@@ -71,10 +69,10 @@ Options:
 WOE
 
 Readonly::Scalar my $GETENT_GROUP_ALERT_THRESH  => 200;
-Readonly::Scalar my $GETENT_PASSWD_ALERT_THRESH => 2000;
+Readonly::Scalar my $GETENT_PASSWD_ALERT_THRESH => 5000;
 
 my $debug;
-my $dry_run = 1;
+my $dry_run;
 my $log4perl_config;
 my $verbose;
 my @studies;
@@ -104,7 +102,8 @@ elsif ($debug) {
   $log->level($DEBUG);
 }
 
-my $iga = WTSI::NPG::iRODS::GroupAdmin->new(logger => $log);
+my $iga = WTSI::NPG::iRODS::GroupAdmin->new(dry_run => $dry_run,
+                                            logger  => $log);
 
 my @public = $iga->lg(q(public));
 $log->info("The iRODS public group has ", scalar @public, ' members');
@@ -176,13 +175,12 @@ while (my $study = $rs->next){
   my $study_id = $study->internal_id;
   my $dag_str  = $study->data_access_group || q();
   my $is_seq   = $study->npg_information->count ||
-    $study->npg_plex_information->count;
+                 $study->npg_plex_information->count;
 
   $log->debug("Working on study $study_id, SScape data access: '$dag_str'");
 
-  my @dags = $dag_str =~ m/\S+/smxg;
-
   my @members;
+  my @dags = $dag_str =~ m/\S+/smxg;
   if (@dags) {
     # if strings from data access group don't match any group name try
     # treating as usernames
@@ -199,7 +197,7 @@ while (my $study = $rs->next){
   $log->info("Study $study_id has ", scalar @members, ' members');
   $log->debug('Members: ', join q(, ), @members);
 
-  if (!$dry_run && $iga->set_group_membership("ss_$study_id", @members)) {
+  if ($iga->set_group_membership("ss_$study_id", @members)) {
     $altered_count++;
   }
 

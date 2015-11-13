@@ -36,6 +36,11 @@ Readonly::Scalar our $IENV => q(ienv);
 
 with 'WTSI::DNAP::Utilities::Loggable';
 
+has 'dry_run' =>
+  (is      => 'ro',
+   isa     => 'Bool',
+   default => 0);
+
 has '_in' => (
   'is' => 'ro',
   'isa' => 'ScalarRef[Str]',
@@ -176,7 +181,12 @@ sub _ensure_existence_of_group {
   my($self,$group)=@_;
   $self->__croak_on_bad_group_name($group);
   if ( any {$group eq $_} $self->lg){ return;}
-  $self->_push_pump_trim_split(qq(mkgroup "$group"\n));
+  if ($self->dry_run) {
+    $self->info("Dry run: mkgroup '$group'");
+  }
+  else {
+    $self->_push_pump_trim_split(qq(mkgroup "$group"\n));
+  }
   return 1; #return true if we make a group
 }
 
@@ -194,24 +204,41 @@ sub set_group_membership {
   if (@orig_members){
     if(none {$_ eq $self->_user} @orig_members) {carp "group $group does not contain user ".($self->_user).': authorization failure likely';}
   }else{
-    $self->_op_g_u('atg',$group, $self->_user); #add this user to empty group (first) so admin rights to operate on it are retained
+    if (not $self->dry_run) {
+      $self->_op_g_u('atg',$group, $self->_user); #add this user to empty group (first) so admin rights to operate on it are retained
+    }
     push @orig_members, $self->_user;
     $altered = 1;
   }
   my%members = map{$_=>1}@members,$self->_user;
   @orig_members = grep{ not delete $members{$_}} @orig_members; #make list to delete from orginal members if not in new list, leaves member to add in hash
   foreach my $m (@orig_members){
-    $self->info("Removing $m from $group");
-    $self->_op_g_u('rfg',$group,$m);
+    if ($self->dry_run) {
+      $self->info("Dry run: removing $m from $group");
+    }
+    else {
+      $self->info("Removing $m from $group");
+      $self->_op_g_u('rfg',$group,$m);
+    }
   }
   $altered ||= @orig_members;
   @members = keys %members;
   foreach my $m (@members) {
-    $self->info("Adding $m to $group");
-    $self->_op_g_u('atg',$group,$m);
+    if ($self->dry_run) {
+      $self->info("Dry run: adding $m to $group");
+    }
+    else {
+      $self->info("Adding $m to $group");
+      $self->_op_g_u('atg',$group,$m);
+    }
   }
   $altered ||= @members;
-  $self->info("Altered $altered members of $group");
+  if ($self->dry_run) {
+    $self->info("Dry run: altered $altered members of $group");
+  }
+  else {
+    $self->info("Altered $altered members of $group");
+  }
   return $altered;
 }
 

@@ -1,3 +1,6 @@
+ - Added support for a TEST_PERFORMANCE environment variable. If set,
+   the performance tests will be run. The default is not to run them.
+
  - Added support for the TEST_AUTHOR environment variable. If set and
    the iRODS test environment is not declared, the tests will fail. If
    not set and the iRODS test environment is not declared, the tests

@@ -17,6 +17,10 @@ my $irods_tmp_coll;
 my $fixture_counter = 0;
 my $pid = $PID;
 
+WTSI::NPG::iRODS::PerformanceTest->SKIP_CLASS
+  ($ENV{TEST_PERFORMANCE} ? 0 :
+   'TEST_PERFORMANCE is not set; skipping performance tests');
+
 my @test_hosting_zones = qw(tempZone testZone Sanger1-dev);
 my $can_test = 0;
 

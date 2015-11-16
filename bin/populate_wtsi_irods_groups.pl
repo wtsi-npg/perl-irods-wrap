@@ -60,8 +60,12 @@ Options:
   --debug       Enable debug level logging. Optional, defaults to false.
   --dry-run     Report proposed changes, do not perform them. Optional.
   --dry_run
+  --group-min   Minumum number of "getent group" records to expect [200]
+  --group_min
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
+  --passwd-min  Minumum number of "getent passwd" records to expect [5000]
+  --passwd_min
   --study       Restrict updates to a study. May be used multiple times
                 to select more than one study. Optional.
   --verbose     Print messages while processing. Optional.
@@ -73,19 +77,23 @@ Readonly::Scalar my $GETENT_PASSWD_ALERT_THRESH => 5000;
 
 my $debug;
 my $dry_run;
+my $group_min_record_count = $GETENT_GROUP_ALERT_THRESH;
 my $log4perl_config;
+my $passwd_min_record_count = $GETENT_PASSWD_ALERT_THRESH;
 my $verbose;
 my @studies;
 
-GetOptions('debug'             => \$debug,
-           'dry-run|dry_run'   => \$dry_run,
-           'help'              => sub {
-             print {*STDERR} $what_on_earth;
+GetOptions('debug'                   => \$debug,
+           'dry-run|dry_run'         => \$dry_run,
+           'group-min|group_min=i'   => \$group_min_record_count,
+           'help'                    => sub {
+             print $what_on_earth;
              exit 0;
            },
-           'logconf=s'         => \$log4perl_config,
-           'study=s'           => \@studies,
-           'verbose'           => \$verbose);
+           'logconf=s'               => \$log4perl_config,
+           'passwd-min|passwd_min=i' => \$passwd_min_record_count,
+           'study=s'                 => \@studies,
+           'verbose'                 => \$verbose) or die "\n$what_on_earth\n";
 
 if ($log4perl_config) {
   Log::Log4perl::init($log4perl_config);
@@ -98,7 +106,7 @@ my $log = Log::Log4perl->get_logger('npg.irods');
 if ($verbose) {
   $log->level($INFO);
 }
-elsif ($debug) {
+if ($debug) {
   $log->level($DEBUG);
 }
 
@@ -132,7 +140,7 @@ while(<$gfh>){
 close $gfh or
   $log->logcroak("Closing pipe to getent group failed: $ERRNO");
 
-if ($num_group_lines < $GETENT_GROUP_ALERT_THRESH) {
+if ($group_min_record_count and $num_group_lines < $group_min_record_count) {
   $log->logcroak("Output of 'getent group' appears truncated ",
                  "($num_group_lines lines)");
 }
@@ -152,7 +160,7 @@ while(<$pfh>){
 close $pfh or
   $log->logcroak("Closing pipe to getent passwd failed: $ERRNO");
 
-if ($num_passwd_lines < $GETENT_PASSWD_ALERT_THRESH) {
+if ($passwd_min_record_count and $num_passwd_lines < $passwd_min_record_count) {
   $log->logcroak("Output of 'getent passwd' appears truncated ",
                  "($num_passwd_lines lines)");
 }

@@ -1,3 +1,5 @@
+Release 2.0.2
+
  - Added support for a TEST_PERFORMANCE environment variable. If set,
    the performance tests will be run. The default is not to run them.
 

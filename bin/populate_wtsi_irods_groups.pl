@@ -98,7 +98,7 @@ my $log = Log::Log4perl->get_logger('npg.irods');
 if ($verbose) {
   $log->level($INFO);
 }
-elsif ($debug) {
+if ($debug) {
   $log->level($DEBUG);
 }
 

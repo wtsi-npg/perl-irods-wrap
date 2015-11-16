@@ -59,7 +59,6 @@ Options:
 
   --debug       Enable debug level logging. Optional, defaults to false.
   --dry-run     Report proposed changes, do not perform them. Optional.
-  --dry_run
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
   --study       Restrict updates to a study. May be used multiple times
@@ -80,12 +79,12 @@ my @studies;
 GetOptions('debug'             => \$debug,
            'dry-run|dry_run'   => \$dry_run,
            'help'              => sub {
-             print {*STDERR} $what_on_earth;
+             print $what_on_earth;
              exit 0;
            },
            'logconf=s'         => \$log4perl_config,
            'study=s'           => \@studies,
-           'verbose'           => \$verbose);
+           'verbose'           => \$verbose) or die "\n$what_on_earth\n";
 
 if ($log4perl_config) {
   Log::Log4perl::init($log4perl_config);

@@ -6,6 +6,7 @@ use IPC::Run qw(start run);
 use File::Which qw(which);
 use Cwd qw(abs_path);
 use List::AllUtils qw(any none);
+use Log::Log4perl;
 use Readonly;
 use Carp;
 
@@ -33,6 +34,13 @@ A class for running iRODS group admin related commands for creating groups and a
 Readonly::Scalar our $IGROUPADMIN => q(igroupadmin);
 Readonly::Scalar our $IENV => q(ienv);
 
+with 'WTSI::DNAP::Utilities::Loggable';
+
+has 'dry_run' =>
+  (is      => 'ro',
+   isa     => 'Bool',
+   default => 0);
+
 has '_in' => (
   'is' => 'ro',
   'isa' => 'ScalarRef[Str]',
@@ -59,7 +67,9 @@ sub _build__harness {
   my $out_ref = $self->_out;
   # workaround Run::IPC caching : https://rt.cpan.org/Public/Bug/Display.html?id=57393
   my $cmd = which $IGROUPADMIN;
-  if (not $cmd) { croak qq(Command '$IGROUPADMIN' not found)}
+  if (not $cmd) {
+    $self->logcroak(qq(Command '$IGROUPADMIN' not found));
+  }
   my $h = start [abs_path $cmd], q(<pty<), $in_ref, q(>pty>), $out_ref;
   $self->_pump_until_prompt($h);
   ${$out_ref}=q();
@@ -82,7 +92,7 @@ sub _push_pump_trim_split {
   ${$out_ref}=~s/\r//smxg; #igroupadmin inserts CR before LF - remove all
   ${$out_ref}=~s/\A\Q$in\E//smx;
   if ( ${$out_ref}=~m/^ERROR:[^\n]+\z/smx ) {
-    croak 'igroupadmin error: '.${$out_ref};
+    $self->logcroak('igroupadmin error: ', ${$out_ref});
   }
   my@results=split /\n/smx, ${$out_ref};
   ${$out_ref}=q();
@@ -90,11 +100,11 @@ sub _push_pump_trim_split {
 }
 
 sub __croak_on_bad_group_name {
-  my($group)=@_;
+  my($self, $group)=@_;
   if( (not defined $group ) or $group eq q()){
-      croak q(empty string group name does not make sense to iRODs);
+      $self->logcroak(q(empty string group name does not make sense to iRODs));
   }elsif ($group =~ /"/smx){
-      croak qq(Cannot cope with group names containing double quotes '"' : $group);
+      $self->logcroak(qq(Cannot cope with group names containing double quotes '"' : $group));
   }
   return;
 }
@@ -109,7 +119,7 @@ sub lg {
   my($self,$group)=@_;
   my $in = q(lg);
   if(defined $group){
-    __croak_on_bad_group_name($group);
+    $self->__croak_on_bad_group_name($group);
     $in .= qq( "$group");
   }
   $in .= qq(\n);
@@ -117,13 +127,13 @@ sub lg {
   if(defined $group){
     my $leadingtext = shift @results;
     if( @results and not $leadingtext=~/\AMembers\sof\sgroup/smx) {
-      croak qq(unexpected text: \"$leadingtext\");
+      $self->logcroak(qq(unexpected text: \"$leadingtext\"));
     }
   }
   if (@results==1 and $results[0]=~/\ANo\srows\sfound/smx ){
     shift @results;
     if (@results==0 and defined $group and none {$group eq $_} $self->lg){
-      croak qq(group "$group" does not exist);
+      $self->logcroak(qq(group "$group" does not exist));
     }
   }
   return @results;
@@ -136,35 +146,47 @@ has '_user' => (
   'builder' => '_build__user',
 );
 sub _build__user {
+  my ($self) = @_;
   my $out = q();
   my $cmd = which $IENV;
-  if (not $cmd) { croak qq(Command '$IENV' not found)}
+  if (not $cmd) {
+    $self->logcroak(qq(Command '$IENV' not found));
+  }
   run [abs_path $cmd], q(>), \$out;
   if (my ($u) = $out =~ m/irodsUserName=(\S+)/smx and my ($z) = $out =~ m/irodsZone=(\S+)/smx) {
     return "$u#$z";
   } else {
-    croak 'Could not obtain user and zone from ienv: '.$out;
+    $self->logcroak('Could not obtain user and zone from ienv: ', $out);
   }
+
+  return;
 }
 
 sub _op_g_u {
   my($self,$op,$group,$user)=@_;
-  __croak_on_bad_group_name($group);
+  $self->__croak_on_bad_group_name($group);
   if( (not defined $user ) or $user eq q()){
-      croak q(empty string username does not make sense to iRODs);
+      $self->logcroak(q(empty string username does not make sense to iRODs));
   }elsif ($user =~ /"/smx){
-      croak qq(Cannot cope with username containing double quotes '"' : $group);
+    $self->logcroak(qq(Cannot cope with username containing double quotes '"' : $group));
   }
   my $in = qq($op "$group" "$user"\n);
+
   $self->_push_pump_trim_split($in);
+
   return;
 }
 
 sub _ensure_existence_of_group {
   my($self,$group)=@_;
-  __croak_on_bad_group_name($group);
+  $self->__croak_on_bad_group_name($group);
   if ( any {$group eq $_} $self->lg){ return;}
-  $self->_push_pump_trim_split(qq(mkgroup "$group"\n));
+  if ($self->dry_run) {
+    $self->info("Dry run: mkgroup '$group'");
+  }
+  else {
+    $self->_push_pump_trim_split(qq(mkgroup "$group"\n));
+  }
   return 1; #return true if we make a group
 }
 
@@ -178,20 +200,45 @@ sub set_group_membership {
   my($self,$group,@members)=@_;
   my $altered = $self->_ensure_existence_of_group($group);
   my @orig_members = $self->lg($group);
+  $self->debug("Members of $group: ", join q(, ), @orig_members);
   if (@orig_members){
     if(none {$_ eq $self->_user} @orig_members) {carp "group $group does not contain user ".($self->_user).': authorization failure likely';}
   }else{
-    $self->_op_g_u('atg',$group, $self->_user); #add this user to empty group (first) so admin rights to operate on it are retained
+    if (not $self->dry_run) {
+      $self->_op_g_u('atg',$group, $self->_user); #add this user to empty group (first) so admin rights to operate on it are retained
+    }
     push @orig_members, $self->_user;
     $altered = 1;
   }
   my%members = map{$_=>1}@members,$self->_user;
   @orig_members = grep{ not delete $members{$_}} @orig_members; #make list to delete from orginal members if not in new list, leaves member to add in hash
-  foreach my $m (@orig_members){ $self->_op_g_u('rfg',$group,$m); }
+  foreach my $m (@orig_members){
+    if ($self->dry_run) {
+      $self->info("Dry run: removing $m from $group");
+    }
+    else {
+      $self->info("Removing $m from $group");
+      $self->_op_g_u('rfg',$group,$m);
+    }
+  }
   $altered ||= @orig_members;
   @members = keys %members;
-  foreach my $m (@members) { $self->_op_g_u('atg',$group,$m); }
+  foreach my $m (@members) {
+    if ($self->dry_run) {
+      $self->info("Dry run: adding $m to $group");
+    }
+    else {
+      $self->info("Adding $m to $group");
+      $self->_op_g_u('atg',$group,$m);
+    }
+  }
   $altered ||= @members;
+  if ($self->dry_run) {
+    $self->info("Dry run: altered $altered members of $group");
+  }
+  else {
+    $self->info("Altered $altered members of $group");
+  }
   return $altered;
 }
 

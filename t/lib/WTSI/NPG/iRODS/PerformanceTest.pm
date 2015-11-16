@@ -29,7 +29,8 @@ sub is_test_zone {
 }
 
 sub make_fixture : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods_tmp_coll =
     $irods->add_collection("CollectionTest.$pid.$fixture_counter");
@@ -37,7 +38,8 @@ sub make_fixture : Test(setup) {
 }
 
 sub teardown : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods->remove_collection($irods_tmp_coll);
 }
@@ -47,7 +49,8 @@ sub teardown : Test(teardown) {
 # faster than the thresholds that trigger a failure.
 
 sub collection_operations : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
  SKIP: {
      if (not is_test_zone($irods)) {
@@ -93,7 +96,8 @@ sub collection_operations : Test(3) {
 }
 
 sub object_operations : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
  SKIP: {
     if (not is_test_zone($irods)) {

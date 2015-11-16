@@ -32,7 +32,8 @@ my @irods_groups = map { $group_prefix . $_ } (10, 100);
 my @groups_added;
 
 sub make_fixture : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods_tmp_coll =
     $irods->add_collection("CollectionTest.$pid.$fixture_counter");
@@ -58,7 +59,8 @@ sub make_fixture : Test(setup) {
 }
 
 sub teardown : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods->remove_collection($irods_tmp_coll);
 
@@ -76,7 +78,8 @@ sub require : Test(1) {
 }
 
 sub constructor : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   new_ok('WTSI::NPG::iRODS::Collection', [$irods, '.']);
 
@@ -90,7 +93,8 @@ sub constructor : Test(5) {
 }
 
 sub collection : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $path1 = WTSI::NPG::iRODS::Collection->new($irods, '.');
   ok($path1->has_collection, 'Has collection 1');
@@ -106,7 +110,8 @@ sub collection : Test(6) {
 }
 
 sub is_present : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -118,7 +123,8 @@ sub is_present : Test(2) {
 }
 
 sub absolute : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $wc = $irods->working_collection;
 
   my $coll1 = WTSI::NPG::iRODS::Collection->new($irods, ".");
@@ -135,7 +141,8 @@ sub absolute : Test(4) {
 }
 
 sub metadata : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
@@ -150,7 +157,8 @@ sub metadata : Test(1) {
 }
 
 sub get_avu : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -166,7 +174,8 @@ sub get_avu : Test(3) {
 }
 
 sub add_avu : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
@@ -196,7 +205,8 @@ sub add_avu : Test(5) {
 }
 
 sub remove_avu : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'y'},
                        {attribute => 'b', value => 'x', units => 'cm'},
@@ -220,7 +230,8 @@ sub remove_avu : Test(5) {
 }
 
 sub str : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -228,7 +239,8 @@ sub str : Test(1) {
 }
 
 sub get_contents : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir/contents";
 
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
@@ -276,7 +288,8 @@ sub get_contents : Test(4) {
 }
 
 sub get_permissions : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -287,7 +300,8 @@ sub get_permissions : Test(1) {
 }
 
 sub set_permissions : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -318,7 +332,8 @@ sub set_permissions : Test(7) {
 }
 
 sub get_groups : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 

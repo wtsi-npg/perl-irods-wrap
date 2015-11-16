@@ -21,8 +21,13 @@ sub runtests {
     }
   }
 
+  my %env_copy = %ENV;
+  # Ensure that the iRODS connection details are a nonsense value if
+  # they are not set explicitly via WTSI_NPG_iRODS_Test_irodsEnvFile
+  $env_copy{'irodsEnvFile'} = $env_file || 'DUMMY_VALUE';
+
   {
-    local $ENV{'irodsEnvFile'} = $env_file;
+    local %ENV = %env_copy;
     return $self->SUPER::runtests;
   }
 }

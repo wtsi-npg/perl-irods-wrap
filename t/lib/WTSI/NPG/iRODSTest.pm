@@ -21,7 +21,7 @@ Log::Log4perl::init('./etc/log4perl_tests.conf');
 use WTSI::NPG::iRODS;
 
 my $pid = $PID;
-my $cwc = WTSI::NPG::iRODS->new(strict_baton_version => 0)->working_collection;
+my $cwc;
 
 my $fixture_counter = 0;
 my $data_path = './t/irods';
@@ -40,7 +40,9 @@ my @groups_added;
 my $group_tests_enabled = 0;
 
 sub make_fixture : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  $cwc = $irods->working_collection;
 
   $irods_tmp_coll = $irods->add_collection("iRODSTest.$pid.$fixture_counter");
   $fixture_counter++;
@@ -76,7 +78,8 @@ sub make_fixture : Test(setup) {
 }
 
 sub teardown : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
@@ -95,7 +98,8 @@ sub require : Test(1) {
 }
 
 sub compatible_baton_versions : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my @compatible_versions = qw(0.16.0 0.16.1);
 
@@ -106,7 +110,8 @@ sub compatible_baton_versions : Test(2) {
 }
 
 sub match_baton_version : Test(11) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   {
     local $WTSI::NPG::iRODS::MAX_BATON_VERSION = '1.2.2';
@@ -128,7 +133,8 @@ sub match_baton_version : Test(11) {
 }
 
 sub group_prefix : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   is($irods->group_prefix, 'ss_', 'Default group prefix');
 
   dies_ok { $irods->group_prefix('') }
@@ -143,40 +149,46 @@ sub group_prefix : Test(6) {
 }
 
 sub group_filter : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->group_filter->('ss_0'),   'Default group filter include');
   ok(!$irods->group_filter->('public'), 'Default group filter exclude');
 }
 
 sub absolute_path : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   is($irods->absolute_path('/path'), '/path');
   is($irods->absolute_path('path'), $irods->working_collection . '/path');
 }
 
 sub get_irods_env : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->get_irods_env, 'Obtained an iRODS environment');
   is(ref $irods->get_irods_env, 'HASH', 'iRODS environment is a HashRef');
 }
 
 sub get_irods_user : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->get_irods_user, 'Obtained an iRODS user name')
 }
 
 sub get_irods_home : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->get_irods_user, 'Obtained an iRODS user name')
 }
 
 sub find_zone_name : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $wc = $irods->working_collection;
   my ($zone) = $wc =~ m{^/([^/]+)};
@@ -189,7 +201,8 @@ sub find_zone_name : Test(3) {
 }
 
 sub working_collection : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   like($irods->working_collection, qr{^/}, 'Found a working collection');
 
@@ -203,20 +216,23 @@ sub working_collection : Test(5) {
 }
 
 sub list_groups : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok(grep { /^rodsadmin$/ } $irods->list_groups, 'Listed the rodsadmin group');
 }
 
 sub group_exists : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->group_exists('rodsadmin'), 'The rodsadmin group exists');
   ok(!$irods->group_exists('no_such_group'), 'An absent group does not exist');
 }
 
 sub set_group_access : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   dies_ok { $irods->set_group_access('no_such_permission', 'public',
@@ -252,7 +268,8 @@ sub set_group_access : Test(7) {
 }
 
 sub get_object_permissions : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   my $perms = all { exists $_->{owner} &&
@@ -263,7 +280,8 @@ sub get_object_permissions : Test(1) {
 }
 
 sub set_object_permissions : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   dies_ok { $irods->set_object_permissions('no_such_permission', 'public',
@@ -293,8 +311,9 @@ sub set_object_permissions : Test(6) {
 }
 
 sub get_object_groups : Test(7) {
-   my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
-   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
  SKIP: {
      if (not $group_tests_enabled) {
@@ -334,7 +353,8 @@ sub get_object_groups : Test(7) {
 }
 
 sub get_collection_permissions : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
   my $perms = all { exists $_->{owner} &&
@@ -345,7 +365,8 @@ sub get_collection_permissions : Test(1) {
 }
 
 sub set_collection_permissions : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
   dies_ok { $irods->set_collection_permissions('no_such_permission', 'public',
@@ -375,7 +396,8 @@ sub set_collection_permissions : Test(6) {
 }
 
 sub get_collection_groups : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
  SKIP: {
@@ -416,7 +438,8 @@ sub get_collection_groups : Test(7) {
 }
 
 sub is_collection : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->is_collection($irods_tmp_coll), 'Is a collection');
   ok(!$irods->is_collection("$irods_tmp_coll/irods/lorem.txt"),
@@ -426,7 +449,8 @@ sub is_collection : Test(3) {
 }
 
 sub list_collection : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my ($objs, $colls) = $irods->list_collection("$irods_tmp_coll/irods");
 
@@ -477,7 +501,8 @@ sub list_collection : Test(5) {
 }
 
 sub collection_checksums : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $checksums = $irods->collection_checksums("$irods_tmp_coll/irods");
   is_deeply($checksums,
@@ -528,7 +553,8 @@ sub collection_checksums : Test(3) {
 }
 
 sub add_collection : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   # Deliberate spaces in names
   my $coll = "$irods_tmp_coll/add_ _collection";
@@ -537,7 +563,8 @@ sub add_collection : Test(2) {
 }
 
 sub put_collection : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $dir = File::Spec->catdir($data_path, 'test');
   my $target = "$irods_tmp_coll/put_collection";
@@ -559,7 +586,8 @@ sub put_collection : Test(2) {
 }
 
 sub move_collection : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll_to_move = "$irods_tmp_coll/irods";
   my $coll_moved = "$irods_tmp_coll/irods_moved";
@@ -577,7 +605,8 @@ sub move_collection : Test(5) {
 }
 
 sub get_collection : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   my $tmpdir = tempdir(CLEANUP => 1);
@@ -592,7 +621,8 @@ sub get_collection : Test(4) {
 }
 
 sub remove_collection : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   is($irods->remove_collection($coll), $coll, 'Removed a collection');
@@ -605,7 +635,8 @@ sub remove_collection : Test(4) {
 }
 
 sub get_collection_meta : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
@@ -628,7 +659,8 @@ sub get_collection_meta : Test(2) {
 }
 
 sub add_collection_avu : Test(11) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $num_attrs = 8;
   my %meta = map { 'cattr' . $_ => 'cval' . $_ } 0 .. $num_attrs;
@@ -662,7 +694,8 @@ sub add_collection_avu : Test(11) {
 }
 
 sub remove_collection_avu : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
@@ -686,7 +719,8 @@ sub remove_collection_avu : Test(4) {
 }
 
 sub make_collection_avu_history : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
@@ -702,7 +736,8 @@ sub make_collection_avu_history : Test(4) {
 }
 
 sub find_collections_by_meta : Test(8) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $expected_coll = "$irods_tmp_coll/irods";
 
@@ -737,7 +772,8 @@ sub find_collections_by_meta : Test(8) {
 }
 
 sub is_object : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok(!$irods->is_object($irods_tmp_coll), 'Collection not an object');
   ok($irods->is_object("$irods_tmp_coll/irods/lorem.txt"), 'Is an object');
@@ -746,7 +782,8 @@ sub is_object : Test(3) {
 }
 
 sub list_object : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $lorem_object = "$irods_tmp_coll/lorem.txt";
@@ -765,7 +802,8 @@ sub list_object : Test(4) {
 }
 
 sub read_object : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $lorem_object = "$irods_tmp_coll/lorem.txt";
@@ -787,7 +825,8 @@ sub read_object : Test(2) {
 }
 
 sub add_object : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $lorem_object = "$irods_tmp_coll/lorem_added.txt";
@@ -803,7 +842,8 @@ sub add_object : Test(3) {
 }
 
 sub replace_object : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
@@ -829,7 +869,8 @@ sub replace_object : Test(5) {
 }
 
 sub copy_object : Test(16) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $num_attrs = 8;
   my %meta = map { 'dattr' . $_ => 'dval' . $_ } 0 .. $num_attrs;
@@ -881,7 +922,8 @@ sub copy_object : Test(16) {
 }
 
 sub move_object : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $object_to_move = "$irods_tmp_coll/lorem_to_move.txt";
@@ -901,7 +943,8 @@ sub move_object : Test(5) {
 }
 
 sub get_object : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $tmpdir = tempdir(CLEANUP => 1);
@@ -916,7 +959,8 @@ sub get_object : Test(4) {
 }
 
 sub remove_object : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   is($irods->remove_object($lorem_object), $lorem_object,
@@ -930,7 +974,8 @@ sub remove_object : Test(4) {
 }
 
 sub get_object_meta : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
@@ -952,7 +997,8 @@ sub get_object_meta : Test(2) {
 }
 
 sub add_object_avu : Test(11) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $num_attrs = 8;
   my %meta = map { 'dattr' . $_ => 'dval' . $_ } 0 .. $num_attrs;
@@ -985,7 +1031,8 @@ sub add_object_avu : Test(11) {
 }
 
 sub remove_object_avu : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
@@ -1010,7 +1057,8 @@ sub remove_object_avu : Test(4) {
 }
 
 sub make_object_avu_history : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $timestamp_regex = '\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\]';
@@ -1026,7 +1074,8 @@ sub make_object_avu_history : Test(4) {
 }
 
 sub add_remove_perl_false_avu : Test(8) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   ok($irods->add_object_avu($lorem_object, 0, 0, 0),
@@ -1052,7 +1101,8 @@ sub add_remove_perl_false_avu : Test(8) {
 }
 
 sub find_objects_by_meta : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
@@ -1084,7 +1134,8 @@ sub find_objects_by_meta : Test(7) {
 }
 
 sub checksum : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
@@ -1094,7 +1145,8 @@ sub checksum : Test(1) {
 }
 
 sub calculate_checksum : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
@@ -1104,7 +1156,8 @@ sub calculate_checksum : Test(1) {
 }
 
 sub validate_checksum_metadata : Test(8) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
@@ -1126,7 +1179,8 @@ sub validate_checksum_metadata : Test(8) {
 }
 
 sub replicates : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
@@ -1148,14 +1202,16 @@ sub replicates : Test(6) {
 }
 
 sub md5sum : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   is($irods->md5sum("$data_path/md5sum/lorem.txt"),
      '39a4aa291ca849d601e4e5b8ed627a04');
 }
 
 sub hash_path : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   is($irods->hash_path("$data_path/md5sum/lorem.txt"), '39/a4/aa');
 
@@ -1164,7 +1220,8 @@ sub hash_path : Test(2) {
 }
 
 sub avu_history_attr : Test(2) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
   is($irods->avu_history_attr('foo'), 'foo_history', 'History attribute');
 
   dies_ok {
@@ -1173,7 +1230,8 @@ sub avu_history_attr : Test(2) {
 }
 
 sub is_avu_history_attr : Test(3) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->is_avu_history_attr('foo_history'), 'Is history attribute');
   ok(!$irods->is_avu_history_attr('foo'), 'Is not history attribute');
@@ -1184,7 +1242,8 @@ sub is_avu_history_attr : Test(3) {
 }
 
 sub round_trip_utf8_avu : Test(5) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $attr  = "Τη γλώσσα μου έδωσαν ελληνική";
   my $value = "το σπίτι φτωχικό στις αμμουδιές του Ομήρου";
@@ -1207,7 +1266,8 @@ sub round_trip_utf8_avu : Test(5) {
 }
 
 sub slurp_object : Test(1) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $test_file = "$data_path/utf-8.txt";
   my $test_object = "$irods_tmp_coll/irods/utf-8.txt";
@@ -1226,7 +1286,8 @@ sub slurp_object : Test(1) {
 }
 
 sub make_avu : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   my $expected1 = {attribute => 'a', value => 'b', units => 'c'};
   my $avu1 = $irods->make_avu('a', 'b', 'c');
@@ -1254,7 +1315,8 @@ sub make_avu : Test(6) {
 }
 
 sub remote_duplicate_avus : Test(4) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   # Single AVU (no-op)
   is_deeply([$irods->remove_duplicate_avus($irods->make_avu('a', 'b'))],
@@ -1289,7 +1351,8 @@ sub remote_duplicate_avus : Test(4) {
 }
 
 sub avus_equal : Test(9) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   ok($irods->avus_equal({attribute => 'a', value => 'v', units => 'u'},
                         {attribute => 'a', value => 'v', units => 'u'}),

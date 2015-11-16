@@ -59,10 +59,13 @@ Options:
 
   --debug       Enable debug level logging. Optional, defaults to false.
   --dry-run     Report proposed changes, do not perform them. Optional.
+  --dry_run
   --group-min   Minumum number of "getent group" records to expect [200]
+  --group_min
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
   --passwd-min  Minumum number of "getent passwd" records to expect [5000]
+  --passwd_min
   --study       Restrict updates to a study. May be used multiple times
                 to select more than one study. Optional.
   --verbose     Print messages while processing. Optional.
@@ -80,17 +83,17 @@ my $passwd_min_record_count = $GETENT_PASSWD_ALERT_THRESH;
 my $verbose;
 my @studies;
 
-GetOptions('debug'             => \$debug,
-           'dry-run|dry_run'   => \$dry_run,
-           'group-min=i'       => \$group_min_record_count,
-           'help'              => sub {
+GetOptions('debug'                   => \$debug,
+           'dry-run|dry_run'         => \$dry_run,
+           'group-min|group_min=i'   => \$group_min_record_count,
+           'help'                    => sub {
              print $what_on_earth;
              exit 0;
            },
-           'logconf=s'         => \$log4perl_config,
-           'passwd-min=i'      => \$passwd_min_record_count,
-           'study=s'           => \@studies,
-           'verbose'           => \$verbose) or die "\n$what_on_earth\n";
+           'logconf=s'               => \$log4perl_config,
+           'passwd-min|passwd_min=i' => \$passwd_min_record_count,
+           'study=s'                 => \@studies,
+           'verbose'                 => \$verbose) or die "\n$what_on_earth\n";
 
 if ($log4perl_config) {
   Log::Log4perl::init($log4perl_config);

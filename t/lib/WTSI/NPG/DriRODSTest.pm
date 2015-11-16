@@ -18,7 +18,8 @@ use WTSI::NPG::iRODS::DataObject;
 use WTSI::NPG::iRODS::Types qw(:all);
 
 my $pid = $PID;
-my $cwc = WTSI::NPG::iRODS->new(strict_baton_version => 0)->working_collection;
+
+my $cwc;
 
 my $fixture_counter = 0;
 my $data_path = './t/irods';
@@ -37,7 +38,9 @@ my @groups_added;
 my $group_tests_enabled = 0;
 
 sub make_fixture : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  $cwc = $irods->working_collection;
 
   $irods_tmp_coll = $irods->add_collection("DriRODSTest.$pid.$fixture_counter");
   $fixture_counter++;
@@ -73,14 +76,16 @@ sub make_fixture : Test(setup) {
 }
 
 sub teardown : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(strict_baton_version => 0);
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
 }
 
 sub add_group : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $test_group = "test_group." . $PID;
 
@@ -96,7 +101,8 @@ sub add_group : Test(3) {
 }
 
 sub remove_group : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $test_group = "ss_0";
 
@@ -112,7 +118,8 @@ sub remove_group : Test(3) {
 }
 
 sub set_group_access : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   my $zone = $drirods->find_zone_name($irods_tmp_coll);
@@ -133,7 +140,8 @@ sub set_group_access : Test(3) {
 }
 
 sub set_object_permissions : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
 
   my $zone = $drirods->find_zone_name($irods_tmp_coll);
@@ -154,7 +162,8 @@ sub set_object_permissions : Test(3) {
 }
 
 sub set_collection_permissions : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
 
   my $zone = $drirods->find_zone_name($irods_tmp_coll);
@@ -175,7 +184,8 @@ sub set_collection_permissions : Test(3) {
 }
 
 sub add_collection : Test(2) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   # Deliberate spaces in names
   my $coll = "$irods_tmp_coll/add_ _collection";
@@ -184,7 +194,8 @@ sub add_collection : Test(2) {
 }
 
 sub put_collection : Test(2) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $dir = File::Spec->catdir($data_path, 'test');
   my $target = "$irods_tmp_coll";
@@ -194,7 +205,8 @@ sub put_collection : Test(2) {
 }
 
 sub move_collection : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $coll_to_move = "$irods_tmp_coll/irods";
   my $coll_moved = "$irods_tmp_coll/irods_moved";
@@ -207,7 +219,8 @@ sub move_collection : Test(3) {
 }
 
 sub remove_collection : Test(2) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   ok($drirods->remove_collection($coll),'Dry run remove_collection');
@@ -215,7 +228,8 @@ sub remove_collection : Test(2) {
 }
 
 sub add_collection_avu : Test(10) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $num_attrs = 8;
   my %meta = map { 'cattr' . $_ => 'cval' . $_ } 0 .. $num_attrs;
@@ -232,7 +246,8 @@ sub add_collection_avu : Test(10) {
 }
 
 sub remove_collection_avu : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $coll = "$irods_tmp_coll/irods";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
@@ -262,7 +277,8 @@ sub add_object : Test(2) {
 }
 
 sub replace_object : Test(2) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $tmp = File::Temp->new;
   my $empty_file = $tmp->filename;
@@ -277,7 +293,8 @@ sub replace_object : Test(2) {
 }
 
 sub copy_object : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $to_copy = "$irods_tmp_coll/irods/lorem.txt";
   my $copy    = "$irods_tmp_coll/irods/lorem_copy.txt";
@@ -288,7 +305,8 @@ sub copy_object : Test(3) {
 }
 
 sub move_object : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $to_move = "$irods_tmp_coll/irods/lorem.txt";
   my $moved   = "$irods_tmp_coll/irods/lorem_moved.txt";
@@ -299,7 +317,8 @@ sub move_object : Test(3) {
 }
 
 sub remove_object : Test(2) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $to_remove = "$irods_tmp_coll/irods/lorem.txt";
 
@@ -308,7 +327,8 @@ sub remove_object : Test(2) {
 }
 
 sub remove_object_avu : Test(3) {
-  my $drirods = WTSI::NPG::DriRODS->new(strict_baton_version => 0);
+  my $drirods = WTSI::NPG::DriRODS->new(environment          => \%ENV,
+                                        strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},

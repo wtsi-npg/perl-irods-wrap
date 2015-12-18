@@ -36,16 +36,9 @@ install:
   - tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
   - cd /tmp/baton-${BATON_VERSION} ; ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
   - sudo ldconfig
-  - cpanm --quiet --notest Data::Dump
-  - cpanm --quiet --notest IO::Pty
-  - cpanm --quiet --notest Readonly
-  - cpanm --quiet --notest Set::Scalar
-  - cpanm --quiet --notest Test::Class
-  - cpanm --quiet --notest Test::Exception
-  - cpanm --quiet --notest Test::Perl::Critic
-  - cpanm --quiet --notest URI~1.67
-  - cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
   - cd $TRAVIS_BUILD_DIR
+  - cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
+  - cpanm --installdeps --notest .
 
 before_script:
   - sudo -E -u postgres $TRAVIS_BUILD_DIR/setup_pgusers.sh

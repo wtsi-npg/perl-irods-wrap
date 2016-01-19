@@ -1,3 +1,14 @@
+Release 2.0.3
+
+ - Set the TODO flag on UTF-8 round tripping as a workaround for some
+   iRODS instances.
+
+ - Set tests to fail rather than skip if they exit early.
+
+ - Use cpanm to install dependencies on Travis CI.
+
+ - Added alignment_filter and alt_target sequencing metadata keys.
+
 Release 2.0.2
 
  - Added support for a TEST_PERFORMANCE environment variable. If set,

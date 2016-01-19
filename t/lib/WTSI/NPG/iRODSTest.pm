@@ -1259,10 +1259,13 @@ sub round_trip_utf8_avu : Test(5) {
   cmp_ok(scalar @meta_after, '==', 1, 'One AVU added');
 
   my $avu = $meta_after[0];
-  ok(Unicode::Collate->new->eq($avu->{attribute}, $attr),
-     'Found UTF-8 attribute');
-  ok(Unicode::Collate->new->eq($avu->{value}, $value),
-     'Found UTF-8 value');
+ TODO: {
+     local $TODO = 'Regression in test iRODS for UTF-8';
+     ok(Unicode::Collate->new->eq($avu->{attribute}, $attr),
+	'Found UTF-8 attribute');
+     ok(Unicode::Collate->new->eq($avu->{value}, $value),
+	'Found UTF-8 value');
+  };
 }
 
 sub slurp_object : Test(1) {

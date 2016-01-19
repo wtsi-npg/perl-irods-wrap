@@ -36,6 +36,8 @@ our @EXPORT = qw(
                   $STUDY_TITLE
 
                   $ALIGNMENT
+                  $ALIGNMENT_FILTER
+                  $ALT_TARGET
                   $CONTROL
                   $ID_RUN
                   $IS_PAIRED_READ
@@ -100,7 +102,9 @@ our $STUDY_NAME                = 'study';
 our $STUDY_TITLE               = 'study_title';
 
 # Nucleotide sequencing
+our $ALIGNMENT_FILTER          = 'alignment_filter';
 our $ALIGNMENT                 = 'alignment';
+our $ALT_TARGET                = 'alt_target';
 our $CONTROL                   = 'control';
 our $ID_RUN                    = 'id_run';
 our $IS_PAIRED_READ            = 'is_paired_read';
@@ -147,7 +151,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2015 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2015, 2016 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

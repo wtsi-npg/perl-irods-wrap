@@ -32,4 +32,10 @@ sub runtests {
   }
 }
 
+# If any test methods fail to complete, count all their remaining
+# tests as failures.
+sub fail_if_returned_early {
+  return 1;
+}
+
 1;

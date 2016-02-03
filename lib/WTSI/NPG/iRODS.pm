@@ -61,6 +61,17 @@ has 'environment' =>
    default       => sub { \%ENV },
    documentation => 'The shell environment in which iRODS clients are run');
 
+has 'groups' =>
+  (is             => 'ro',
+   isa           => 'ArrayRef',
+   required      => 1,
+   lazy          => 1,
+   builder       => '_build_groups',
+   clearer       => 'clear_groups',
+   init_arg      => undef,
+   documentation => 'The iRODS data access groups, filtered by the ' .
+                    'group_filter');
+
 has 'group_prefix' =>
   (is            => 'rw',
    isa           => NoWhitespaceStr,
@@ -487,13 +498,14 @@ sub make_group_name {
 =cut
 
 sub list_groups {
-  my ($self, @args) = @_;
+  my ($self) = @_;
 
   my @groups = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGROUPADMIN,
      arguments   => ['lg'],
      environment => $self->environment,
      logger      => $self->logger)->run->split_stdout;
+
   return @groups;
 }
 
@@ -509,7 +521,8 @@ sub list_groups {
 sub group_exists {
   my ($self, $name) = @_;
 
-  return any { $_ eq $name } $self->list_groups;
+  $self->clear_groups; # Clear the groups cache
+  return any { $_ eq $name } @{$self->groups};
 }
 
 =head2 add_group
@@ -534,6 +547,8 @@ sub add_group {
                                        arguments   => ['mkgroup', $name],
                                        environment => $self->environment,
                                        logger      => $self->logger)->run;
+  $self->clear_groups; # Clear the groups cache
+
   return $name;
 }
 
@@ -560,6 +575,8 @@ sub remove_group {
                                        arguments   => ['rmgroup', $name],
                                        environment => $self->environment,
                                        logger      => $self->logger)->run;
+  $self->clear_groups; # Clear the groups cache
+
   return $name;
 }
 
@@ -2128,6 +2145,13 @@ sub _make_avu_history {
   return {attribute => $history_attribute,
           value     => $history_value,
           units     => undef};
+}
+
+
+sub _build_groups {
+  my ($self) = @_;
+
+  return [$self->list_groups];
 }
 
 __PACKAGE__->meta->make_immutable;

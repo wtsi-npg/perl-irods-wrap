@@ -70,13 +70,13 @@ our @EXPORT = qw(
 our $VERSION = '';
 
 # Dublin Core metadata
-our $DCTERMS_AUDIENCE          = 'dcterms_audience';
-our $DCTERMS_CREATED           = 'dcterms_created';
-our $DCTERMS_CREATOR           = 'dcterms_creator';
-our $DCTERMS_IDENTIFIER        = 'dcterms_identifier';
-our $DCTERMS_MODIFIED          = 'dcterms_modified';
-our $DCTERMS_PUBLISHER         = 'dcterms_publisher';
-our $DCTERMS_TITLE             = 'dcterms_title';
+our $DCTERMS_AUDIENCE          = 'dcterms:audience';
+our $DCTERMS_CREATED           = 'dcterms:created';
+our $DCTERMS_CREATOR           = 'dcterms:creator';
+our $DCTERMS_IDENTIFIER        = 'dcterms:identifier';
+our $DCTERMS_MODIFIED          = 'dcterms:modified';
+our $DCTERMS_PUBLISHER         = 'dcterms:publisher';
+our $DCTERMS_TITLE             = 'dcterms:title';
 
 # File content and format
 our $FILE_MD5                  = 'md5';

@@ -1052,9 +1052,9 @@ sub add_collection_avu {
   Arg [4]    : units (optional).
 
   Example    : $irods->remove_collection_avu('/my/path/foo', 'id', 'ABCD1234')
-  Description: Removes metadata from a collection object. Return an array of
-               the removed attribute, value and units.
-  Returntype : Array
+  Description: Removes metadata from a collection object. Return the
+               collection path.
+  Returntype : Str
 
 =cut
 
@@ -1723,9 +1723,9 @@ sub add_object_avu {
 
   Example    : $irods->remove_object_avu('/my/path/lorem.txt', 'id',
                'ABCD1234')
-  Description: Remove metadata from a data object. Return an array of
-               the removed attribute, value and units.
-  Returntype : Array
+  Description: Remove metadata from a data object. Return the object
+               path.
+  Returntype : Str
 
 =cut
 

@@ -56,7 +56,10 @@ our @CORE_METADATA_ATTRS = (
                            );
 
 our @HTS_METADATA_ATTRS = (
+                           $ALIGNMENT_FILTER,
                            $ALIGNMENT,
+                           $ALT_PROCESS,
+                           $ALT_TARGET,
                            $CONTROL,
                            $ID_RUN,
                            $IS_PAIRED_READ,

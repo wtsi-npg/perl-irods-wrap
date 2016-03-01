@@ -37,6 +37,7 @@ our @EXPORT = qw(
 
                   $ALIGNMENT
                   $ALIGNMENT_FILTER
+                  $ALT_PROCESS
                   $ALT_TARGET
                   $CONTROL
                   $ID_RUN
@@ -104,6 +105,7 @@ our $STUDY_TITLE               = 'study_title';
 # Nucleotide sequencing
 our $ALIGNMENT_FILTER          = 'alignment_filter';
 our $ALIGNMENT                 = 'alignment';
+our $ALT_PROCESS               = 'alt_process';
 our $ALT_TARGET                = 'alt_target';
 our $CONTROL                   = 'control';
 our $ID_RUN                    = 'id_run';

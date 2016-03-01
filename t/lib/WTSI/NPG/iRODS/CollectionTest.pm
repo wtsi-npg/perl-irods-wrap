@@ -77,7 +77,7 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS::Collection');
 }
 
-sub constructor : Test(5) {
+sub constructor : Test(6) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -90,6 +90,12 @@ sub constructor : Test(5) {
   new_ok('WTSI::NPG::iRODS::Collection', [$irods, '/foo']);
 
   new_ok('WTSI::NPG::iRODS::Collection', [$irods, '/foo/bar']);
+
+  dies_ok {
+    WTSI::NPG::iRODS::Collection->new(irods        => $irods,
+                                      collection   => '/foo',
+                                      spurious_arg => 'spurious_value')
+    };
 }
 
 sub collection : Test(6) {
@@ -106,7 +112,7 @@ sub collection : Test(6) {
 
   my $path3 = WTSI::NPG::iRODS::Collection->new($irods, '/foo/');
   ok($path3->has_collection, 'Has collection 3');
-  is($path3->collection, '/foo/');
+  is($path3->collection, '/foo');
 }
 
 sub is_present : Test(2) {

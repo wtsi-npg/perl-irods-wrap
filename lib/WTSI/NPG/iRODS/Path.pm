@@ -58,18 +58,6 @@ requires
 # iRODS and those that may cache the values from iRODS (until
 # cleared).
 
-around BUILDARGS => sub {
-  my ($orig, $class, @args) = @_;
-
-  if (@args == 2 && ref $args[0] eq 'WTSI::NPG::iRODS') {
-    return $class->$orig(irods      => $args[0],
-                         collection => $args[1]);
-  }
-  else {
-    return $class->$orig(@_);
-  }
-};
-
 sub BUILD {
   my ($self) = @_;
 
@@ -449,8 +437,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
-Reserved.
+Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
+Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

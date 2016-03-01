@@ -2,6 +2,7 @@ package WTSI::NPG::iRODS::GroupAdmin;
 
 use namespace::autoclean;
 use Moose;
+use MooseX::StrictConstructor;
 use IPC::Run qw(start run);
 use File::Which qw(which);
 use Cwd qw(abs_path);

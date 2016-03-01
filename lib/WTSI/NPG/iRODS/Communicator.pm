@@ -3,6 +3,7 @@ package WTSI::NPG::iRODS::Communicator;
 use namespace::autoclean;
 use Encode;
 use Moose;
+use MooseX::StrictConstructor;
 use Try::Tiny;
 
 our $VERSION = '';

@@ -4,6 +4,7 @@ use namespace::autoclean;
 use File::Spec;
 use List::AllUtils qw(none uniq);
 use Moose;
+use MooseX::StrictConstructor;
 use Set::Scalar;
 use Try::Tiny;
 
@@ -49,17 +50,19 @@ has 'replicates' =>
 around BUILDARGS => sub {
   my ($orig, $class, @args) = @_;
 
-  if (@args == 2 && ref $args[0]) {
-    my ($volume, $collection, $data_name) = File::Spec->splitpath($args[1]);
+  if (@args >= 2 && ref $args[0]) {
+    my ($irods, $path, @rest) = @args;
+    my ($volume, $collection, $data_name) = File::Spec->splitpath($path);
     $collection = File::Spec->canonpath($collection);
     $collection ||= q{.};
 
-    return $class->$orig(irods       => $args[0],
+    return $class->$orig(irods       => $irods,
                          collection  => $collection,
-                         data_object => $data_name);
+                         data_object => $data_name,
+                         @rest);
   }
   else {
-    return $class->$orig(@_);
+    return $class->$orig(@args);
   }
 };
 
@@ -508,8 +511,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015 Genome Research Limited. All Rights
-Reserved.
+Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
+Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

@@ -2,7 +2,7 @@ package WTSI::NPG::iRODS::DataObject;
 
 use namespace::autoclean;
 use File::Spec;
-use List::AllUtils qw(any uniq);
+use List::AllUtils qw(none uniq);
 use Moose;
 use Set::Scalar;
 use Try::Tiny;
@@ -315,6 +315,37 @@ sub get_groups {
   return $self->irods->get_object_groups($self->str, $level);
 }
 
+
+=head2 update_group_permissions
+
+  Arg [1]      Strictly check groups, Bool. Optional, defaults to false.
+               If true, no attempt will be made to operate on an apparently
+               non-existent groups. Due to a bug in 'igroupadmin lg`, groups
+               in other zones may be invisible. With strict group checking
+               off, operations on invsisble groups will be attempted. Strict
+               group checking makes any errors fatal, otherwise errors are
+               logged only.
+
+  Example    : $obj->update_group_permissions
+  Description: Modify a data objects ACL with respect to its study_id and
+               sample_consent / consent_withdrawn metadata and return the
+               data object.
+
+               The target group membership is determined by the result of
+               calling $self->expected_groups. The current group membership
+               is determined and any difference calculated. Unwanted
+               group memberships are pruned, then missing group memberships
+               are added.
+
+               If there are sample_consent or consent_withdrawn metadata,
+               access for all groups is removed.
+
+               This method does not add or remove access for the 'public'
+               group.
+  Returntype : WTSI::NPG::iRODS::DataObject
+
+=cut
+
 sub update_group_permissions {
   my ($self, $strict_groups) = @_;
 
@@ -351,9 +382,14 @@ sub update_group_permissions {
   # clean.
   my $num_errors = 0;
 
-  my @all_groups = $self->irods->list_groups;
+  my @all_groups = $self->irods->groups; # Use group cache
   foreach my $group (@to_remove) {
-    if (not $strict_groups or any { $group eq $_ } @all_groups) {
+    if ($strict_groups and none { $group eq $_ } @all_groups) {
+      $num_errors++;
+      $self->error("Attempted to remove permissions for non-existent group ",
+                   "'$group' on '", $self->str, q{'});
+    }
+    else {
       try {
         $self->set_permissions($WTSI::NPG::iRODS::NULL_PERMISSION, $group);
       } catch {
@@ -362,17 +398,17 @@ sub update_group_permissions {
                      $self->str, q{': }, $_);
       };
     }
-    else {
-      $num_errors++;
-      $self->error("Attempted to remove permissions for non-existent group ",
-                   "'$group' on '", $self->str, q{'});
-    }
   }
 
   $self->debug("Groups to add: [", join(', ', @to_add), "]");
 
   foreach my $group (@to_add) {
-    if (not $strict_groups or any { $group eq $_ } @all_groups) {
+    if ($strict_groups and none { $group eq $_ } @all_groups) {
+      $num_errors++;
+      $self->error("Attempted to add read permissions for non-existent group ",
+                   "'$group' on '", $self->str, q{'});
+    }
+    else {
       try {
         $self->set_permissions($WTSI::NPG::iRODS::READ_PERMISSION, $group);
       } catch {
@@ -380,11 +416,6 @@ sub update_group_permissions {
         $self->error("Failed to add read permissions for group '$group' to '",
                      $self->str, q{': }, $_);
       };
-    }
-    else {
-      $num_errors++;
-      $self->error("Attempted to add read permissions for non-existent group ",
-                   "'$group' on '", $self->str, q{'});
     }
   }
 

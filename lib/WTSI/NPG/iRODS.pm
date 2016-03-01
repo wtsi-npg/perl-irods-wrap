@@ -44,6 +44,8 @@ our $WRITE_PERMISSION = 'write';
 our $OWN_PERMISSION   = 'own';
 our $NULL_PERMISSION  = 'null';
 
+our $PUBLIC_GROUP     = 'public';
+
 our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
                           $WRITE_PERMISSION, $OWN_PERMISSION);
 
@@ -521,8 +523,7 @@ sub list_groups {
 sub group_exists {
   my ($self, $name) = @_;
 
-  $self->clear_groups; # Clear the groups cache
-  return any { $_ eq $name } @{$self->groups};
+  return any { $_ eq $name } @{$self->groups}; # Use the groups cache
 }
 
 =head2 add_group
@@ -590,7 +591,8 @@ sub remove_group {
   Arg [3]    : One or more data objects or collections.
 
   Example    : $irods->set_group_access($WTSI::NPG::iRODS::READ_PERMISSION,
-                                        'public', $object1, $object2)
+                                        $WTSI::NPG::iRODS::PUBLIC_GROUP,
+                                        $object1, $object2)
   Description: Set the access rights on one or more objects for a group,
                returning the objects.
   Returntype : Array

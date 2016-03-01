@@ -3,6 +3,7 @@ package WTSI::NPG::iRODS::Lister;
 use namespace::autoclean;
 use File::Spec;
 use Moose;
+use MooseX::StrictConstructor;
 
 our $VERSION = '';
 

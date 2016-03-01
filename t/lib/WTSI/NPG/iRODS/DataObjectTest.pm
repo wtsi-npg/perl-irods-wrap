@@ -79,7 +79,7 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS::DataObject');
 }
 
-sub constructor : Test(3) {
+sub constructor : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -92,6 +92,13 @@ sub constructor : Test(3) {
 
   new_ok('WTSI::NPG::iRODS::DataObject', [irods       => $irods,
                                           data_object => './bar.txt']);
+
+  dies_ok {
+    WTSI::NPG::iRODS::DataObject->new(irods        => $irods,
+                                      collection   => '/foo',
+                                      data_object  => 'bar.txt',
+                                      spurious_arg => 'spurious_value')
+    };
 }
 
 sub data_object : Test(12) {

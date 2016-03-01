@@ -2,6 +2,7 @@ package WTSI::NPG::iRODS::MetaLister;
 
 use namespace::autoclean;
 use Moose;
+use MooseX::StrictConstructor;
 
 our $VERSION = '';
 

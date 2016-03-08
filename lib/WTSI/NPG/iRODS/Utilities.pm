@@ -1,7 +1,5 @@
 package WTSI::NPG::iRODS::Utilities;
 
-use strict;
-use warnings;
 use List::AllUtils qw(uniq);
 use Moose::Role;
 
@@ -206,7 +204,7 @@ sub remove_duplicate_avus {
 
   my @uniq;
   foreach my $a (keys %metadata_tree) {
-    foreach my $u (keys $metadata_tree{$a}) {
+    foreach my $u (keys %{$metadata_tree{$a}}) {
       my @values = uniq @{$metadata_tree{$a}{$u}};
 
       foreach my $v (@values) {

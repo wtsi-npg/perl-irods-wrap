@@ -10,6 +10,7 @@ use File::Spec;
 use List::AllUtils qw(all any uniq);
 use Moose;
 use MooseX::StrictConstructor;
+use Try::Tiny;
 
 use WTSI::DNAP::Utilities::Runnable;
 
@@ -122,7 +123,8 @@ has 'lister' =>
        (arguments   => ['--unbuffered',],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_lister');
 
 has 'contents_lister' =>
   (is       => 'ro',
@@ -136,7 +138,8 @@ has 'contents_lister' =>
        (arguments   => ['--unbuffered', '--contents'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_contents_lister',);
 
 has 'detailed_lister' =>
   (is       => 'ro',
@@ -151,7 +154,8 @@ has 'detailed_lister' =>
                         '--replicate'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_detailed_lister');
 
 has 'acl_lister' =>
   (is       => 'ro',
@@ -165,7 +169,8 @@ has 'acl_lister' =>
        (arguments   => ['--unbuffered', '--acl', '--contents'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_acl_lister');
 
 has 'meta_lister' =>
   (is       => 'ro',
@@ -179,7 +184,8 @@ has 'meta_lister' =>
        (arguments   => ['--unbuffered', '--avu'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_meta_lister');
 
 has 'meta_adder' =>
   (is       => 'ro',
@@ -193,7 +199,8 @@ has 'meta_adder' =>
        (arguments   => ['--unbuffered', '--operation', 'add'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_meta_adder');
 
 has 'meta_remover' =>
   (is       => 'ro',
@@ -207,7 +214,8 @@ has 'meta_remover' =>
        (arguments   => ['--unbuffered', '--operation', 'rem'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_meta_remover');
 
 has 'coll_searcher' =>
   (is       => 'ro',
@@ -221,7 +229,8 @@ has 'coll_searcher' =>
        (arguments   => ['--unbuffered', '--coll'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_coll_searcher');
 
 has 'obj_searcher' =>
   (is       => 'ro',
@@ -235,7 +244,8 @@ has 'obj_searcher' =>
        (arguments   => ['--unbuffered', '--obj'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_obj_searcher');
 
 has 'acl_modifier' =>
   (is         => 'ro',
@@ -249,7 +259,8 @@ has 'acl_modifier' =>
        (arguments   => ['--unbuffered'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_acl_modifier');
 
 has 'obj_reader' =>
   (is         => 'ro',
@@ -263,7 +274,8 @@ has 'obj_reader' =>
        (arguments   => ['--unbuffered', '--avu'],
         environment => $self->environment,
         logger      => $self->logger)->start;
-   });
+   },
+   predicate => 'has_obj_reader');
 
 sub BUILD {
   my ($self) = @_;
@@ -2150,11 +2162,56 @@ sub _make_avu_history {
           units     => undef};
 }
 
-
 sub _build_groups {
   my ($self) = @_;
 
   return [$self->list_groups];
+}
+
+sub DEMOLISH {
+  my ($self, $in_global_destruction) = @_;
+
+  # Only do try to stop cleanly if the object is not already being
+  # destroyed by Perl (as indicated by the flag passed in by Moose).
+
+  my @clients = qw[
+                    acl_lister
+                    acl_modifier
+                    coll_searcher
+                    contents_lister
+                    detailed_lister
+                    lister
+                    meta_adder
+                    meta_lister
+                    meta_remover
+                    obj_reader
+                    obj_searcher
+                 ];
+
+  if (not $in_global_destruction) {
+
+    # Stop any active clients and log any errors that they encountered
+    # while running. This preempts the clients being stopped within
+    # their own destructors and allows our logger to be resonsible for
+    # reporting any errors.
+    #
+    # If stopping were left to the client destructors, Moose would
+    # handle any errors by warning to STDERR instead of using the log.
+    foreach my $client (@clients) {
+      my $predicate = "has_$client";
+      if ($self->$predicate) {
+        try {
+          $self->debug("Stopping $client client");
+          my $startable = $self->$client;
+          $startable->stop;
+        } catch {
+          $self->error("Failed to stop $client cleanly: ", $_);
+        };
+      }
+    }
+  }
+
+  return;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -345,7 +345,7 @@ sub get_groups : Test(7) {
 
  SKIP: {
     if (not $irods->group_exists('ss_0')) {
-      skip "Skipping test requiring the test group ss_0", 5;
+      skip "Skipping test requiring the test group ss_0", 6;
     }
 
     ok($irods->set_collection_permissions('read', 'public', $coll_path));

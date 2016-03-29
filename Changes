@@ -1,3 +1,21 @@
+Release 2.1.0
+
+  - Added destructor to WTSI::NPG::iRODS responsible for stopping
+    child processes.
+
+  - Changed dcterms metadata values to use the normal :: namespace
+    delimiter, instead of underscore (e.g. dcterms_title to
+    dcterms::title). These have not yet been used in production.
+
+  - Added metadata keys alt_process, alt_target, alignment_filter.
+
+  - Added caching behaviour for data access groups to avoid executing
+    igroupadmin in WTSI::NPG::iRODS.
+
+  - Removed the TODO flag on UTF-8 round tripping.
+
+  - Added dependency on MooseX::StrictConstructor.
+
 Release 2.0.3
 
  - Set the TODO flag on UTF-8 round tripping as a workaround for some

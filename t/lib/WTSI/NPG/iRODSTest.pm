@@ -97,11 +97,11 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub compatible_baton_versions : Test(2) {
+sub compatible_baton_versions : Test(3) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  my @compatible_versions = qw(0.16.0 0.16.1);
+  my @compatible_versions = qw(0.16.0 0.16.1 0.16.2);
 
   foreach my $version (@compatible_versions) {
     ok($irods->match_baton_version($version),

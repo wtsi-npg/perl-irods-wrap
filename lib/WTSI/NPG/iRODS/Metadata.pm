@@ -65,6 +65,7 @@ our @EXPORT = qw(
                   $FLUIDIGM_PLATE_NAME
                   $FLUIDIGM_PLATE_WELL
                   $FLUIDIGM_PLEX_NAME
+                  $REFERENCE_GENOME_NAME
                );
 ## use critic
 
@@ -134,6 +135,7 @@ our $SEQUENOM_PLEX_NAME        = 'sequenom_plex';
 our $FLUIDIGM_PLATE_NAME       = 'fluidigm_plate';
 our $FLUIDIGM_PLATE_WELL       = 'fluidigm_well';
 our $FLUIDIGM_PLEX_NAME        = 'fluidigm_plex';
+our $REFERENCE_GENOME_NAME     = 'reference_genome';
 
 1;
 

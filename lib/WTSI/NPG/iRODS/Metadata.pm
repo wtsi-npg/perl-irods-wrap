@@ -135,7 +135,7 @@ our $SEQUENOM_PLEX_NAME        = 'sequenom_plex';
 our $FLUIDIGM_PLATE_NAME       = 'fluidigm_plate';
 our $FLUIDIGM_PLATE_WELL       = 'fluidigm_well';
 our $FLUIDIGM_PLEX_NAME        = 'fluidigm_plex';
-our $REFERENCE_GENOME_NAME     = 'reference_genome';
+our $REFERENCE_GENOME_NAME     = 'reference_name';
 
 1;
 

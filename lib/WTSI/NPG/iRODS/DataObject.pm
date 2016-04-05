@@ -318,7 +318,6 @@ sub get_groups {
   return $self->irods->get_object_groups($self->str, $level);
 }
 
-
 =head2 update_group_permissions
 
   Arg [1]      Strictly check groups, Bool. Optional, defaults to false.
@@ -358,7 +357,8 @@ sub update_group_permissions {
   # because the stock igroupadmin can't see them.
 
   # Record the current group permissions
-  my @groups_permissions = $self->get_groups('read');
+  my @groups_permissions =
+    $self->get_groups($WTSI::NPG::iRODS::READ_PERMISSION);
   my @groups_annotated = $self->expected_groups;
 
   $self->debug("Permissions before: [", join(", ", @groups_permissions), "]");

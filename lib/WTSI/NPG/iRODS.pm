@@ -27,7 +27,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.16.1';
+our $MAX_BATON_VERSION = '0.16.2';
 our $MIN_BATON_VERSION = '0.16.0';
 
 our $IADMIN      = 'iadmin';

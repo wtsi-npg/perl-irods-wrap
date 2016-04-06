@@ -1,5 +1,7 @@
 Release 2.1.0
 
+  - Added reference_name and gene expression metadata keys.
+
   - Added destructor to WTSI::NPG::iRODS responsible for stopping
     child processes.
 

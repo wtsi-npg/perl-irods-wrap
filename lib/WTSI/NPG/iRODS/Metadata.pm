@@ -65,6 +65,17 @@ our @EXPORT = qw(
                   $FLUIDIGM_PLATE_NAME
                   $FLUIDIGM_PLATE_WELL
                   $FLUIDIGM_PLEX_NAME
+                  $REFERENCE_GENOME_NAME
+
+                  $EXPRESSION_PROJECT_TITLE
+                  $EXPRESSION_BEADCHIP
+                  $EXPRESSION_BEADCHIP_DESIGN
+                  $EXPRESSION_BEADCHIP_SECTION
+                  $EXPRESSION_PLATE_NAME
+                  $EXPRESSION_PLATE_WELL
+                  $EXPRESSION_NORM_METHOD
+                  $EXPRESSION_SUMMARY_GROUP
+                  $EXPRESSION_SUMMARY_TYPE
                );
 ## use critic
 
@@ -134,6 +145,19 @@ our $SEQUENOM_PLEX_NAME        = 'sequenom_plex';
 our $FLUIDIGM_PLATE_NAME       = 'fluidigm_plate';
 our $FLUIDIGM_PLATE_WELL       = 'fluidigm_well';
 our $FLUIDIGM_PLEX_NAME        = 'fluidigm_plex';
+our $REFERENCE_GENOME_NAME     = 'reference_name';
+
+# Expression
+our $EXPRESSION_PROJECT_TITLE    = 'dcterms:title';
+our $EXPRESSION_BEADCHIP         = 'beadchip';
+our $EXPRESSION_BEADCHIP_DESIGN  = 'beadchip_design';
+our $EXPRESSION_BEADCHIP_SECTION = 'beadchip_section';
+our $EXPRESSION_PLATE_NAME       = 'gex_plate';
+our $EXPRESSION_PLATE_WELL       = 'gex_well';
+our $EXPRESSION_NORM_METHOD      = 'normalisation_method';
+our $EXPRESSION_SUMMARY_GROUP    = 'summary_group';
+our $EXPRESSION_SUMMARY_TYPE     = 'summary_type';
+
 
 1;
 

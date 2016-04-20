@@ -1,6 +1,7 @@
 package WTSI::NPG::iRODS::DataObject;
 
 use namespace::autoclean;
+use Data::Dump qw(pp);
 use File::Spec;
 use List::AllUtils qw(none uniq);
 use Moose;
@@ -175,8 +176,8 @@ sub validate_checksum_metadata {
   Arg [2]    : Str units (optional)
 
   Example    : $path->add_avu('foo', 'bar')
-  Description: Add an AVU to an iRODS path (data object or collection)
-               Return self. Clear the metadata cache.
+  Description: Add an AVU to an iRODS path (data object or collection).
+               Return self. Add the AVU to the metadata cache.
   Returntype : WTSI::NPG::iRODS::DataObject
 
 =cut
@@ -184,17 +185,15 @@ sub validate_checksum_metadata {
 sub add_avu {
   my ($self, $attribute, $value, $units) = @_;
 
+  my $avu = $self->make_avu($attribute, $value, $units);
   if ($self->find_in_metadata($attribute, $value, $units)) {
-    my $units_str = defined $units ? "'$units'" : 'undef';
-
-    $self->debug("Failed to add AVU {'$attribute', '$value', $units_str} ",
-                 "to '", $self->str, "': AVU is already present");
+    $self->debug("Failed to add AVU ", $self->avu_str($avu), "to '",
+                 $self->str, "': AVU is already present");
   }
   else {
     $self->irods->add_object_avu($self->str, $attribute, $value, $units);
+    $self->set_metadata([@{$self->metadata}, $avu]);
   }
-
-  $self->clear_metadata;
 
   return $self;
 }
@@ -206,8 +205,8 @@ sub add_avu {
   Arg [2]    : Str units (optional)
 
   Example    : $path->remove_avu('foo', 'bar')
-  Description: Remove an AVU from an iRODS path (data object or collection)
-               Return self. Clear the metadata cache.
+  Description: Remove an AVU from an iRODS path (data object or collection).
+               Return self. Remove the AVU from the metadata cache.
   Returntype : WTSI::NPG::iRODS::DataObject
 
 =cut
@@ -215,16 +214,23 @@ sub add_avu {
 sub remove_avu {
   my ($self, $attribute, $value, $units) = @_;
 
+  defined $value or $self->logconfess('A defined value argument is required');
+
+  my $avu = $self->make_avu($attribute, $value, $units);
+  $self->debug("Removing AVU ", $self->avu_str($avu), " from '", $self->str,
+               "': ", pp($self->metadata));
+
   if ($self->find_in_metadata($attribute, $value, $units)) {
     $self->irods->remove_object_avu($self->str, $attribute, $value, $units);
+
+    my @remain = grep { not $self->avus_equal($avu, $_) } @{$self->metadata};
+    $self->set_metadata(\@remain);
   }
   else {
-    $self->logconfess("Failed to remove AVU ",
-                      "{'$attribute', '$value', '$units'} from '", $self->str,
-                      "': AVU is not present");
+    $self->logconfess("Failed to remove AVU ", $self->avu_str($avu),
+                      " from '", $self->str, "': AVU is not present in: ",
+                      pp($self->metadata));
   }
-
-  $self->clear_metadata;
 
   return $self;
 }

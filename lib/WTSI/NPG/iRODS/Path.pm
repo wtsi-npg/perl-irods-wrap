@@ -29,6 +29,7 @@ has 'metadata' => (is            => 'ro',
                    isa           => 'ArrayRef',
                    lazy          => 1,
                    builder       => 'get_metadata',
+                   writer        => 'set_metadata',
                    predicate     => 'has_metadata',
                    clearer       => 'clear_metadata',
                    documentation => 'iRODS metadata as AVU HashRefs');
@@ -66,6 +67,16 @@ sub BUILD {
 
   return $self;
 }
+
+around 'set_metadata' => sub {
+  my ($orig, $self, $metadata) = @_;
+
+  if ($metadata) {
+    $metadata = [$self->sort_avus(@{$metadata})];
+  }
+
+  return $self->$orig($metadata);
+};
 
 =head2 get_avu
 
@@ -153,7 +164,8 @@ sub find_in_metadata {
 
   if (defined $value && defined $units) {
     @exists = grep { $_->{attribute} eq $attribute &&
-                     $_->{value}     eq $value &&
+                     $_->{value}     eq $value     &&
+                     defined $_->{units}           &&
                      $_->{units}     eq $units } @meta;
   }
   elsif (defined $value) {

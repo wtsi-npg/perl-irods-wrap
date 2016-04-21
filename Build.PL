@@ -26,6 +26,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Test::Exception'           => '>= 0.32'
                          },
    requires =>           {
+                          'Cache::LRU'                => '0',
                           'Carp'                      => '>= 1.20',
                           'Data::Dump'                => '>= 1.22',
                           'Encode'                    => '>= 2.42',

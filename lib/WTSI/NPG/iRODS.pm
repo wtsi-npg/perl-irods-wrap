@@ -2,7 +2,9 @@ package WTSI::NPG::iRODS;
 
 use namespace::autoclean;
 use version;
+use Cache::LRU;
 use DateTime;
+use Data::Dump qw(pp);
 use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
@@ -50,6 +52,10 @@ our $PUBLIC_GROUP     = 'public';
 
 our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
                           $WRITE_PERMISSION, $OWN_PERMISSION);
+
+our $DEFAULT_CACHE_SIZE = 128;
+our $OBJECT_PATH        = 'OBJECT';
+our $COLLECTION_PATH    = 'COLLECTION';
 
 has 'strict_baton_version' =>
   (is            => 'ro',
@@ -276,6 +282,22 @@ has 'obj_reader' =>
         logger      => $self->logger)->start;
    },
    predicate => 'has_obj_reader');
+
+has 'path_cache' =>
+  (is            => 'ro',
+   isa           => 'Cache::LRU',
+   required      => 1,
+   lazy          => 1,
+   default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
+   documentation => 'A cache mapping known iRODS paths to their type');
+
+has 'metadata_cache' =>
+  (is            => 'ro',
+   isa           => 'Cache::LRU',
+   required      => 1,
+   lazy          => 1,
+   default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
+   documentation => 'A cache mapping known iRODS paths to their metadata');
 
 sub BUILD {
   my ($self) = @_;
@@ -1233,7 +1255,21 @@ sub is_object {
   $path = File::Spec->canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
-  return $self->lister->is_object($path);
+  my $is_object = 0;
+  my $cached = $self->path_cache->get($path);
+  if (defined $cached and $cached eq $OBJECT_PATH) {
+    $self->debug("Using cached is_object for '$path'");
+    $is_object = 1;
+  }
+  else {
+    $is_object = $self->lister->is_object($path);
+    if ($is_object) {
+      $self->debug("Caching is_object for '$path'");
+      $self->path_cache->set($path, $OBJECT_PATH);
+    }
+  }
+
+  return $is_object;
 }
 
 =head2 list_object
@@ -1262,7 +1298,15 @@ sub list_object {
 
   $self->debug("Listing object '$object'");
 
-  return $self->lister->list_object($object);
+  my $result;
+  if ($self->is_object($object)) {
+    $result = $object; # Optimisation to use the path_cache
+  }
+  else {
+    $result = $self->lister->list_object($object);
+  }
+
+  return $result;
 }
 
 =head2 read_object
@@ -1449,6 +1493,7 @@ sub move_object {
   $source = $self->_ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
+  $self->path_cache->remove($source);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
                                        arguments   => [$source, $target],
@@ -1514,6 +1559,7 @@ sub remove_object {
 
   $object = $self->_ensure_object_path($object);
   $self->debug("Removing object '$object'");
+  $self->path_cache->remove($object);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => [$object],
@@ -1677,9 +1723,17 @@ sub get_object_meta {
 
   $object = $self->_ensure_object_path($object);
 
-  my @avus = $self->meta_lister->list_object_meta($object);
+  my $cached = $self->metadata_cache->get($object);
+  if (defined $cached) {
+    $self->debug("Using cached AVUs for '$object': ", pp($cached));
+  }
+  else {
+    my @avus = $self->meta_lister->list_object_meta($object);
+    $cached = $self->set_metadata($object, \@avus);
+    $self->debug("Caching AVUs for '$object': ", pp($cached));
+  }
 
-  return $self->sort_avus(@avus);
+  return @{$cached};
 }
 
 =head2 add_object_avu
@@ -1690,9 +1744,8 @@ sub get_object_meta {
   Arg [4]    : units (optional).
 
   Example    : add_object_avu('/my/path/lorem.txt', 'id', 'ABCD1234')
-  Description: Add metadata to a data object. Return an array of
-               the new attribute, value and units.
-  Returntype : Array
+  Description: Add metadata to a data object. Return the object path.
+  Returntype : Str
 
 =cut
 
@@ -1715,18 +1768,21 @@ sub add_object_avu {
 
   $object = $self->_ensure_object_path($object);
 
-  my $units_str = defined $units ? "'$units'" : "'undef'";
-
-  $self->debug("Adding AVU {'$attribute', '$value', $units_str} to '$object'");
+  my $avu = $self->make_avu($attribute, $value, $units);
+  my $avu_str = $self->avu_str($avu);
+  $self->debug("Adding AVU $avu_str to '$object'");
 
   my @current_meta = $self->get_object_meta($object);
   if ($self->_meta_exists($attribute, $value, $units, \@current_meta)) {
-    $self->logconfess("AVU {'$attribute', '$value', $units_str} ",
-                      "already exists for '$object'");
+    $self->logconfess("AVU $avu_str already exists for '$object'");
+  }
+  else {
+    $self->meta_adder->modify_object_meta($object, $attribute,
+                                          $value, $units);
+    $self->set_metadata($object, [@current_meta, $avu]);
   }
 
-  return $self->meta_adder->modify_object_meta($object, $attribute,
-                                               $value, $units);
+  return $object;
 }
 
 =head2 remove_object_avu
@@ -1763,18 +1819,22 @@ sub remove_object_avu {
 
   $object = $self->_ensure_object_path($object);
 
-  my $units_str = defined $units ? "'$units'" : "'undef'";
+  my $avu = $self->make_avu($attribute, $value, $units);
+  my $avu_str = $self->avu_str($avu);
+  $self->debug("Removing AVU $avu_str from '$object'");
 
-  $self->debug("Removing AVU {'$attribute', '$value', $units_str} ",
-               "from '$object'");
   my @current_meta = $self->get_object_meta($object);
   if (!$self->_meta_exists($attribute, $value, $units, \@current_meta)) {
-    $self->logconfess("AVU {'$attribute', '$value', $units_str} ",
-                      "does not exist for '$object'");
+    $self->logconfess("AVU $avu_str does not exist for '$object'");
+  }
+  else {
+    $self->meta_remover->modify_object_meta($object, $attribute,
+                                            $value, $units);
+    my @remain = grep { not $self->avus_equal($avu, $_) } @current_meta;
+    $self->set_metadata($object, \@remain);
   }
 
-  return $self->meta_remover->modify_object_meta($object, $attribute,
-                                                 $value, $units);
+  return $object;
 }
 
 =head2 make_object_avu_history
@@ -2167,6 +2227,16 @@ sub _build_groups {
 
   return [$self->list_groups];
 }
+
+sub set_metadata {
+  my ($self, $path, $avus) = @_;
+
+  my $sorted = [$self->sort_avus(@{$avus})];
+  $self->metadata_cache->set($path, $sorted);
+
+  return $sorted;
+};
+
 
 sub DEMOLISH {
   my ($self, $in_global_destruction) = @_;

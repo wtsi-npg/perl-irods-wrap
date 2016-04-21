@@ -163,8 +163,9 @@ sub avu_str {
   ref $avu eq 'HASH' or
     $self->logconfess('The avu argument mus be a HashRef');
 
-  my ($attribute, $value, $units) = map { defined $_ ? $_ : 'undef' }
-    ($avu->{attribute}, $avu->{value}, $avu->{units});
+  my $attribute = defined $avu->{attribute} ? $avu->{attribute} : 'undef';
+  my $value     = defined $avu->{value}     ? $avu->{value}     : 'undef';
+  my $units     = defined $avu->{units}     ? $avu->{units}     : 'undef';
 
   return sprintf "{'%s', '%s', '%s'}", $attribute, $value, $units;
 }

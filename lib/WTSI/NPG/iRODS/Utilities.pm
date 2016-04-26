@@ -221,7 +221,7 @@ sub remove_duplicate_avus {
 
   Arg [1]    : Array of AVUs, Array[HashRef].
 
-  Example    : my @sortef = $irods->sort_avus
+  Example    : my @sorted = $irods->sort_avus
                   ({attribute => $attribute1,
                     value     => $value1},
                    {attribute => $attribute2,
@@ -243,6 +243,35 @@ sub sort_avus {
      (( defined $a->{units} && !defined $b->{units}) && -1) ||
      ((!defined $a->{units} &&  defined $b->{units}) &&  1) ||
      $a->{units}     cmp $b->{units} } @avus;
+
+  return @sorted;
+}
+
+=head2 sort_acl
+
+  Arg [1]    : Array of access controls, Array[HashRef].
+
+  Example    : my @sorted = $irods->sort_acl
+                  ({level => 'read',
+                    owner => 'group10',
+                    zone  => 'testZone'},
+                   {level => 'read',
+                    owner => 'group9',
+                    zone => 'testZone'});
+
+  Description: Return a new Array of access contols, sorted first by zone,
+               then by owner, then by level.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub sort_acl {
+  my ($self, @acl) = @_;
+
+  my @sorted = sort {
+    $a->{zone}  cmp $b->{zone}  ||
+    $a->{owner} cmp $b->{owner} ||
+    $a->{level} cmp $b->{level} } @acl;
 
   return @sorted;
 }

@@ -283,7 +283,7 @@ has 'obj_reader' =>
    },
    predicate => 'has_obj_reader');
 
-has 'path_cache' =>
+has '_path_cache' =>
   (is            => 'ro',
    isa           => 'Cache::LRU',
    required      => 1,
@@ -291,13 +291,21 @@ has 'path_cache' =>
    default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
    documentation => 'A cache mapping known iRODS paths to their type');
 
-has 'metadata_cache' =>
+has '_metadata_cache' =>
   (is            => 'ro',
    isa           => 'Cache::LRU',
    required      => 1,
    lazy          => 1,
    default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
    documentation => 'A cache mapping known iRODS paths to their metadata');
+
+has '_permissions_cache' =>
+  (is            => 'ro',
+   isa           => 'Cache::LRU',
+   required      => 1,
+   lazy          => 1,
+   default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
+   documentation => 'A cache mapping known iRODS paths to their permissions');
 
 sub BUILD {
   my ($self) = @_;
@@ -917,7 +925,7 @@ sub get_collection_permissions {
 
   $collection = $self->_ensure_collection_path($collection);
 
-  return $self->acl_lister->get_collection_acl($collection);
+  return $self->sort_acl($self->acl_lister->get_collection_acl($collection));
 }
 
 sub set_collection_permissions {
@@ -1256,7 +1264,7 @@ sub is_object {
   $path = $self->_ensure_absolute_path($path);
 
   my $is_object = 0;
-  my $cached = $self->path_cache->get($path);
+  my $cached = $self->_path_cache->get($path);
   if (defined $cached and $cached eq $OBJECT_PATH) {
     $self->debug("Using cached is_object for '$path'");
     $is_object = 1;
@@ -1265,7 +1273,7 @@ sub is_object {
     $is_object = $self->lister->is_object($path);
     if ($is_object) {
       $self->debug("Caching is_object for '$path'");
-      $self->path_cache->set($path, $OBJECT_PATH);
+      $self->_path_cache->set($path, $OBJECT_PATH);
     }
   }
 
@@ -1493,7 +1501,7 @@ sub move_object {
   $source = $self->_ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
-  $self->path_cache->remove($source);
+  $self->_path_cache->remove($source);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
                                        arguments   => [$source, $target],
@@ -1559,7 +1567,7 @@ sub remove_object {
 
   $object = $self->_ensure_object_path($object);
   $self->debug("Removing object '$object'");
-  $self->path_cache->remove($object);
+  $self->_path_cache->remove($object);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => [$object],
@@ -1615,7 +1623,16 @@ sub get_object_permissions {
 
   $object = $self->_ensure_object_path($object);
 
-  return $self->acl_lister->get_object_acl($object);
+  my $cached = $self->_permissions_cache->get($object);
+  if (defined $cached) {
+    $self->debug("Using cached ACL for '$object': ", pp($cached));
+  }
+  else {
+    my @acl = $self->acl_lister->get_object_acl($object);
+    $cached = $self->_cache_permissions($object, \@acl);
+  }
+
+  return @{$cached};
 }
 
 sub set_object_permissions {
@@ -1647,6 +1664,17 @@ sub set_object_permissions {
   }
   else {
     $self->acl_modifier->chmod_object($perm_str, $owner, $object);
+
+    # Having 'null' permission means having no permission, so these
+    # must be removed from the cached ACL.
+    my @remain =
+      grep { $_->{owner} ne $owner and
+             $_->{level} ne $WTSI::NPG::iRODS::NULL_PERMISSION } @acl;
+    my $zone = $self->find_zone_name($object);
+    my $cached = $self->_cache_permissions($object,
+                                           [@remain, {owner => $owner,
+                                                      level => $perm_str,
+                                                      zone  => $zone}]);
   }
 
   return $object;
@@ -1723,14 +1751,13 @@ sub get_object_meta {
 
   $object = $self->_ensure_object_path($object);
 
-  my $cached = $self->metadata_cache->get($object);
+  my $cached = $self->_metadata_cache->get($object);
   if (defined $cached) {
     $self->debug("Using cached AVUs for '$object': ", pp($cached));
   }
   else {
     my @avus = $self->meta_lister->list_object_meta($object);
-    $cached = $self->set_metadata($object, \@avus);
-    $self->debug("Caching AVUs for '$object': ", pp($cached));
+    $cached = $self->_cache_metadata($object, \@avus);
   }
 
   return @{$cached};
@@ -1779,7 +1806,7 @@ sub add_object_avu {
   else {
     $self->meta_adder->modify_object_meta($object, $attribute,
                                           $value, $units);
-    $self->set_metadata($object, [@current_meta, $avu]);
+    $self->_cache_metadata($object, [@current_meta, $avu]);
   }
 
   return $object;
@@ -1831,7 +1858,7 @@ sub remove_object_avu {
     $self->meta_remover->modify_object_meta($object, $attribute,
                                             $value, $units);
     my @remain = grep { not $self->avus_equal($avu, $_) } @current_meta;
-    $self->set_metadata($object, \@remain);
+    $self->_cache_metadata($object, \@remain);
   }
 
   return $object;
@@ -2228,15 +2255,25 @@ sub _build_groups {
   return [$self->list_groups];
 }
 
-sub set_metadata {
+sub _cache_metadata {
   my ($self, $path, $avus) = @_;
 
   my $sorted = [$self->sort_avus(@{$avus})];
-  $self->metadata_cache->set($path, $sorted);
+  $self->_metadata_cache->set($path, $sorted);
+  $self->debug("Updated AVU cache for '$path': ", pp($sorted));
 
   return $sorted;
-};
+}
 
+sub _cache_permissions {
+  my ($self, $path, $acl) = @_;
+
+  my $sorted = [$self->sort_acl(@{$acl})];
+  $self->_permissions_cache->set($path, $sorted);
+  $self->debug("Updated ACL cache for '$path': ", pp($sorted));
+
+  return $sorted;
+}
 
 sub DEMOLISH {
   my ($self, $in_global_destruction) = @_;

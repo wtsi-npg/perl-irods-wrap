@@ -1,3 +1,13 @@
+Release 2.2.0
+
+  - Added caching of iRODS paths for performance.
+
+  - Added caching of object AVUs for performance.
+
+  - Added cachinh of object AVUs for performance.
+
+  - Added a new dependency on Cache::LRU
+
 Release 2.1.0
 
   - Added reference_name and gene expression metadata keys.

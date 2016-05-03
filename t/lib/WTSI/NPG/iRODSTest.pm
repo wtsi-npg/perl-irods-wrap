@@ -3,6 +3,7 @@ package WTSI::NPG::iRODSTest;
 use utf8;
 
 use strict;
+use version;
 use warnings;
 use English qw(-no_match_vars);
 use File::Spec;
@@ -97,11 +98,14 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub compatible_baton_versions : Test(3) {
+sub compatible_baton_versions : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  my @compatible_versions = qw(0.16.0 0.16.1 0.16.2);
+  my @compatible_versions = qw(0.16.0
+                               0.16.1
+                               0.16.2
+                               0.16.3);
 
   foreach my $version (@compatible_versions) {
     ok($irods->match_baton_version($version),
@@ -279,7 +283,7 @@ sub get_object_permissions : Test(1) {
   ok($perms, 'Permissions obtained');
 }
 
-sub set_object_permissions : Test(6) {
+sub set_object_permissions : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
@@ -292,7 +296,8 @@ sub set_object_permissions : Test(6) {
                                            $lorem_object) }
     'Expected to fail setting access for non-existent group';
 
-  ok($irods->set_object_permissions('read', 'public', $lorem_object));
+  ok($irods->set_object_permissions('read', 'public', $lorem_object),
+     'Set object permissions, implicit zone');
 
   my $zone = $irods->find_zone_name($irods_tmp_coll);
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
@@ -308,6 +313,21 @@ sub set_object_permissions : Test(6) {
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_object_permissions($lorem_object);
   ok($r2, 'Removed public read access');
+
+  ok($irods->set_object_permissions('read', "public#$zone", $lorem_object),
+     'Set object permissions, explicit zone');
+
+ SKIP: {
+    my $version = $irods->installed_baton_version;
+    my ($dotted_version, $commits) = $version =~ m{^(\d+[.]\d+[.]\d+)(\S*)$}msx;
+
+    skip "baton $version is < 0.16.3", 1 unless
+      version->parse($dotted_version) > version->parse('0.16.2');
+
+    dies_ok { $irods->set_object_permissions('read', 'public#no_such_zone',
+                                             $lorem_object) }
+      'Expected to fail setting access for user in a non-existent zone';
+  }
 }
 
 sub get_object_groups : Test(7) {
@@ -364,7 +384,7 @@ sub get_collection_permissions : Test(1) {
   ok($perms, 'Permissions obtained');
 }
 
-sub set_collection_permissions : Test(6) {
+sub set_collection_permissions : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
   my $coll = "$irods_tmp_coll/irods";
@@ -377,7 +397,8 @@ sub set_collection_permissions : Test(6) {
                                                $coll) }
     'Expected to fail setting access for non-existent group';
 
-  ok($irods->set_collection_permissions('read', 'public', $coll));
+  ok($irods->set_collection_permissions('read', 'public', $coll),
+     'Set collection permissions, implicit zone');
 
   my $zone = $irods->find_zone_name($irods_tmp_coll);
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
@@ -393,6 +414,21 @@ sub set_collection_permissions : Test(6) {
                   exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_collection_permissions($coll);
   ok($r2, 'Removed public read access');
+
+  ok($irods->set_collection_permissions('read', "public#$zone", $coll),
+     'Set collection permissions, explicit zone');
+
+ SKIP: {
+    my $version = $irods->installed_baton_version;
+    my ($dotted_version, $commits) = $version =~ m{^(\d+[.]\d+[.]\d+)(\S*)$}msx;
+
+    skip "baton $version is < 0.16.3", 1 unless
+      version->parse($dotted_version) > version->parse('0.16.2');
+
+    dies_ok { $irods->set_collection_permissions('read', 'public#no_such_zone',
+                                                 $coll) }
+      'Expected to fail setting access for user in a non-existent zone';
+  }
 }
 
 sub get_collection_groups : Test(7) {

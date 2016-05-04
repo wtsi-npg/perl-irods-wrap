@@ -28,6 +28,8 @@ my $fixture_counter = 0;
 my $data_path = './t/irods';
 my $irods_tmp_coll;
 
+my $alt_resource = 'demoResc';
+
 my $have_admin_rights =
   system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
 
@@ -1214,27 +1216,121 @@ sub validate_checksum_metadata : Test(8) {
     "Validation fails with multiple metadata values";
 }
 
-sub replicates : Test(6) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
+sub replicates : Test(9) {
 
-  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
-  my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 9;
+    }
 
-  my @replicates = $irods->replicates($lorem_object);
-  cmp_ok(1, '==', scalar @replicates, 'One replicate is present');
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+    my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
 
-  my $replicate = $replicates[0];
+    system("irepl $lorem_object -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $lorem_object to $alt_resource: $ERRNO";
+    system("ichksum -a $lorem_object >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
 
-  is($replicate->{checksum}, $expected_checksum,
-     'Replicate checksum is correct');
-  cmp_ok(length $replicate->{location}, '>', 0,
-         'Replicate has a location');
-  cmp_ok($replicate->{number}, '==', 0,
-         'Replicate has correct number');
-  cmp_ok(length $replicate->{resource}, '>', 0,
-         'Replicate has a resource');
-  ok($replicate->{valid}, 'Replicate is valid');
+    my @replicates = $irods->replicates($lorem_object);
+    cmp_ok(scalar @replicates, '==', 2, 'Two replicates are present');
+
+    foreach my $replicate (@replicates) {
+      my $num = $replicate->{number};
+      is($replicate->{checksum}, $expected_checksum,
+         "Replicate $num checksum is correct");
+      cmp_ok(length $replicate->{location}, '>', 0,
+             "Replicate $num has a location");
+      cmp_ok(length $replicate->{resource}, '>', 0,
+             "Replicate $num has a resource");
+      ok($replicate->{valid}, "Replicate $num is valid");
+    }
+  }
+}
+
+sub invalid_replicates : Test(3) {
+
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 3;
+    }
+
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+
+    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+    my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+
+    system("irepl $lorem_object -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $lorem_object to $alt_resource: $ERRNO";
+    system("ichksum -f -a $lorem_object >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
+
+    # Make the original replicate (0) stale
+    my $other_object = "$irods_tmp_coll/irods/test.txt";
+    system("icp -f -R $alt_resource ".
+           "$other_object $lorem_object >/dev/null") == 0 or
+      die "Failed to make an invalid replicate: $ERRNO";
+
+    my @invalid_replicates = $irods->invalid_replicates($lorem_object);
+    cmp_ok(scalar @invalid_replicates, '==', 1,
+           'One invalid replicate is present');
+
+    my $replicate = $invalid_replicates[0];
+    is($replicate->{checksum}, $expected_checksum,
+       "Invalid replicate checksum is correct") or
+         diag explain $replicate;
+    ok(!$replicate->{valid}, "Invalid replicate is not valid") or
+      diag explain $replicate;
+  }
+}
+
+sub prune_replicates : Test(6) {
+
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 6;
+    }
+
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+
+    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+    my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+
+    system("irepl $lorem_object -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $lorem_object to $alt_resource: $ERRNO";
+    system("ichksum -f -a $lorem_object >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
+
+    # Make the original replicate (0) stale
+    my $other_object = "$irods_tmp_coll/irods/test.txt";
+    system("icp -f -R $alt_resource " .
+           "$other_object $lorem_object >/dev/null") == 0 or
+             die "Failed to make a stale replicate: $ERRNO";
+    system("ichksum -f -a $lorem_object >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
+
+    my @pruned_replicates = $irods->prune_replicates($lorem_object);
+    cmp_ok(scalar @pruned_replicates, '==', 1,
+           'One pruned replicate is present');
+
+    my $pruned_replicate = $pruned_replicates[0];
+    is($pruned_replicate->{checksum}, $expected_checksum,
+       "Pruned replicate checksum is correct");
+    ok(!$pruned_replicate->{valid}, "Pruned replicate is not valid") or
+      diag explain $pruned_replicate;
+
+    my @replicates = $irods->valid_replicates($lorem_object);
+    cmp_ok(scalar @replicates, '==', 1, 'One valid replicate remains');
+    my $replicate = $replicates[0];
+    isnt($replicate->{checksum}, $expected_checksum,
+         "Remaining valid replicate checksum has changed") or
+           diag explain $replicate;
+    ok($replicate->{valid}, "Remaining valid replicate is valid") or
+    diag explain $replicate;
+  }
 }
 
 sub md5sum : Test(1) {

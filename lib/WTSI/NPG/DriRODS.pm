@@ -27,6 +27,7 @@ my @dry_run_methods = qw(
                           remove_group
                           remove_object
                           remove_object_avu
+                          remove_replicate
                           replace_object
                           set_collection_permissions
                           set_object_permissions

@@ -2151,7 +2151,7 @@ sub validate_checksum_metadata {
   Arg [1]    : iRODS data object path.
 
   Example    : my @replicates = $irods->replicates('/my/path/lorem.txt')
-  Description: Return an array of replicate descriptors for a data object.
+  Description: Return an array of all replicate descriptors for a data object.
                Each replicate is represented as a HashRef of the form:
                    {
                      checksum => <checksum Str>,
@@ -2179,6 +2179,117 @@ sub replicates {
   $object = $self->_ensure_object_path($object);
 
   return $self->detailed_lister->list_object_replicates($object);
+}
+
+=head2 valid_replicates
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @replicates = $irods->valid_replicates('/my/path/lorem.txt')
+  Description: Return an array of all valid replicate descriptors for a data
+               object, sorted by ascending replicate number.
+  Returntype : Array[Hashref]
+
+=cut
+
+sub valid_replicates {
+  my ($self, $object) = @_;
+
+  my @valid_replicates = sort { $a->{number} cmp $b->{number} }
+    grep { $_->{valid} } $self->replicates($object);
+
+  return @valid_replicates;
+}
+
+=head2 invalid_replicates
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @replicates = $irods->invalid_replicates('/my/path/lorem.txt')
+  Description: Return an array of all invalid replicate descriptors for a data
+               object, sorted by ascending replicate number.
+  Returntype : Array[Hashref]
+
+=cut
+
+sub invalid_replicates {
+  my ($self, $object) = @_;
+
+  my @invalid_replicates = sort { $a->{number} cmp $b->{number} }
+    grep { not $_->{valid} } $self->replicates($object);
+
+  return @invalid_replicates;
+}
+
+=head2 prune_replicates
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @pruned = $irods->prune_replicates('/my/path/lorem.txt')
+  Description: Remove any replicates of a data object that are marked as
+               stale in the ICAT.  Return an array of descriptors of the
+               pruned replicates, sorted by ascending replicate number.
+               Each replicate is represented as a HashRef of the form:
+                   {
+                     checksum => <checksum Str>,
+                     location => <location Str>,
+                     number   => <replicate number Int>,
+                     resource => <resource name Str>,
+                     valid    => <is valid Int>,
+                   }
+  Returntype : Array[Hashref]
+
+=cut
+
+sub prune_replicates {
+  my ($self, $object) = @_;
+
+  my @invalid_replicates = $self->invalid_replicates($object);
+
+  foreach my $rep (@invalid_replicates) {
+    my $resource = $rep->{resource};
+    my $checksum = $rep->{checksum};
+    my $rep_num  = $rep->{number};
+    $self->debug("Pruning invalid replicate $rep_num with checksum ",
+                 "'$checksum' from resource '$resource'");
+    $self->remove_replicate($object, $rep_num);
+  }
+
+  return @invalid_replicates;
+}
+
+=head2 remove_replicate
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my @pruned = $irods->remove_replicate('/my/path/lorem.txt')
+  Description: Remove a replicate of a data object.  Return the object path.
+  Returntype : Str
+
+=cut
+
+sub remove_replicate {
+  my ($self, $object, $replicate_num) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->_ensure_object_path($object);
+
+  $replicate_num =~ m{^\d+$}msx or
+    $self->logconfess('A non-negative integer replicate_num argument ',
+                      'is required');
+
+  $self->debug("Removing replicate '$replicate_num' of '$object'");
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
+                                       arguments   => ['-n', $replicate_num,
+                                                       $object],
+                                       environment => $self->environment,
+                                       logger      => $self->logger)->run;
+  return $object;
 }
 
 =head2 avu_history_attr

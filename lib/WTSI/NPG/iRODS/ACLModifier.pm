@@ -38,11 +38,19 @@ sub chmod_object {
   my ($volume, $collection, $data_name) = File::Spec->splitpath($object);
   $collection = File::Spec->canonpath($collection);
 
+  my ($name, $zone) = split /\#/msx, $owner;
+  $self->debug("Parsed owner name '$name' from '$owner' for '$object'");
+
+  my $perm = {owner => $name,
+              level => $permission};
+  if ($zone) {
+    $self->debug("Parsed owner zone '$zone' from '$owner' for '$object'");
+    $perm->{zone} = $zone;
+  }
+
   my $spec = {collection  => $collection,
               data_object => $data_name,
-              access      => [{owner => $owner,
-                               level => $permission}]};
-
+              access      => [$perm]};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
   $self->report_error($response);
@@ -51,10 +59,10 @@ sub chmod_object {
 }
 
 sub chmod_collection {
-  my ($self, $level, $owner, $collection) = @_;
+  my ($self, $permission, $owner, $collection) = @_;
 
-  defined $level or
-    $self->logconfess('A defined level argument is required');
+  defined $permission or
+    $self->logconfess('A defined permission argument is required');
   defined $owner or
     $self->logconfess('A defined owner argument is required');
   defined $collection or
@@ -66,10 +74,18 @@ sub chmod_collection {
 
   $collection = File::Spec->canonpath($collection);
 
-  my $spec = {collection  => $collection,
-              access      => [{owner => $owner,
-                               level => $level}]};
+  my ($name, $zone) = split /\#/msx, $owner;
+  $self->debug("Parsed owner name '$name' from '$owner' for '$collection'");
 
+  my $perm = {owner => $name,
+              level => $permission};
+  if ($zone) {
+    $self->debug("Parsed owner zone '$zone' from '$owner' for '$collection'");
+    $perm->{zone} = $zone;
+  }
+
+  my $spec = {collection => $collection,
+              access     => [$perm]};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
   $self->report_error($response);
@@ -99,7 +115,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2014, 2016 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

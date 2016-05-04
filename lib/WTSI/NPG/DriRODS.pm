@@ -58,7 +58,7 @@ stubs.
 
 =head1 DESCRIPTION
 
-This calss enables dry-run operations to be carried on iRODS out more
+This class enables dry-run operations to be carried on iRODS out more
 easily. Simply replace your iRODS handle with an instance of this
 class and all the method calls that would change data and/or metadata
 will be logged at INFO level, along with their arguments.

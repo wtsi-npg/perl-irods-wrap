@@ -232,7 +232,8 @@ sub get_permissions {
                $WTSI::NPG::iRODS::WRITE_PERMISSION,
                $WTSI::NPG::iRODS::OWN_PERMISSION or
                $WTSI::NPG::iRODS::NULL_PERMISSION.
-  Arg [2]    : Array of owners (users and /or groups).
+  Arg [2]    : Array of owners (users and/or groups). These may be of the
+               form <user> or <user>#<zone>.
 
   Example    : $coll->set_permissions('read', 'user1', 'group1')
   Description: Set access permissions on the collection. Return self.

@@ -29,7 +29,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.16.2';
+our $MAX_BATON_VERSION = '0.16.3';
 our $MIN_BATON_VERSION = '0.16.0';
 
 our $IADMIN      = 'iadmin';
@@ -310,11 +310,7 @@ has '_permissions_cache' =>
 sub BUILD {
   my ($self) = @_;
 
-  my ($installed_baton_version) = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => 'baton-list',
-     arguments   => ['--version'],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+  my $installed_baton_version = $self->installed_baton_version;
 
   if (not $self->match_baton_version($installed_baton_version)) {
     my $required_range = join q{ - }, $MIN_BATON_VERSION, $MAX_BATON_VERSION;
@@ -331,6 +327,18 @@ sub BUILD {
   }
 
   return $self;
+}
+
+sub installed_baton_version {
+  my ($self) = @_;
+
+  my ($version) = WTSI::DNAP::Utilities::Runnable->new
+    (executable  => 'baton-list',
+     arguments   => ['--version'],
+     environment => $self->environment,
+     logger      => $self->logger)->run->split_stdout;
+
+  return $version;
 }
 
 sub match_baton_version {
@@ -630,7 +638,8 @@ sub remove_group {
                $WTSI::NPG::iRODS::WRITE_PERMISSION,
                $WTSI::NPG::iRODS::OWN_PERMISSION or
                $WTSI::NPG::iRODS::NULL_PERMISSION.
-  Arg [2]    : An iRODS group name.
+  Arg [2]    : An iRODS group name.  This may be of the form <group> or
+               <group>#<zone>
   Arg [3]    : One or more data objects or collections.
 
   Example    : $irods->set_group_access($WTSI::NPG::iRODS::READ_PERMISSION,
@@ -928,6 +937,22 @@ sub get_collection_permissions {
   return $self->sort_acl($self->acl_lister->get_collection_acl($collection));
 }
 
+=head2 set_collection_permissions
+
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
+  Arg [2]    : Owner (user or group). This may be of the form <user> or
+               <user>#<zone>.
+
+  Example    : $irods->set_collection_permissions('read', 'user1', $path)
+  Description: Set access permissions on the collection. Return the collection
+               path.
+  Returntype : Str
+
+=cut
+
 sub set_collection_permissions {
   my ($self, $level, $owner, $collection) = @_;
 
@@ -953,10 +978,14 @@ sub set_collection_permissions {
 
   my @acl = $self->get_collection_permissions($collection);
 
-  if (any { $_->{owner} eq $owner and
+  my ($owner_name, $zone) = split /\#/msx, $owner;
+  $zone ||= $self->find_zone_name($collection);
+
+  if (any { $_->{owner} eq $owner_name and
+            $_->{zone}  eq $zone       and
             $_->{level} eq $perm_str } @acl) {
     $self->debug("'$collection' already has permission ",
-                 "'$perm_str' for '$owner'");
+                 "'$perm_str' for '$owner_name#$zone'");
   }
   else {
     $self->acl_modifier->chmod_collection($perm_str, $owner, $collection);
@@ -1501,7 +1530,7 @@ sub move_object {
   $source = $self->_ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
-  $self->_path_cache->remove($source);
+  $self->_clear_caches($source);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
                                        arguments   => [$source, $target],
@@ -1567,7 +1596,7 @@ sub remove_object {
 
   $object = $self->_ensure_object_path($object);
   $self->debug("Removing object '$object'");
-  $self->_path_cache->remove($object);
+  $self->_clear_caches($object);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => [$object],
@@ -1635,6 +1664,23 @@ sub get_object_permissions {
   return @{$cached};
 }
 
+=head2 set_object_permissions
+
+  Arg [1]    : Permission, Str. One of $WTSI::NPG::iRODS::READ_PERMISSION,
+               $WTSI::NPG::iRODS::WRITE_PERMISSION,
+               $WTSI::NPG::iRODS::OWN_PERMISSION or
+               $WTSI::NPG::iRODS::NULL_PERMISSION.
+  Arg [2]    : Owner (user or group). This may be of the form <user> or
+               <user>#<zone>.
+  Arg [3]    : Path, Str.
+
+  Example    : $irods->set_object_permissions('read', 'user1', $path)
+  Description: Set access permissions on the data objecrt. Return the object
+               path.
+  Returntype : Str
+
+=cut
+
 sub set_object_permissions {
   my ($self, $level, $owner, $object) = @_;
 
@@ -1658,23 +1704,27 @@ sub set_object_permissions {
   $self->debug("Setting permissions on '$object' to '$perm_str' for '$owner'");
   my @acl = $self->get_object_permissions($object);
 
-  if (any { $_->{owner} eq $owner and
+  my ($owner_name, $zone) = split /\#/msx, $owner;
+  $zone ||= $self->find_zone_name($object);
+
+  if (any { $_->{owner} eq $owner_name and
+            $_->{zone}  eq $zone       and
             $_->{level} eq $perm_str } @acl) {
-    $self->debug("'$object' already has permission '$perm_str' for '$owner'");
+    $self->debug("'$object' already has permission ",
+                 "'$perm_str' for '$owner_name#$zone'");
   }
   else {
     $self->acl_modifier->chmod_object($perm_str, $owner, $object);
 
     # Having 'null' permission means having no permission, so these
     # must be removed from the cached ACL.
-    my @remain =
-      grep { $_->{owner} ne $owner and
-             $_->{level} ne $WTSI::NPG::iRODS::NULL_PERMISSION } @acl;
-    my $zone = $self->find_zone_name($object);
+    my @remain = grep { not ($_->{owner} eq $owner_name and
+                             $_->{zone}  eq $zone) } @acl;
+
     my $cached = $self->_cache_permissions($object,
-                                           [@remain, {owner => $owner,
-                                                      level => $perm_str,
-                                                      zone  => $zone}]);
+                                           [@remain, {owner => $owner_name,
+                                                      zone  => $zone,
+                                                      level => $perm_str}]);
   }
 
   return $object;
@@ -2268,11 +2318,27 @@ sub _cache_metadata {
 sub _cache_permissions {
   my ($self, $path, $acl) = @_;
 
-  my $sorted = [$self->sort_acl(@{$acl})];
+  # Having 'null' permission means having no permission, so these
+  # must not be cached.
+  my @to_cache =
+    grep { $_->{level} ne $WTSI::NPG::iRODS::NULL_PERMISSION } @{$acl};
+
+  my $sorted = [$self->sort_acl(@to_cache)];
   $self->_permissions_cache->set($path, $sorted);
   $self->debug("Updated ACL cache for '$path': ", pp($sorted));
 
   return $sorted;
+}
+
+sub _clear_caches {
+  my ($self, $path) = @_;
+
+  $self->debug("Clearing cached path, AVUs abd ACL for '$path'");
+  $self->_path_cache->remove($path);
+  $self->_permissions_cache->remove($path);
+  $self->_metadata_cache->remove($path);
+
+  return;
 }
 
 sub DEMOLISH {
@@ -2328,6 +2394,7 @@ no Moose;
 1;
 
 __END__
+
 
 =head1 NAME
 

@@ -305,7 +305,7 @@ sub get_permissions : Test(1) {
   ok($perms, 'Permissions obtained');
 }
 
-sub set_permissions : Test(7) {
+sub set_permissions : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
@@ -316,7 +316,8 @@ sub set_permissions : Test(7) {
     $coll->get_permissions;
   ok($r0, 'No public read access');
 
-  ok($coll->set_permissions('read', 'public'));
+  ok($coll->set_permissions('read', 'public'),
+     'Set permission using an implicit zone');
 
   my $r1 = any { exists $_->{owner} && $_->{owner} eq 'public' &&
                  exists $_->{level} && $_->{level} eq 'read' }
@@ -330,11 +331,26 @@ sub set_permissions : Test(7) {
     $coll->get_permissions;
   ok($r2, 'Removed public read access');
 
+  my $zone = $irods->find_zone_name($irods_tmp_coll);
+  ok($coll->set_permissions('read', "public#$zone"),
+     'Set permission using an explicit zone');
+
   dies_ok { $coll->set_permissions('bogus_permission', 'public') }
     'Fails to set bogus permission';
 
   dies_ok { $coll->set_permissions('read', 'bogus_group') }
     'Fails to set permission for bogus group';
+
+ SKIP: {
+    my $version = $irods->installed_baton_version;
+    my ($dotted_version, $commits) = $version =~ m{^(\d+[.]\d+[.]\d+)(\S*)$}msx;
+
+    skip "baton $version is < 0.16.3", 1 unless
+      version->parse($dotted_version) > version->parse('0.16.2');
+
+    dies_ok { $coll->set_permissions('read', 'public#no_such_zone') }
+      'Fails to set permission using a non-existent zone';
+  }
 }
 
 sub get_groups : Test(7) {

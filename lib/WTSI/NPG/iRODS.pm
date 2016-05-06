@@ -2251,7 +2251,8 @@ sub prune_replicates {
     my $checksum = $rep->{checksum};
     my $rep_num  = $rep->{number};
     $self->debug("Pruning invalid replicate $rep_num with checksum ",
-                 "'$checksum' from resource '$resource'");
+                 "'$checksum' from resource '$resource' for ",
+                 "data object '$object'");
     $self->remove_replicate($object, $rep_num);
   }
 
@@ -2261,8 +2262,9 @@ sub prune_replicates {
 =head2 remove_replicate
 
   Arg [1]    : iRODS data object path.
+  Arg [2]    : replicate number
 
-  Example    : my @pruned = $irods->remove_replicate('/my/path/lorem.txt')
+  Example    : $irods->remove_replicate('/my/path/lorem.txt')
   Description: Remove a replicate of a data object.  Return the object path.
   Returntype : Str
 

@@ -19,6 +19,7 @@ use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 my $fixture_counter = 0;
 my $data_path = './t/irods_path_test';
 my $irods_tmp_coll;
+my $alt_resource = 'demoResc';
 
 my $pid = $PID;
 
@@ -461,29 +462,116 @@ sub checksum : Test(1) {
      'Has correct checksum');
 }
 
-sub replicates : Test(7) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+sub replicates : Test(11) {
 
-  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 11;
+    }
 
-  my @replicates = @{$obj->replicates};
-  cmp_ok(1, '==', scalar @replicates, 'One replicate is present');
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
 
-  my $replicate = $replicates[0];
-  ok($replicate->isa('WTSI::NPG::iRODS::Replicate'), 'Replicate isa correct')
-    or diag explain $replicate;
+    system("irepl $obj_path -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
+    system("ichksum -a $obj_path >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $obj_path: $ERRNO";
 
-  is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
-     'Replicate has correct checksum');
-  cmp_ok(length $replicate->location, '>', 0,
-         'Replicate has a location');
-  cmp_ok($replicate->number, '==', 0,
-         'Replicate has correct number');
-  cmp_ok(length $replicate->resource, '>', 0,
-         'Replicate has a resource');
-  ok($replicate->is_valid, 'Replicate is valid');
+    my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+    my @replicates = $obj->replicates;
+    cmp_ok(scalar @replicates, '==', 2, 'Two replicates are present');
+
+    foreach my $replicate (@replicates) {
+      my $num = $replicate->number;
+      ok($replicate->isa('WTSI::NPG::iRODS::Replicate'),
+         "Replicate $num isa correct") or diag explain $replicate;
+
+      is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+         "Replicate $num has correct checksum");
+      cmp_ok(length $replicate->location, '>', 0,
+             "Replicate $num has a location");
+      cmp_ok(length $replicate->resource, '>', 0,
+             "Replicate $num has a resource");
+      ok($replicate->is_valid, "Replicate $num is valid");
+    }
+  }
+}
+
+sub invalid_replicates : Test(3) {
+
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 3;
+    }
+
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+
+    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+    system("irepl $obj_path -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
+    system("ichksum -a $obj_path >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $obj_path: $ERRNO";
+
+    # Make the original replicate (0) stale
+    my $other_path = "./t/irods/test.txt";
+    system("iput -f -R $alt_resource $other_path $obj_path >/dev/null") == 0
+      or die "Failed to make an invalid replicate: $ERRNO";
+
+    my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+    my @invalid_replicates = $obj->invalid_replicates;
+    cmp_ok(scalar @invalid_replicates, '==', 1,
+           'One invalid replicate is present');
+
+    my $replicate = $invalid_replicates[0];
+    is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+         "Invalid replicate has correct checksum");
+    ok(!$replicate->is_valid, "Invalid replicate is not valid");
+  }
+}
+
+sub prune_replicates : Test(5) {
+
+ SKIP: {
+    if (system("ilsresc $alt_resource >/dev/null") != 0) {
+      skip "iRODS resource $alt_resource is unavilable", 5;
+    }
+
+    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                      strict_baton_version => 0);
+
+    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+
+    system("irepl $obj_path -R $alt_resource >/dev/null") == 0
+      or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
+    system("ichksum -a $obj_path >/dev/null") == 0
+      or die "Failed to update checksum on replicates of $obj_path: $ERRNO";
+
+    # Make the original replicate (0) stale
+    my $other_path = "./t/irods/test.txt";
+    system("iput -f -R $alt_resource $other_path $obj_path >/dev/null") == 0
+      or die "Failed to make an invalid replicate: $ERRNO";
+
+    my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+
+    my @pruned_replicates = $obj->prune_replicates;
+    my $pruned_replicate = $pruned_replicates[0];
+    is($pruned_replicate->checksum, 'd41d8cd98f00b204e9800998ecf8427e',
+       'Pruned replicate checksum is correct');
+    ok(!$pruned_replicate->is_valid, 'Pruned replicate is not valid');
+
+    my @replicates = $obj->replicates;
+    cmp_ok(scalar @replicates, '==', 1, 'One valid replicate remains');
+
+    my $replicate = $replicates[0];
+    isnt($replicate->checksum, 'd41d8cd98f00b204e9800998ecf8427e',
+         'Remaining valid replicate checksum has changed');
+    ok($replicate->is_valid, 'Remaining valid replicate is valid');
+  }
 }
 
 sub get_permissions : Test(1) {

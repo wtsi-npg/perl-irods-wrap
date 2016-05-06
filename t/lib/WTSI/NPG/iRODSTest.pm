@@ -1279,9 +1279,9 @@ sub invalid_replicates : Test(3) {
 
     my $replicate = $invalid_replicates[0];
     is($replicate->{checksum}, $expected_checksum,
-       "Invalid replicate checksum is correct") or
+       'Invalid replicate checksum is correct') or
          diag explain $replicate;
-    ok(!$replicate->{valid}, "Invalid replicate is not valid") or
+    ok(!$replicate->{valid}, 'Invalid replicate is not valid') or
       diag explain $replicate;
   }
 }
@@ -1319,17 +1319,17 @@ sub prune_replicates : Test(6) {
     my $pruned_replicate = $pruned_replicates[0];
     is($pruned_replicate->{checksum}, $expected_checksum,
        "Pruned replicate checksum is correct");
-    ok(!$pruned_replicate->{valid}, "Pruned replicate is not valid") or
+    ok(!$pruned_replicate->{valid}, 'Pruned replicate is not valid') or
       diag explain $pruned_replicate;
 
     my @replicates = $irods->valid_replicates($lorem_object);
     cmp_ok(scalar @replicates, '==', 1, 'One valid replicate remains');
     my $replicate = $replicates[0];
     isnt($replicate->{checksum}, $expected_checksum,
-         "Remaining valid replicate checksum has changed") or
+         'Remaining valid replicate checksum has changed') or
            diag explain $replicate;
-    ok($replicate->{valid}, "Remaining valid replicate is valid") or
-    diag explain $replicate;
+    ok($replicate->{valid}, 'Remaining valid replicate is valid') or
+      diag explain $replicate;
   }
 }
 

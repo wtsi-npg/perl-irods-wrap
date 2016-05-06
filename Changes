@@ -1,10 +1,19 @@
+Release 2.3.0
+
+  - Added support for data object replicate management.
+
+  - Added support for use#zone syntax in permissions,
+
+  - Requires baton 0.16.3 to support use#zone syntax.
+
+
 Release 2.2.0
 
   - Added caching of iRODS paths for performance.
 
   - Added caching of object AVUs for performance.
 
-  - Added cachinh of object AVUs for performance.
+  - Added caching of object AVUs for performance.
 
   - Added a new dependency on Cache::LRU
 

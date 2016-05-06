@@ -185,10 +185,6 @@ sub remove_replicate {
   $self->irods->remove_replicate($self->str, $replicate_num);
   $self->clear_checksum; # Clear the checksum in case it belonged to
                          # the removed replicate
-
-  $self->debug($self->str, " now has ", scalar $self->replicates,
-              " replicates");
-
   return $self;
 }
 

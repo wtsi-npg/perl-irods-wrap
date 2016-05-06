@@ -2237,6 +2237,10 @@ sub invalid_replicates {
                      resource => <resource name Str>,
                      valid    => <is valid Int>,
                    }
+
+               Raise anm error if there are only invalid replicates; there
+               should always be a valid replicate and pruning in this case
+               would be equivalent to deletion.
   Returntype : Array[Hashref]
 
 =cut
@@ -2246,17 +2250,26 @@ sub prune_replicates {
 
   my @invalid_replicates = $self->invalid_replicates($object);
 
-  foreach my $rep (@invalid_replicates) {
-    my $resource = $rep->{resource};
-    my $checksum = $rep->{checksum};
-    my $rep_num  = $rep->{number};
-    $self->debug("Pruning invalid replicate $rep_num with checksum ",
-                 "'$checksum' from resource '$resource' for ",
-                 "data object '$object'");
-    $self->remove_replicate($object, $rep_num);
+  my @pruned;
+  if ($self->valid_replicates($object)) {
+    foreach my $rep (@invalid_replicates) {
+      my $resource = $rep->{resource};
+      my $checksum = $rep->{checksum};
+      my $rep_num  = $rep->{number};
+      $self->debug("Pruning invalid replicate $rep_num with checksum ",
+                   "'$checksum' from resource '$resource' for ",
+                   "data object '$object'");
+      $self->remove_replicate($object, $rep_num);
+      push @pruned, $rep;
+    }
+  }
+  else {
+    $self->logconfess("Failed to prune invalid replicates from '$object': ",
+                      "there and no valid replicates of this data object; ",
+                      "pruning would be equivalent to deletion");
   }
 
-  return @invalid_replicates;
+  return @pruned;
 }
 
 =head2 remove_replicate

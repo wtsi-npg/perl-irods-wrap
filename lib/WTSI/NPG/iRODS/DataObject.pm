@@ -36,15 +36,6 @@ has 'checksum' =>
    clearer       => 'clear_checksum',
    documentation => 'The checksum of the data object.');
 
-has 'replicates' =>
-  (is            => 'ro',
-   isa           => ArrayRefOfReplicate,
-   lazy          => 1,
-   builder       => '_build_replicates',
-   predicate     => 'has_replicates',
-   clearer       => 'clear_replicates',
-   documentation => 'The replicate information about this data object.');
-
 # TODO: Add a check so that a DataObject cannot be built from a path
 # that is in fact a collection.
 around BUILDARGS => sub {
@@ -73,13 +64,128 @@ sub _build_checksum {
   return $self->irods->checksum($self->str);
 }
 
-# Lazily load replicates from iRODS
-sub _build_replicates {
+=head2 replicates
+
+  Arg [1]    : None.
+
+  Example    : my @replicates = $obj->replicates
+  Description: Return an array of all replicates for a data
+               object, sorted by ascending replicate number.
+  Returntype : Array[WTSI::NPG::iRODS::Replicate]
+
+=cut
+
+sub replicates {
   my ($self) = @_;
 
-  my @replicates = map { WTSI::NPG::iRODS::Replicate->new($_) }
-    $self->irods->replicates($self->str);
-  return \@replicates;
+  my @replicates = sort { $a->number cmp $b->number }
+                    map { WTSI::NPG::iRODS::Replicate->new($_) }
+                    $self->irods->replicates($self->str);
+  return @replicates;
+}
+
+=head2 valid_replicates
+
+  Arg [1]    : None.
+
+  Example    : my @replicates = $obj->valid_replicates
+  Description: Return an array of all valid replicates for a data
+               object, sorted by ascending replicate number.
+  Returntype : Array[WTSI::NPG::iRODS::Replicate]
+
+=cut
+
+sub valid_replicates {
+  my ($self) = @_;
+
+  my @valid_replicates = sort { $a->number cmp $b->number }
+    grep { $_->is_valid } $self->replicates;
+
+  return @valid_replicates;
+}
+
+=head2 invalid_replicates
+
+  Arg [1]    : None.
+
+  Example    : my @replicates = $obj->invalid_replicates
+  Description: Return an array of all invalid replicates for a data
+               object, sorted by ascending replicate number.
+  Returntype : Array[WTSI::NPG::iRODS::Replicate]
+
+=cut
+
+sub invalid_replicates {
+  my ($self) = @_;
+
+  my @invalid_replicates = sort { $a->number cmp $b->number }
+    grep { not $_->is_valid } $self->replicates;
+
+  return @invalid_replicates;
+}
+
+=head2 prune_replicates
+
+  Arg [1]    : None.
+
+  Example    : my @pruned = $obj->prune_replicates
+  Description: Remove any replicates of a data object that are marked as
+               stale in the ICAT.  Return an array of descriptors of the
+               pruned replicates.  Raise anm error if there are only
+               invalid replicates; there should always be a valid replicate
+               and pruning in this case would be equivalent to deletion.
+  Returntype : Array[WTSI::NPG::iRODS::Replicate]
+
+=cut
+
+sub prune_replicates {
+  my ($self) = @_;
+
+  my @invalid_replicates = $self->invalid_replicates;
+  my $path = $self->str;
+
+  my @pruned;
+  if ($self->valid_replicates) {
+
+    foreach my $rep (@invalid_replicates) {
+      my $resource = $rep->resource;
+      my $checksum = $rep->checksum;
+      my $number   = $rep->number;
+      $self->debug("Pruning invalid replicate $number with checksum ",
+                   "'$checksum' from resource '$resource' for ",
+                   "data object '$path'");
+      $self->irods->remove_replicate($path, $number);
+      push @pruned, $rep;
+    }
+
+    $self->clear_checksum;
+  }
+  else {
+    $self->logconfess("Failed to prune invalid replicates from '$path': ",
+                      "there and no valid replicates of this data object; ",
+                      "pruning would be equivalent to deletion");
+  }
+
+  return @pruned;
+}
+
+=head2 remove_replicate
+
+  Arg [1]    : Replicate number, Int.
+
+  Example    : $obj->remove_replicate($replicate_num)
+  Description: Remove a replicate of a data object.  Return $self.
+  Returntype : WTSI::NPG::iRODS::DataObject
+
+=cut
+
+sub remove_replicate {
+  my ($self, $replicate_num) = @_;
+
+  $self->irods->remove_replicate($self->str, $replicate_num);
+  $self->clear_checksum; # Clear the checksum in case it belonged to
+                         # the removed replicate
+  return $self;
 }
 
 sub get_metadata {

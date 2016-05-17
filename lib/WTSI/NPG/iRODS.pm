@@ -9,7 +9,7 @@ use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
-use List::AllUtils qw(all any uniq);
+use List::AllUtils qw(any uniq);
 use Moose;
 use MooseX::StrictConstructor;
 use Try::Tiny;
@@ -56,6 +56,18 @@ our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
 our $DEFAULT_CACHE_SIZE = 128;
 our $OBJECT_PATH        = 'OBJECT';
 our $COLLECTION_PATH    = 'COLLECTION';
+
+our $IRODS_MAJOR_VERSION_3 = '3';
+our $IRODS_MAJOR_VERSION_4 = '4';
+
+has 'irods_major_version' =>
+  (is            => 'ro',
+   isa           => 'Str',
+   required      => 1,
+   lazy          => 1,
+   builder       => '_build_irods_major_version',
+   init_arg      => undef,
+   documentation => 'The iRODS major version; 3 or 4');
 
 has 'strict_baton_version' =>
   (is            => 'ro',
@@ -425,11 +437,27 @@ sub get_irods_env {
      environment => $self->environment,
      logger      => $self->logger)->run->split_stdout;
 
+  shift @entries; # Discard version information line
+  @entries or
+    $self->logconfess("Failed to read any entries from '$IENV'");
+
   my %env;
   foreach my $entry (@entries) {
-    my ($key, $value) = $entry =~ m{^NOTICE:\s+([^=]+)=(.*)}msx;
+    my ($key, $value);
 
-    if ($key and $value) {
+    my $irods_major_version = $self->irods_major_version;
+    if ($irods_major_version eq $IRODS_MAJOR_VERSION_3) {
+      ($key, $value) = $entry =~ m{^NOTICE:\s+([^=]+)=(.*)}msx;
+    }
+    elsif ($irods_major_version eq $IRODS_MAJOR_VERSION_4) {
+      next if $entry =~ m{is\snot\sdefined$}msx;
+      ($key, $value) = $entry =~ m{^NOTICE:\s+(\S+)\s-\s(.*)}msx;
+    }
+    else {
+      $self->logconfess("Invalid iRODS major version '$irods_major_version'");
+    }
+
+    if (defined $key and defined $value) {
       $env{$key} = $value;
     }
     else {
@@ -453,9 +481,17 @@ sub get_irods_env {
 sub get_irods_user {
   my ($self) = @_;
 
-  my $user = $self->get_irods_env->{irodsUserName};
+  my $var_name = q[];
+  if ($self->irods_major_version eq $IRODS_MAJOR_VERSION_3) {
+    $var_name = 'irodsUserName';
+  }
+  elsif ($self->irods_major_version eq $IRODS_MAJOR_VERSION_4) {
+    $var_name = 'irods_user_name';
+  }
+
+  my $user = $self->get_irods_env->{$var_name};
   defined $user or
-    $self->logconfess("Failed to obtain the irodsUserName from '$IENV'");
+    $self->logconfess("Failed to obtain the iRODS user name from '$IENV'");
 
   return $user;
 }
@@ -473,9 +509,17 @@ sub get_irods_user {
 sub get_irods_home {
   my ($self) = @_;
 
-  my $home = $self->get_irods_env->{irodsHome};
+  my $var_name = q[];
+  if ($self->irods_major_version eq $IRODS_MAJOR_VERSION_3) {
+    $var_name = 'irodsHome';
+  }
+  elsif ($self->irods_major_version eq $IRODS_MAJOR_VERSION_4) {
+    $var_name = 'irods_home';
+  }
+
+  my $home = $self->get_irods_env->{$var_name};
   defined $home or
-    $self->logconfess("Failed to obtain the irodsHome from '$IENV'");
+    $self->logconfess("Failed to obtain the iRODS home from '$IENV'");
 
   return $home;
 }
@@ -2465,6 +2509,33 @@ sub _clear_caches {
   $self->_metadata_cache->remove($path);
 
   return;
+}
+
+sub _build_irods_major_version {
+  my ($self) = @_;
+
+  my @entries = WTSI::DNAP::Utilities::Runnable->new
+    (executable  => $IENV,
+     environment => $self->environment,
+     logger      => $self->logger)->run->split_stdout;
+
+  @entries or
+    $self->logconfess("Failed to read any output from '$IENV'");
+
+  my $version_entry = shift @entries;
+
+  my ($irods_major_version) = $version_entry =~
+    m{NOTICE:\s+Release\sVersion\s=\srods(\d)[.]\d[.]\d}msx;
+  defined $irods_major_version or
+    $self->logconfess("Failed to parse a valid iRODS major version ",
+                      "from '$version_entry'");
+
+  any { $irods_major_version eq $_ } ($IRODS_MAJOR_VERSION_3,
+                                      $IRODS_MAJOR_VERSION_4) or
+    $self->logconfess("Failed to parse a valid iRODS major version ",
+                      "from '$version_entry'");
+
+  return $irods_major_version;
 }
 
 sub DEMOLISH {

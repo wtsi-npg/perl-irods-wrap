@@ -1269,7 +1269,7 @@ sub invalid_replicates : Test(3) {
 
     # Make the original replicate (0) stale
     my $other_object = "$irods_tmp_coll/irods/test.txt";
-    system("icp -f -R $alt_resource ".
+    system("icp -f -R $alt_resource " .
            "$other_object $lorem_object >/dev/null") == 0 or
       die "Failed to make an invalid replicate: $ERRNO";
 

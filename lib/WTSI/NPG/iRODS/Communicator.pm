@@ -49,7 +49,7 @@ sub communicate {
     $self->error("JSON parse error on: '", ${$self->stdout}, "': ", $_);
   };
 
-  defined $response or
+  $response or
     $self->logconfess("Failed to get a response from JSON spec '$json'");
 
   return $response;

@@ -57,6 +57,9 @@ our $DEFAULT_CACHE_SIZE = 128;
 our $OBJECT_PATH        = 'OBJECT';
 our $COLLECTION_PATH    = 'COLLECTION';
 
+our $CALC_CHECKSUM = 1;
+our $SKIP_CHECKSUM = 0;
+
 has 'strict_baton_version' =>
   (is            => 'ro',
    isa           => 'Bool',
@@ -1375,6 +1378,11 @@ sub read_object {
 
   Arg [1]    : Path of file to add to iRODs.
   Arg [2]    : iRODS data object path.
+  Arg [3]    : Checksum action, either $WTSI::NPG::iRODS::CALC_CHECKSUM
+               (calculate a checksum on the server side) or
+               $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
+               checksum on the server side). Defaults to
+               $WTSI::NPG::iRODS::CALC_CHECKSUM
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
@@ -1383,7 +1391,7 @@ sub read_object {
 =cut
 
 sub add_object {
-  my ($self, $file, $target) = @_;
+  my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
     $self->logconfess('A defined file argument is required');
@@ -1395,11 +1403,26 @@ sub add_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
+  if (defined $checksum_action) {
+    ($checksum_action =~ m{^\d$}msx and
+     any { $checksum_action == $_ } ($CALC_CHECKSUM, $SKIP_CHECKSUM)) or
+      $self->logconfess("Invalid checksum action '$checksum_action'");
+  }
+  else {
+    $checksum_action = $CALC_CHECKSUM;
+  }
+
+  my @arguments;
+  if ($checksum_action) {
+    push @arguments , '-K';
+  }
+
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Adding '$file' as new object '$target'");
+  push @arguments, $file, $target;
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
-                                       arguments   => ['-K', $file, $target],
+                                       arguments   => \@arguments,
                                        environment => $self->environment,
                                        logger      => $self->logger)->run;
   return $target;
@@ -1409,15 +1432,20 @@ sub add_object {
 
   Arg [1]    : Path of file to add to iRODs.
   Arg [2]    : iRODS data object path.
+  Arg [3]    : Checksum action, either $WTSI::NPG::iRODS::CALC_CHECKSUM
+               (calculate a checksum on the server side) or
+               $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
+               checksum on the server side). Defaults to
+               $WTSI::NPG::iRODS::CALC_CHECKSUM
 
-  Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
+  Example    : $irods->replace_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
   Returntype : Str
 
 =cut
 
 sub replace_object {
-  my ($self, $file, $target) = @_;
+  my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
     $self->logconfess('A defined file argument is required');
@@ -1429,12 +1457,27 @@ sub replace_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
+  if (defined $checksum_action) {
+    ($checksum_action =~ m{^\d$}msx and
+     any { $checksum_action == $_ } ($CALC_CHECKSUM, $SKIP_CHECKSUM)) or
+      $self->logconfess("Invalid checksum action '$checksum_action'");
+  }
+  else {
+    $checksum_action = $CALC_CHECKSUM;
+  }
+
+  my @arguments = ('-f');
+  if ($checksum_action) {
+    push @arguments , '-K';
+  }
+
   $target = $self->_ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
+  push @arguments, $file, $target;
 
   WTSI::DNAP::Utilities::Runnable->new
       (executable  => $IPUT,
-       arguments   => ['-f', '-K', $file, $target],
+       arguments   => \@arguments,
        environment => $self->environment,
        logger      => $self->logger)->run;
   return $target;

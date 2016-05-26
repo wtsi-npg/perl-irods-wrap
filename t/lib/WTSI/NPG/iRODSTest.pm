@@ -868,7 +868,7 @@ sub read_object : Test(2) {
      'Read expected object contents') or diag explain $content;
 }
 
-sub add_object : Test(3) {
+sub add_object : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -877,39 +877,88 @@ sub add_object : Test(3) {
 
   is($irods->add_object($lorem_file, $lorem_object), $lorem_object,
      'Added a data object');
-
   is($irods->list_object($lorem_object), $lorem_object,
-    'Found a new data object');
+     'Found the new data object');
+
+ TODO: {
+    local $TODO = 'Testing for a checksum will create a checksum if ' .
+      'it does not exist. Requires a change in baton to test effectively';
+
+    is($irods->checksum($lorem_object), '39a4aa291ca849d601e4e5b8ed627a04',
+       'Checksum created by default');
+  }
+
+  my $lorem_object_no_checksum = "$irods_tmp_coll/lorem_added_no_checksum.txt";
+  is($irods->add_object($lorem_file, $lorem_object_no_checksum,
+                        $WTSI::NPG::iRODS::SKIP_CHECKSUM),
+     $lorem_object_no_checksum,
+     'Added a data object without checksum calculation');
+
+ TODO: {
+    local $TODO = 'Testing for an absent checksum will create a checksum if ' .
+      'it does not exist. Requires a change in baton to test effectively';
+
+    is($irods->checksum($lorem_object_no_checksum), q[],
+       'Checksum not created');
+  }
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';
+  dies_ok { $irods->add_object($lorem_file, $lorem_object,
+                               'invalid checksum action') }
+    'Failed on invalid checksum option';
 }
 
-sub replace_object : Test(5) {
+sub replace_object : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
   my $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
-  $irods->add_object($lorem_file, $to_replace);
-  my $checksum_before = $irods->calculate_checksum($to_replace);
-
   my $tmp = File::Temp->new;
   my $empty_file = $tmp->filename;
+
+  $irods->add_object($lorem_file, $to_replace);
+  my $checksum_before = $irods->calculate_checksum($to_replace);
 
   is($irods->replace_object($empty_file, $to_replace), $to_replace,
      'Replaced a data object');
 
-  my $checksum_after = $irods->calculate_checksum($to_replace);
-  isnt($checksum_after, $checksum_before, 'Data object was replaced');
-  is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
-     'Data object was replaced with an empty file');
+ TODO: {
+    local $TODO = 'Testing for a checksum will create a checksum if ' .
+      'it does not exist. Requires a change in baton to test effectively';
+
+    my $checksum_after = $irods->checksum($to_replace);
+    ok($checksum_after, 'Checksum created by default');
+    isnt($checksum_after, $checksum_before, 'Data object was replaced');
+    is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
+       'Data object was replaced with an empty file');
+  }
+
+  my $to_replace_no_checksum =
+    "$irods_tmp_coll/lorem_to_replace_no_checksum.txt";
+  $irods->add_object($lorem_file, $to_replace_no_checksum);
+
+  is($irods->replace_object($empty_file, $to_replace_no_checksum,
+                            $WTSI::NPG::iRODS::SKIP_CHECKSUM),
+     $to_replace_no_checksum, 'Replaced a data object without checksum');
+
+ TODO: {
+    local $TODO = 'Testing for an absent checksum will create a checksum if ' .
+      'it does not exist. Requires a change in baton to test effectively';
+
+    is($irods->checksum($to_replace_no_checksum), q[],
+       'Checksum not created');
+  }
 
   dies_ok { $irods->replace_object($lorem_file, undef) }
     'Failed to replace an undefined object';
   dies_ok { $irods->replace_object(undef, $to_replace) }
     'Failed to replace an object with an undefined file';
+  dies_ok { $irods->replace_object($empty_file, $to_replace,
+                                   'invalid checksum action') }
+    'Failed on invalid checksum option';
 }
 
 sub copy_object : Test(16) {

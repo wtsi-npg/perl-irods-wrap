@@ -10,10 +10,10 @@ env:
   global:
     - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
     - PGVERSION="9.3"
-    - DNAP_UTILITIES_VERSION="0.5.1"
     - JANSSON_VERSION="2.7"
-    - BATON_VERSION="0.16.3"
+    - DNAP_UTILITIES_VERSION="0.5.1"
     - CK_DEFAULT_TIMEOUT=20
+    - BATON_VERSION="0.16.4"
     - IRODS_VAULT=/usr/local/var/lib/irods/Vault
     - PLATFORM=ubuntu12
     - ARCH=x86_64

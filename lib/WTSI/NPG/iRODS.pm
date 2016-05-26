@@ -10,6 +10,7 @@ use English qw(-no_match_vars);
 use File::Basename qw(basename);
 use File::Spec;
 use List::AllUtils qw(any uniq);
+use Log::Log4perl::Level;
 use Moose;
 use MooseX::StrictConstructor;
 use Try::Tiny;
@@ -29,8 +30,8 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.16.3';
-our $MIN_BATON_VERSION = '0.16.0';
+our $MAX_BATON_VERSION = '0.16.4';
+our $MIN_BATON_VERSION = '0.16.4';
 
 our $IADMIN      = 'iadmin';
 our $ICHKSUM     = 'ichksum';
@@ -2573,9 +2574,21 @@ sub DEMOLISH {
         try {
           $self->debug("Stopping $client client");
           my $startable = $self->$client;
+
+          if ($client eq 'lister') {
+            my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
+            $muffled->level($OFF);
+            $startable->logger($muffled);
+          }
+
           $startable->stop;
         } catch {
-          $self->error("Failed to stop $client cleanly: ", $_);
+          if ($client eq 'lister') {
+            $self->debug("$client handled expected error: ", $_);
+          }
+          else {
+            $self->error("Failed to stop $client cleanly: ", $_);
+          }
         };
       }
     }

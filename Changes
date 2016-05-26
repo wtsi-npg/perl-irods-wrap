@@ -1,3 +1,14 @@
+Release 2.4.0
+
+  - Added a method parameter to allow server-side checksum calculation
+    to be deferred when adding or replacing data objects.
+
+  - Muffled spurious errors from baton-list (requires baton 0.16.4).
+
+  - Added iRODS 4.1.8 to the test matrix.
+
+  - In testing, the default resource is now 'testResc'.
+
 Release 2.3.0
 
   - Added support for data object replicate management.

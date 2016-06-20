@@ -1,5 +1,6 @@
 package WTSI::NPG::iRODS::Path;
 
+use Data::Dump qw(pp);
 use File::Spec;
 use List::AllUtils qw(any notall uniq);
 use Moose::Role;
@@ -57,15 +58,6 @@ requires
 # There should be a convention for methods that fetch fresh data from
 # iRODS and those that may cache the values from iRODS (until
 # cleared).
-
-sub BUILD {
-  my ($self) = @_;
-
-  # Make our logger be the iRODS logger by default
-  $self->logger($self->irods->logger);
-
-  return $self;
-}
 
 =head2 get_avu
 
@@ -249,6 +241,7 @@ sub supersede_multivalue_avus {
   ref $values eq 'ARRAY' or
     $self->logcroak("The values argument must be an ArrayRef");
 
+  my $path = $self->str;
   my @values = @$values;
   if (notall { defined } @values) {
     $self->logcarp("The values array for '$attribute' contained one or more ",
@@ -260,10 +253,22 @@ sub supersede_multivalue_avus {
   @values = uniq @values;
   @values or $self->logcroak("At least one defined value is required");
 
-  $self->debug("Superseding all '$attribute' AVUs on '", $self->str, q{'});
+  $self->debug("Superseding all '$attribute' AVUs on '$path'");
 
-  return $self->_update_multivalue_avus($attribute, \@values, $units,
-                                        $timestamp);
+  my ($added, $removed, $retained) =
+    $self->_update_multivalue_avus($attribute, \@values, $units, $timestamp);
+
+  if (@{$removed}) {
+    $self->info("Removed metadata AVUs from '$path': ", pp($removed));
+  }
+  if (@{$added}) {
+    $self->info("Added metadata AVUs to '$path': ", pp($added));
+  }
+  if (@{$retained}) {
+    $self->debug("Retained metadata AVUs on '$path': ", pp($retained));
+  }
+
+  return $self;
 }
 
 =head2 expected_groups
@@ -337,8 +342,10 @@ sub _update_multivalue_avus {
   ref $values eq 'ARRAY' or
     $self->logcroak("The values argument must be an ArrayRef");
 
+  my $path = $self->str;
+
   my @values = @$values;
-  $self->debug("Updating all '$attribute' AVUs on '", $self->str, q{'});
+  $self->debug("Updating all '$attribute' AVUs on '$path'");
 
   my @old_avus = $self->find_in_metadata($attribute);
   my @new_avus = map { $self->make_avu($attribute, $_, $units) } @values;
@@ -346,8 +353,7 @@ sub _update_multivalue_avus {
   # Compare old AVUS to new; if any of the new ones are already
   # present, leave the old copy, otherwise remove the old AVU
   my $num_old = scalar @old_avus;
-  $self->debug("Found $num_old existing '$attribute' AVUs on '",
-               $self->str, q{'});
+  $self->debug("Found $num_old existing '$attribute' AVUs on $path''");
 
   my $history_avu;
   # Only make a history if there are some AVUs with this attribute
@@ -358,22 +364,24 @@ sub _update_multivalue_avus {
   my $num_old_processed = 0;
   my $num_old_removed   = 0;
   my @retained_avus;
+  my @removed_avus;
   foreach my $old_avu (@old_avus) {
     $num_old_processed++;
 
     if (any { $self->avus_equal($old_avu, $_) } @new_avus) {
       $self->debug("Not updating (retaining) old AVU ",
-                   $self->avu_str($old_avu), " on '", $self->str,
-                   "' [$num_old_processed / $num_old]");
+                   $self->avu_str($old_avu), " on '$path' ",
+                   "[$num_old_processed / $num_old]");
       push @retained_avus, $old_avu;
     }
     else {
       $self->debug("Updating (removing) old AVU ",
-                   $self->avu_str($old_avu), " from '", $self->str,
-                   "' [$num_old_processed / $num_old]");
+                   $self->avu_str($old_avu), " from '$path' ",
+                   "[$num_old_processed / $num_old]");
       $self->remove_avu($old_avu->{attribute},
                         $old_avu->{value},
                         $old_avu->{units});
+      push @removed_avus, $old_avu;
       $num_old_removed++;
     }
   }
@@ -381,23 +389,25 @@ sub _update_multivalue_avus {
   # Add the new AVUs, unless they are identical to one of the old
   # copies that were retained
   my $num_new = scalar @new_avus;
-  $self->debug("Adding $num_new '$attribute' AVUs to '", $self->str, q{'});
+  $self->debug("Adding $num_new '$attribute' AVUs to '$path'");
 
   my $num_new_processed = 0;
   my $num_new_added     = 0;
+  my @added_avus;
   foreach my $new_avu (@new_avus) {
     $num_new_processed++;
 
     if (any { $self->avus_equal($new_avu, $_) } @retained_avus) {
       $self->debug("Updating (using retained) new AVU ",
-                   $self->avu_str($new_avu), " on '", $self->str,
-                   "' [$num_new_processed / $num_new]");
+                   $self->avu_str($new_avu), " on '$path' ",
+                   "[$num_new_processed / $num_new]");
     }
     else {
       # If we can't re-use a retained AVU, we must add this one
       $self->debug("Updating (adding) new AVU ",
-                   $self->avu_str($new_avu), " to '", $self->str,
-                   "' [$num_new_processed / $num_new]");
+                   $self->avu_str($new_avu), " to '$path' ",
+                   "[$num_new_processed / $num_new]");
+      push @added_avus, $new_avu;
       $self->add_avu($new_avu->{attribute},
                      $new_avu->{value},
                      $new_avu->{units});
@@ -408,11 +418,12 @@ sub _update_multivalue_avus {
   # Only add history if some AVUs were removed or added
   if (($num_old_removed > 0 || $num_new_added > 0) && defined $history_avu) {
     $self->debug("Adding history AVU ", $self->avu_str($history_avu),
-                 " to ", $self->str);
+                 " to '$path'");
+    push @added_avus, $history_avu;
     $self->add_avu($history_avu->{attribute}, $history_avu->{value});
   }
 
-  return $self;
+  return (\@added_avus, \@removed_avus, \@retained_avus);
 }
 
 no Moose::Role;

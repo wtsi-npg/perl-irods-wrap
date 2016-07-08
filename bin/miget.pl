@@ -2,6 +2,9 @@
 
 use warnings;
 use strict;
+use FindBin qw[$Bin];
+use lib (-d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib");
+
 use Cwd qw(abs_path getcwd);
 use Getopt::Long;
 use List::AllUtils qw(uniq);
@@ -16,20 +19,11 @@ our $VERSION = '';
 
 our $DEFAULT_ZONE = 'seq';
 
-my $embedded_conf = << 'LOGCONF'
-   log4perl.logger.npg.irods      = ERROR, A1
-
-   log4perl.appender.A1           = Log::Log4perl::Appender::Screen
-   log4perl.appender.A1.utf8      = 1
-   log4perl.appender.A1.layout    = Log::Log4perl::Layout::PatternLayout
-   log4perl.appender.A1.layout.ConversionPattern = %d %p %m %n
-LOGCONF
-;
-
 my $debug;
 my $dest;
 my $dry_run;
 my $list_key;
+my $log4perl_config;
 my $verbose;
 my $zone;
 my @filter_key;
@@ -43,6 +37,7 @@ GetOptions('debug'            => \$debug,
            'filter-value=s'   => \@filter_value,
            'help'             => sub { pod2usage(-verbose => 2,
                                                  -exitval => 0) },
+           'logconf=s'        => \$log4perl_config,
            'list-key=s'       => \$list_key,
            'verbose'          => \$verbose,
            'zone=s',          => \$zone,
@@ -79,21 +74,30 @@ unless ($stdio) {
   }
 }
 
-Log::Log4perl::init(\$embedded_conf);
-my $log = Log::Log4perl->get_logger('npg.irods');
-
-if ($verbose || ($dry_run && !$debug)) {
-  $log->level($INFO);
+if ($log4perl_config) {
+  Log::Log4perl::init($log4perl_config);
 }
-elsif ($debug) {
-  $log->level($DEBUG);
+else {
+  my $log_args = {layout => '%d %p %m %n',
+                  level  => $ERROR,
+                  utf8   => 1};
+
+  if ($verbose || ($dry_run && !$debug)) {
+    $log_args->{level} = $INFO;
+  }
+  elsif ($debug) {
+    $log_args->{level} = $DEBUG;
+  }
+
+  Log::Log4perl->easy_init($log_args);
 }
 
-my $irods = WTSI::NPG::iRODS->new(logger => $log);
+my $log = Log::Log4perl->get_logger('main');
+
+my $irods = WTSI::NPG::iRODS->new;
 
 my @data_objects;
 my $num_objects;
-
 
 if ($stdio) {
   # The user has provided a list of paths or metadata values on
@@ -147,10 +151,10 @@ my $count = 0;
 foreach my $object (@data_objects) {
   $count++;
   if ($dry_run) {
-    $log->info("Found '$object' $count/$num_objects");
+    $log->info("Found '$object' [$count / $num_objects]");
   }
   else {
-    $log->info("Getting '$object' $count/$num_objects");
+    $log->info("Getting '$object' [$count / $num_objects]");
 
     try {
       $irods->get_object($object, $dest);
@@ -187,6 +191,7 @@ Options:
   --filter-key      iRODS metadata key to match during a search. Optional.
   --filter-value    iRODS metadata value to match during a search. Optional.
   --help            Display help.
+  --logconf         A log4perl configuration file. Optional.
   --list-key        iRODS metadata key to match in list values. Optional.
   --verbose         Print messages while processing. Optional.
   --zone            iRODS zone to search. Optional, defaults to 'seq'.

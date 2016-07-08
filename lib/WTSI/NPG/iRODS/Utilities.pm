@@ -57,8 +57,7 @@ sub md5sum {
   my @result = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $MD5SUM,
      arguments   => [$file],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
   my $raw = shift @result;
 
   my ($md5) = $raw =~ m{^(\S+)\s+.*}msx;

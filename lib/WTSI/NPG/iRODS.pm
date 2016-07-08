@@ -143,8 +143,7 @@ has 'lister' =>
 
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered',],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_lister');
 
@@ -158,8 +157,7 @@ has 'contents_lister' =>
 
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--contents'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_contents_lister',);
 
@@ -174,8 +172,7 @@ has 'detailed_lister' =>
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--checksum', '--contents',
                         '--replicate'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_detailed_lister');
 
@@ -189,8 +186,7 @@ has 'acl_lister' =>
 
      return WTSI::NPG::iRODS::Lister->new
        (arguments   => ['--unbuffered', '--acl', '--contents'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_acl_lister');
 
@@ -204,8 +200,7 @@ has 'meta_lister' =>
 
      return WTSI::NPG::iRODS::MetaLister->new
        (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_meta_lister');
 
@@ -219,8 +214,7 @@ has 'meta_adder' =>
 
      return WTSI::NPG::iRODS::MetaModifier->new
        (arguments   => ['--unbuffered', '--operation', 'add'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_meta_adder');
 
@@ -234,8 +228,7 @@ has 'meta_remover' =>
 
      return WTSI::NPG::iRODS::MetaModifier->new
        (arguments   => ['--unbuffered', '--operation', 'rem'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_meta_remover');
 
@@ -249,8 +242,7 @@ has 'coll_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--coll'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_coll_searcher');
 
@@ -264,8 +256,7 @@ has 'obj_searcher' =>
 
      return WTSI::NPG::iRODS::MetaSearcher->new
        (arguments   => ['--unbuffered', '--obj'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_obj_searcher');
 
@@ -279,8 +270,7 @@ has 'acl_modifier' =>
 
      return WTSI::NPG::iRODS::ACLModifier->new
        (arguments   => ['--unbuffered'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_acl_modifier');
 
@@ -294,8 +284,7 @@ has 'obj_reader' =>
 
      return WTSI::NPG::iRODS::DataObjectReader->new
        (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment,
-        logger      => $self->logger)->start;
+        environment => $self->environment)->start;
    },
    predicate => 'has_obj_reader');
 
@@ -351,8 +340,7 @@ sub installed_baton_version {
   my ($version) = WTSI::DNAP::Utilities::Runnable->new
     (executable  => 'baton-list',
      arguments   => ['--version'],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
 
   return $version;
 }
@@ -438,8 +426,7 @@ sub get_irods_env {
 
   my @entries = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IENV,
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
 
   shift @entries; # Discard version information line
   @entries or
@@ -604,8 +591,7 @@ sub list_groups {
   my @groups = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGROUPADMIN,
      arguments   => ['lg'],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
 
   return @groups;
 }
@@ -645,8 +631,7 @@ sub add_group {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
                                        arguments   => ['mkgroup', $name],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   $self->clear_groups; # Clear the groups cache
 
   return $name;
@@ -673,8 +658,7 @@ sub remove_group {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IADMIN,
                                        arguments   => ['rmgroup', $name],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   $self->clear_groups; # Clear the groups cache
 
   return $name;
@@ -815,8 +799,7 @@ sub add_collection {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMKDIR,
                                        arguments   => ['-p', $collection],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $collection;
 }
 
@@ -852,8 +835,7 @@ sub put_collection {
   my @args = ('-r', $dir, $target);
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
                                        arguments   => \@args,
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
 
   return $target . q{/} . basename($dir);
 }
@@ -889,8 +871,7 @@ sub move_collection {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
                                        arguments   => [$source, $target],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $target;
 }
 
@@ -926,8 +907,7 @@ sub get_collection {
   my @args = ('-r', '-f', $source, $target);
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IGET,
                                        arguments   => \@args,
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $self;
 }
 
@@ -956,8 +936,7 @@ sub remove_collection {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => ['-r', '-f', $collection],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $collection;
 }
 
@@ -1468,8 +1447,7 @@ sub add_object {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
                                        arguments   => \@arguments,
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $target;
 }
 
@@ -1520,11 +1498,9 @@ sub replace_object {
   $self->debug("Replacing object '$target' with '$file'");
   push @arguments, $file, $target;
 
-  WTSI::DNAP::Utilities::Runnable->new
-      (executable  => $IPUT,
-       arguments   => \@arguments,
-       environment => $self->environment,
-       logger      => $self->logger)->run;
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
+                                       arguments   => \@arguments,
+                                       environment => $self->environment)->run;
   return $target;
 }
 
@@ -1573,8 +1549,7 @@ sub copy_object {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $ICP,
                                        arguments   => [$source, $target],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
 
   $self->debug("Copying metadata from '$source' to '$target'");
 
@@ -1622,8 +1597,7 @@ sub move_object {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
                                        arguments   => [$source, $target],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $target
 }
 
@@ -1657,8 +1631,7 @@ sub get_object {
   my @args = ('-f', '-T', $source, $target);
   my $runnable = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGET,
-     arguments   => \@args,
-     logger      => $self->logger)->run;
+     arguments   => \@args)->run;
 
   return $target;
 }
@@ -1688,8 +1661,7 @@ sub remove_object {
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => [$object],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $object;
 }
 
@@ -2171,8 +2143,7 @@ sub calculate_checksum {
   my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $ICHKSUM,
      arguments   => ['-f', $object],
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
   unless (@raw_checksum) {
     $self->logconfess("Failed to get iRODS checksum for '$object'");
   }
@@ -2390,8 +2361,7 @@ sub remove_replicate {
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => ['-n', $replicate_num,
                                                        $object],
-                                       environment => $self->environment,
-                                       logger      => $self->logger)->run;
+                                       environment => $self->environment)->run;
   return $object;
 }
 
@@ -2560,8 +2530,7 @@ sub _build_irods_major_version {
 
   my @entries = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IENV,
-     environment => $self->environment,
-     logger      => $self->logger)->run->split_stdout;
+     environment => $self->environment)->run->split_stdout;
 
   @entries or
     $self->logconfess("Failed to read any output from '$IENV'");
@@ -2602,6 +2571,8 @@ sub DEMOLISH {
                     obj_searcher
                  ];
 
+  my $handles_errors = qr/((acl|contents|detailed)_)?lister/msx;
+
   if (not $in_global_destruction) {
 
     # Stop any active clients and log any errors that they encountered
@@ -2618,7 +2589,7 @@ sub DEMOLISH {
           $self->debug("Stopping $client client");
           my $startable = $self->$client;
 
-          if ($client eq 'lister') {
+          if ($client =~ m{$handles_errors}msx) {
             my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
             $muffled->level($OFF);
             $startable->logger($muffled);
@@ -2626,7 +2597,7 @@ sub DEMOLISH {
 
           $startable->stop;
         } catch {
-          if ($client eq 'lister') {
+          if ($client =~ m{$handles_errors}msx) {
             $self->debug("$client handled expected error: ", $_);
           }
           else {

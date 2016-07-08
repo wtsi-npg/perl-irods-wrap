@@ -17,15 +17,6 @@ use WTSI::NPG::iRODS::GroupAdmin;
 
 our $VERSION = '';
 
-my $embedded_conf = << 'LOGCONF';
-   log4perl.logger.npg.irods      = ERROR, A1
-
-   log4perl.appender.A1           = Log::Log4perl::Appender::Screen
-   log4perl.appender.A1.utf8      = 1
-   log4perl.appender.A1.layout    = Log::Log4perl::Layout::PatternLayout
-   log4perl.appender.A1.layout.ConversionPattern = %d %p %m %n
-LOGCONF
-
 my $what_on_earth =<<'WOE';
 
 Script to update WTSI iRODS systems with groups corresponding to
@@ -99,19 +90,23 @@ if ($log4perl_config) {
   Log::Log4perl::init($log4perl_config);
 }
 else {
-  Log::Log4perl::init(\$embedded_conf);
+  my $log_args = {layout => '%d %p %m %n',
+                  level  => $ERROR,
+                  utf8   => 1};
+
+  if ($verbose || ($dry_run && !$debug)) {
+    $log_args->{level} = $INFO;
+  }
+  elsif ($debug) {
+    $log_args->{level} = $DEBUG;
+  }
+
+  Log::Log4perl->easy_init($log_args);
 }
 
-my $log = Log::Log4perl->get_logger('npg.irods');
-if ($verbose) {
-  $log->level($INFO);
-}
-if ($debug) {
-  $log->level($DEBUG);
-}
+my $log = Log::Log4perl->get_logger('main');
 
-my $iga = WTSI::NPG::iRODS::GroupAdmin->new(dry_run => $dry_run,
-                                            logger  => $log);
+my $iga = WTSI::NPG::iRODS::GroupAdmin->new(dry_run => $dry_run);
 
 my @public = $iga->lg(q(public));
 $log->info("The iRODS public group has ", scalar @public, ' members');

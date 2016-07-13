@@ -1,3 +1,5 @@
+  - Ensure test dependencies are installed.
+
 Release 2.4.0
 
   - Added a method parameter to allow server-side checksum calculation

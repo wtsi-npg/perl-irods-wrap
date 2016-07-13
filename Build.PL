@@ -18,7 +18,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
    configure_requires => {
                           'Module::Build'             => '>= 0.42'
                          },
-   test_requires      => {
+   build_requires      => {
                           'Test::Perl::Critic'        => '0',
                           'TAP::Harness'              => '>= 3.30',
                           'Test::Class'               => '>= 0.41',

@@ -43,7 +43,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Set::Scalar'               => '>= 1.29',
                           'Try::Tiny'                 => '>= 0.22',
                           'URI'                       => '>= 1.67',
-                          'WTSI::DNAP::Utilities'     => '>= 0.5.0'
+                          'WTSI::DNAP::Utilities'     => '>= 0.5.2'
                          },
    recommends =>         {
                           'Net::LDAP'                 => '0'

@@ -1,3 +1,7 @@
+Release 2.5.0
+
+  - Switch to logging on a per-class basis.
+
   - Ensure test dependencies are installed.
 
 Release 2.4.0

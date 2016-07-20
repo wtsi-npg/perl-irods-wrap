@@ -468,15 +468,17 @@ sub update_group_permissions {
     $self->get_groups($WTSI::NPG::iRODS::READ_PERMISSION);
   my @groups_annotated = $self->expected_groups;
 
-  $self->debug("Permissions before: [", join(", ", @groups_permissions), "]");
-  $self->debug("Updated annotations: [", join(", ", @groups_annotated), "]");
+  $self->debug('Permissions before: [', join(', ', @groups_permissions), ']');
+  $self->debug('Updated annotations: [', join(', ', @groups_annotated), ']');
+
+  my $path = $self->str;
 
   my $true  = 1;
   my $false = 0;
   if ($self->get_avu($SAMPLE_CONSENT,          $false) or
       $self->get_avu($SAMPLE_CONSENT_WITHDRAWN, $true)) {
-    $self->info("Data is marked as CONSENT WITHDRAWN; ",
-                "all permissions will be withdrawn");
+    $self->info('Data is marked as CONSENT WITHDRAWN; ',
+                'all permissions will be withdrawn');
     @groups_annotated = (); # Emptying this means all will be removed
   }
 
@@ -485,7 +487,7 @@ sub update_group_permissions {
   my @to_remove = $perms->difference($annot)->members;
   my @to_add    = $annot->difference($perms)->members;
 
-  $self->debug("Groups to remove: [", join(', ', @to_remove), "]");
+  $self->debug('Groups to remove: [', join(', ', @to_remove), ']');
 
   # We try/catch for each group in order to do our best, while
   # counting any errors and failing afterwards if the update was not
@@ -496,42 +498,44 @@ sub update_group_permissions {
   foreach my $group (@to_remove) {
     if ($strict_groups and none { $group eq $_ } @all_groups) {
       $num_errors++;
-      $self->error("Attempted to remove permissions for non-existent group ",
-                   "'$group' on '", $self->str, q{'});
+      $self->error('Attempted to remove permissions for non-existent group ',
+                   "'$group' on '$path'");
     }
     else {
       try {
         $self->set_permissions($WTSI::NPG::iRODS::NULL_PERMISSION, $group);
       } catch {
         $num_errors++;
-        $self->error("Failed to remove permissions for group '$group' from '",
-                     $self->str, q{': }, $_);
+        my @stack = split /\n/msx; # Chop up the stack trace
+        $self->error("Failed to remove permissions for group '$group' from ",
+                     "'$path': ", pop @stack);
       };
     }
   }
 
-  $self->debug("Groups to add: [", join(', ', @to_add), "]");
+  $self->debug('Groups to add: [', join(', ', @to_add), ']');
 
   foreach my $group (@to_add) {
     if ($strict_groups and none { $group eq $_ } @all_groups) {
       $num_errors++;
       $self->error("Attempted to add read permissions for non-existent group ",
-                   "'$group' on '", $self->str, q{'});
+                   "'$group' to '$path'");
     }
     else {
       try {
         $self->set_permissions($WTSI::NPG::iRODS::READ_PERMISSION, $group);
       } catch {
         $num_errors++;
-        $self->error("Failed to add read permissions for group '$group' to '",
-                     $self->str, q{': }, $_);
+        my @stack = split /\n/msx; # Chop up the stack trace
+        $self->error("Failed to add read permissions for group '$group' to ",
+                     "'$path': ", pop @stack);
       };
     }
   }
 
   if ($num_errors > 0) {
-    my $msg = "Failed to update cleanly group permissions on '" . $self->str .
-      "'; $num_errors errors were recorded. See logs for details ".
+    my $msg = "Failed to update cleanly group permissions on '$path': " .
+      "$num_errors errors were recorded. See logs for details ".
       "(strict groups = $strict_groups).";
 
     if ($strict_groups) {

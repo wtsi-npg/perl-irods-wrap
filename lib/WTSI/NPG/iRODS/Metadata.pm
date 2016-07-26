@@ -40,16 +40,21 @@ our @EXPORT = qw(
                   $ALT_PROCESS
                   $ALT_TARGET
                   $CONTROL
+                  $HUMAN
                   $ID_RUN
                   $IS_PAIRED_READ
                   $LIBRARY
                   $LIBRARY_ID
+                  $LIBRARY_TYPE
                   $POSITION
                   $REFERENCE
+                  $SEQCHKSUM
                   $TAG
                   $TAG_INDEX
                   $TARGET
                   $TOTAL_READS
+                  $XAHUMAN
+                  $YHUMAN
 
                   $ANALYSIS_UUID
                   $INFINIUM_PROJECT_TITLE
@@ -119,16 +124,21 @@ our $ALIGNMENT                 = 'alignment';
 our $ALT_PROCESS               = 'alt_process';
 our $ALT_TARGET                = 'alt_target';
 our $CONTROL                   = 'control';
+our $HUMAN                     = 'human';
 our $ID_RUN                    = 'id_run';
 our $IS_PAIRED_READ            = 'is_paired_read';
 our $LIBRARY                   = 'library';
 our $LIBRARY_ID                = 'library_id';
+our $LIBRARY_TYPE              = 'library_type';
 our $POSITION                  = 'lane';
 our $REFERENCE                 = 'reference';
+our $SEQCHKSUM                 = 'seqchksum';
 our $TAG                       = 'tag';
 our $TAG_INDEX                 = 'tag_index';
 our $TARGET                    = 'target';
 our $TOTAL_READS               = 'total_reads';
+our $XAHUMAN                   = 'xahuman';
+our $YHUMAN                    = 'yhuman';
 
 # Genotyping
 our $ANALYSIS_UUID             = 'analysis_uuid';

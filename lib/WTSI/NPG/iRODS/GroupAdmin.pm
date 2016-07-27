@@ -154,8 +154,13 @@ sub _build__user {
     $self->logcroak(qq(Command '$IENV' not found));
   }
   run [abs_path $cmd], q(>), \$out;
-  if (my ($u) = $out =~ m/irodsUserName=(\S+)/smx and my ($z) = $out =~ m/irodsZone=(\S+)/smx) {
-    return "$u#$z";
+  my ($key1, $sep1, $user) = $out =~
+    m/(irodsUserName|irods_user_name)(=|\s-\s)(\S+)/smx;
+  my ($key2, $sep2, $zone) = $out =~
+    m/(irodsZone|irods_zone_name)(=|\s-\s)(\S+)/smx;
+
+  if ($user and $zone) {
+    return "$user#$zone";
   } else {
     $self->logcroak('Could not obtain user and zone from ienv: ', $out);
   }
@@ -303,10 +308,12 @@ Will honour iRODS related environment at time of object creation
 =head1 AUTHOR
 
 David K. Jackson <david.jackson@sanger.ac.uk>
+Keith James <kdj@sanger.ac.uk>
 
 =head2 LICENSE AND COPYRIGHT
 
-Copyright (C) 2013, 2014 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2013, 2014, 2016 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

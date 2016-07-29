@@ -52,9 +52,6 @@ install_4_1_x() {
     sudo dpkg -i irods-icat-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb irods-database-plugin-postgres-${PG_PLUGIN_VERSION}-${PLATFORM}-${ARCH}.deb
     sudo dpkg -i irods-runtime-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb irods-dev-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb
 
-    ls -l /usr/include/irods/rodsVersion.h
-    ls -l /usr/lib/libRodsAPIs.a
-
     tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
     cd /tmp/baton-${BATON_VERSION}
     ./configure --with-irods ; cat config.log ; make ; sudo make install
@@ -70,7 +67,7 @@ case $IRODS_VERSION in
         install_3_3_1
         ;;
 
-    4.1.8)
+    4.1.9)
         install_common
         install_4_1_x
         ;;

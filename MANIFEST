@@ -47,9 +47,7 @@ t/irods/test/file2.txt
 t/irods/utf-8.txt
 t/irods_collection_test.t
 t/irods_dataobject_test.t
-t/irods_groupadmin.t
-t/irods_groupadmin/ienv
-t/irods_groupadmin/igroupadmin
+t/irods_groupadmin_test.t
 t/irods_path_test/test_dir/contents/a/10.txt
 t/irods_path_test/test_dir/contents/a/x/1.txt
 t/irods_path_test/test_dir/contents/b/20.txt
@@ -60,6 +58,7 @@ t/irods_path_test/test_dir/test_file.txt
 t/lib/WTSI/NPG/DriRODSTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
+t/lib/WTSI/NPG/iRODS/GroupAdminTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
 t/lib/WTSI/NPG/iRODS/Test.pm
 t/lib/WTSI/NPG/iRODSTest.pm

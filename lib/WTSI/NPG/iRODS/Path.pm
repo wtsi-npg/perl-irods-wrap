@@ -102,9 +102,9 @@ sub get_avu {
       my $fn = sub {
         my $elt = shift;
 
-        my $a = defined $avu->{attribute} ? $elt->{attribute} : 'undef';
-        my $v = defined $avu->{value}     ? $elt->{value}     : 'undef';
-        my $u = defined $avu->{units}     ? $elt->{units}     : 'undef';
+        my $a = defined $elt->{attribute} ? $elt->{attribute} : 'undef';
+        my $v = defined $elt->{value}     ? $elt->{value}     : 'undef';
+        my $u = defined $elt->{units}     ? $elt->{units}     : 'undef';
 
         return sprintf "{'%s', '%s', '%s'}", $a, $v, $u;
       };

@@ -19,7 +19,8 @@ use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 my $fixture_counter = 0;
 my $data_path = './t/data/path';
 my $irods_tmp_coll;
-my $alt_resource = 'demoResc';
+my $alt_resource = $ENV{WTSI_NPG_iRODS_Test_Resource};
+$alt_resource ||= 'demoResc';
 
 my $pid = $PID;
 

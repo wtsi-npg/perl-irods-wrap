@@ -28,7 +28,8 @@ my $fixture_counter = 0;
 my $data_path = './t/data/irods';
 my $irods_tmp_coll;
 
-my $alt_resource = 'demoResc';
+my $alt_resource = $ENV{WTSI_NPG_iRODS_Test_Resource};
+$alt_resource ||= 'demoResc';
 
 my $have_admin_rights =
   system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;

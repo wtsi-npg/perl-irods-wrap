@@ -24,6 +24,7 @@ before_script_3_3_1() {
     iadmin asq 'select alias,sqlStr from R_SPECIFIC_QUERY where alias = ?' findQueryByAlias
 
     export WTSI_NPG_iRODS_Test_irodsEnvFile=$TRAVIS_BUILD_DIR/irods_env.conf
+    export WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE=DUMMY_VALUE
 }
 
 before_script_4_1_x() {
@@ -46,7 +47,8 @@ before_script_4_1_x() {
     echo testuser | script -q -c "iinit"
     ls -la $HOME/.irods/
 
-    export WTSI_NPG_iRODS_Test_irodsEnvFile=$HOME/.irods/irods_environment.json
+    export WTSI_NPG_iRODS_Test_irodsEnvFile=DUMMY_VALUE
+    export WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE=$HOME/.irods/irods_environment.json
 }
 
 case $IRODS_VERSION in

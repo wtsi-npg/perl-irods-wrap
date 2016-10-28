@@ -17,7 +17,7 @@ use WTSI::NPG::iRODS::DataObject;
 use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
 
 my $fixture_counter = 0;
-my $data_path = './t/irods_path_test';
+my $data_path = './t/data/path';
 my $irods_tmp_coll;
 my $alt_resource = 'demoResc';
 
@@ -44,7 +44,7 @@ sub make_fixture : Test(setup) {
 
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
-      my $test_coll = "$irods_tmp_coll/irods_path_test/test_dir";
+      my $test_coll = "$irods_tmp_coll/path/test_dir";
       my $test_obj = File::Spec->join($test_coll, 'test_file.txt');
       my $units = $value eq 'x' ? 'cm' : undef;
 
@@ -128,7 +128,7 @@ sub data_object : Test(12) {
 sub is_present : Test(2) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
   ok($obj->is_present, 'Object is present');
@@ -155,7 +155,7 @@ sub absolute : Test(3) {
 sub metadata : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
                        {attribute => 'b', value => 'x', units => 'cm'},
@@ -171,7 +171,7 @@ sub metadata : Test(1) {
 sub get_avu : Test(3) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
   my $avu = $obj->get_avu('a', 'x');
@@ -188,7 +188,7 @@ sub get_avu : Test(3) {
 sub add_avu : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
                        {attribute => 'a', value => 'z'},
@@ -219,7 +219,7 @@ sub add_avu : Test(5) {
 sub remove_avu : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $expected_meta = [{attribute => 'a', value => 'y'},
                        {attribute => 'b', value => 'x', units => 'cm'},
                        {attribute => 'c', value => 'x', units => 'cm'}];
@@ -244,7 +244,7 @@ sub remove_avu : Test(5) {
 sub supersede_avus : Test(10) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $history_timestamp1 = DateTime->now;
 
   # Perform one update of 'a' and 'b'
@@ -327,7 +327,7 @@ sub supersede_avus : Test(10) {
 sub supersede_multivalue_avus : Test(6) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $history_timestamp1 = DateTime->now;
 
   # Perform one update of 'a' and 'b'
@@ -391,7 +391,7 @@ sub supersede_multivalue_avus : Test(6) {
 sub abandon_avus : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $history_timestamp1 = DateTime->now;
 
   # Abandon AVUs with attribute 'a' and 'b'
@@ -446,7 +446,7 @@ sub abandon_avus : Test(8) {
 sub str : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
   is($obj->str, $obj_path, 'DataObject string');
@@ -455,7 +455,7 @@ sub str : Test(1) {
 sub checksum : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
   is($obj->checksum, "d41d8cd98f00b204e9800998ecf8427e",
@@ -471,7 +471,7 @@ sub replicates : Test(11) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0);
-    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+    my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -509,7 +509,7 @@ sub invalid_replicates : Test(3) {
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0);
 
-    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+    my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -517,7 +517,7 @@ sub invalid_replicates : Test(3) {
       or die "Failed to update checksum on replicates of $obj_path: $ERRNO";
 
     # Make the original replicate (0) stale
-    my $other_path = "./t/irods/test.txt";
+    my $other_path = "./t/data/irods/test.txt";
     system("iput -f -R $alt_resource $other_path $obj_path >/dev/null") == 0
       or die "Failed to make an invalid replicate: $ERRNO";
 
@@ -544,7 +544,7 @@ sub prune_replicates : Test(5) {
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0);
 
-    my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+    my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -552,7 +552,7 @@ sub prune_replicates : Test(5) {
       or die "Failed to update checksum on replicates of $obj_path: $ERRNO";
 
     # Make the original replicate (0) stale
-    my $other_path = "./t/irods/test.txt";
+    my $other_path = "./t/data/irods/test.txt";
     system("iput -f -R $alt_resource $other_path $obj_path >/dev/null") == 0
       or die "Failed to make an invalid replicate: $ERRNO";
 
@@ -577,7 +577,7 @@ sub prune_replicates : Test(5) {
 sub get_permissions : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
   my $perms = all { exists $_->{owner} &&
@@ -589,7 +589,7 @@ sub get_permissions : Test(1) {
 sub set_permissions : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
   # Begin
@@ -640,7 +640,7 @@ sub set_permissions : Test(9) {
 sub get_groups : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
  SKIP: {
@@ -683,7 +683,7 @@ sub get_groups : Test(7) {
 sub update_group_permissions : Test(12) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $obj_path = "$irods_tmp_coll/irods_path_test/test_dir/test_file.txt";
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
 
  SKIP: {

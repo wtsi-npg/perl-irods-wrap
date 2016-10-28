@@ -16,7 +16,7 @@ Log::Log4perl::init('./etc/log4perl_tests.conf');
 use WTSI::NPG::iRODS::Collection;
 
 my $fixture_counter = 0;
-my $data_path = './t/irods_path_test';
+my $data_path = './t/data/path';
 my $irods_tmp_coll;
 
 my $pid = $PID;
@@ -42,7 +42,7 @@ sub make_fixture : Test(setup) {
 
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
-      my $test_coll = "$irods_tmp_coll/irods_path_test/test_dir";
+      my $test_coll = "$irods_tmp_coll/path/test_dir";
       my $units = $value eq 'x' ? 'cm' : undef;
 
       $irods->add_collection_avu($test_coll, $attr, $value, $units);
@@ -118,7 +118,7 @@ sub collection : Test(6) {
 sub is_present : Test(2) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
   ok($coll->is_present, 'Collection is present');
@@ -149,7 +149,7 @@ sub absolute : Test(4) {
 sub metadata : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
                        {attribute => 'b', value => 'x', units => 'cm'},
@@ -165,7 +165,7 @@ sub metadata : Test(1) {
 sub get_avu : Test(3) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
   my $avu = $coll->get_avu('a', 'x');
@@ -182,7 +182,7 @@ sub get_avu : Test(3) {
 sub add_avu : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'x', units => 'cm'},
                        {attribute => 'a', value => 'y'},
                        {attribute => 'a', value => 'z'},
@@ -213,7 +213,7 @@ sub add_avu : Test(5) {
 sub remove_avu : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $expected_meta = [{attribute => 'a', value => 'y'},
                        {attribute => 'b', value => 'x', units => 'cm'},
                        {attribute => 'c', value => 'x', units => 'cm'}];
@@ -238,7 +238,7 @@ sub remove_avu : Test(5) {
 sub str : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
   is($coll->str, $coll_path, 'Collection string');
@@ -247,7 +247,7 @@ sub str : Test(1) {
 sub get_contents : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir/contents";
+  my $coll_path = "$irods_tmp_coll/path/test_dir/contents";
 
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
@@ -296,7 +296,7 @@ sub get_contents : Test(4) {
 sub get_permissions : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
   my $perms = all { exists $_->{owner} &&
@@ -308,7 +308,7 @@ sub get_permissions : Test(1) {
 sub set_permissions : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
   my $r0 = none { exists $_->{owner} && $_->{owner} eq 'public' &&
@@ -356,7 +356,7 @@ sub set_permissions : Test(9) {
 sub get_groups : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  my $coll_path = "$irods_tmp_coll/irods_path_test/test_dir";
+  my $coll_path = "$irods_tmp_coll/path/test_dir";
   my $coll = WTSI::NPG::iRODS::Collection->new($irods, $coll_path);
 
  SKIP: {

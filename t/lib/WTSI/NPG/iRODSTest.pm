@@ -25,7 +25,7 @@ my $pid = $PID;
 my $cwc;
 
 my $fixture_counter = 0;
-my $data_path = './t/irods';
+my $data_path = './t/data/irods';
 my $irods_tmp_coll;
 
 my $alt_resource = 'demoResc';

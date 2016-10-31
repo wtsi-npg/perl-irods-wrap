@@ -131,7 +131,7 @@ sub invalid_replicates {
   Example    : my @pruned = $obj->prune_replicates
   Description: Remove any replicates of a data object that are marked as
                stale in the ICAT.  Return an array of descriptors of the
-               pruned replicates.  Raise anm error if there are only
+               pruned replicates.  Raise an error if there are only
                invalid replicates; there should always be a valid replicate
                and pruning in this case would be equivalent to deletion.
   Returntype : Array[WTSI::NPG::iRODS::Replicate]
@@ -158,7 +158,7 @@ sub prune_replicates {
       push @pruned, $rep;
     }
 
-    $self->clear_checksum;
+    $self->calculate_checksum;
   }
   else {
     $self->logconfess("Failed to prune invalid replicates from '$path': ",
@@ -183,8 +183,8 @@ sub remove_replicate {
   my ($self, $replicate_num) = @_;
 
   $self->irods->remove_replicate($self->str, $replicate_num);
-  $self->clear_checksum; # Clear the checksum in case it belonged to
-                         # the removed replicate
+  $self->calculate_checksum;
+
   return $self;
 }
 

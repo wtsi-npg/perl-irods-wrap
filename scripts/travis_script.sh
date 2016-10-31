@@ -10,9 +10,3 @@ export WTSI_NPG_iRODS_Test_Resource=testResc
 perl Build.PL
 ./Build clean
 ./Build test
-
-if [ $? -ne 0 ]; then
-    echo ===============================================================================
-    cat tests.log
-    echo ===============================================================================
-fi

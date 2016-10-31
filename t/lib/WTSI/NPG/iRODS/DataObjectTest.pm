@@ -459,7 +459,7 @@ sub checksum : Test(1) {
   my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
-  is($obj->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+  is($obj->checksum, '6066a5385023de0c2c45e590c748cbd9',
      'Has correct checksum');
 }
 
@@ -473,6 +473,7 @@ sub replicates : Test(11) {
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0);
     my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
+    my $obj_md5 = '6066a5385023de0c2c45e590c748cbd9';
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -489,7 +490,7 @@ sub replicates : Test(11) {
       ok($replicate->isa('WTSI::NPG::iRODS::Replicate'),
          "Replicate $num isa correct") or diag explain $replicate;
 
-      is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
+      is($replicate->checksum, $obj_md5,
          "Replicate $num has correct checksum");
       cmp_ok(length $replicate->location, '>', 0,
              "Replicate $num has a location");
@@ -511,6 +512,7 @@ sub invalid_replicates : Test(3) {
                                       strict_baton_version => 0);
 
     my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
+    my $obj_md5 = '6066a5385023de0c2c45e590c748cbd9';
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -529,8 +531,8 @@ sub invalid_replicates : Test(3) {
            'One invalid replicate is present');
 
     my $replicate = $invalid_replicates[0];
-    is($replicate->checksum, "d41d8cd98f00b204e9800998ecf8427e",
-         "Invalid replicate has correct checksum");
+    is($replicate->checksum, $obj_md5,
+       "Invalid replicate has correct checksum");
     ok(!$replicate->is_valid, "Invalid replicate is not valid");
   }
 }
@@ -546,6 +548,7 @@ sub prune_replicates : Test(5) {
                                       strict_baton_version => 0);
 
     my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
+    my $obj_md5 = '6066a5385023de0c2c45e590c748cbd9';
 
     system("irepl $obj_path -R $alt_resource >/dev/null") == 0
       or die "Failed to replicate $obj_path to $alt_resource: $ERRNO";
@@ -554,6 +557,7 @@ sub prune_replicates : Test(5) {
 
     # Make the original replicate (0) stale
     my $other_path = "./t/data/irods/test.txt";
+    my $other_md5 = '2205e48de5f93c784733ffcca841d2b5';
     system("iput -f -R $alt_resource $other_path $obj_path >/dev/null") == 0
       or die "Failed to make an invalid replicate: $ERRNO";
 
@@ -561,7 +565,7 @@ sub prune_replicates : Test(5) {
 
     my @pruned_replicates = $obj->prune_replicates;
     my $pruned_replicate = $pruned_replicates[0];
-    is($pruned_replicate->checksum, 'd41d8cd98f00b204e9800998ecf8427e',
+    is($pruned_replicate->checksum, $obj_md5,
        'Pruned replicate checksum is correct');
     ok(!$pruned_replicate->is_valid, 'Pruned replicate is not valid');
 
@@ -569,8 +573,10 @@ sub prune_replicates : Test(5) {
     cmp_ok(scalar @replicates, '==', 1, 'One valid replicate remains');
 
     my $replicate = $replicates[0];
-    isnt($replicate->checksum, 'd41d8cd98f00b204e9800998ecf8427e',
-         'Remaining valid replicate checksum has changed');
+    is($replicate->checksum, $other_md5,
+       "Remaining valid replicate checksum has changed from '$obj_md5' " .
+       "to '$other_md5'") or
+         diag explain `ils -L $obj_path`;
     ok($replicate->is_valid, 'Remaining valid replicate is valid');
   }
 }

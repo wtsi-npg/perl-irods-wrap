@@ -20,8 +20,8 @@ iRODS   https://github.com/irods/irods-legacy
 
 	https://github.com/irods/irods
 
-	Version 4.1.8
+	Version >= 4.1.8
 
 baton   https://github.com/wtsi-npg/baton
 
-        Version 0.16.4
+        Version 0.16.4 - 0.17.0

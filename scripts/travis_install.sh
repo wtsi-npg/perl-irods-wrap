@@ -1,78 +1,67 @@
 #!/bin/bash
 
-# set -e -x
+set -e -x
 
-IRODS_VERSION=${IRODS_VERSION:=3.3.1}
+# The default build branch for all repositories. This defaults to
+# TRAVIS_BRANCH unless set in the Travis build environment.
+WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
 
-install_common() {
-    sudo apt-get update -qq
-    sudo apt-get install -qq odbc-postgresql unixodbc-dev
+sudo apt-get install -qq odbc-postgresql unixodbc-dev
 
-    tar xfz /tmp/jansson-${JANSSON_VERSION}.tar.gz -C /tmp
-    cd /tmp/jansson-${JANSSON_VERSION}
-    autoreconf -fi
-    ./configure ; make ; sudo make install
+# iRODS
+wget -q https://github.com/wtsi-npg/disposable-irods/releases/download/${DISPOSABLE_IRODS_VERSION}/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz -O /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz
+tar xfz /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz -C /tmp
+cd /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}
+./scripts/download_and_verify_irods.sh
+./scripts/install_irods.sh
+./scripts/configure_irods.sh
 
-    cd $TRAVIS_BUILD_DIR
-    sudo ldconfig
+# Jansson
+wget -q https://github.com/akheron/jansson/archive/v${JANSSON_VERSION}.tar.gz -O /tmp/jansson-${JANSSON_VERSION}.tar.gz
+tar xfz /tmp/jansson-${JANSSON_VERSION}.tar.gz -C /tmp
+cd /tmp/jansson-${JANSSON_VERSION}
+autoreconf -fi
+./configure ; make ; sudo make install
+sudo ldconfig
 
-    cpanm --no-lwp --notest https://github.com/wtsi-npg/perl-dnap-utilities/releases/download/${DNAP_UTILITIES_VERSION}/WTSI-DNAP-Utilities-${DNAP_UTILITIES_VERSION}.tar.gz
-    cpanm --installdeps --notest .
-}
+# baton
+wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
+tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
+cd /tmp/baton-${BATON_VERSION}
 
-install_3_3_1() {
-    cd $TRAVIS_BUILD_DIR
-    tar xfz /tmp/irods.tar.gz
+IRODS_HOME=
+baton_irods_conf="--with-irods"
 
-    source $TRAVIS_BUILD_DIR/travis_linux_env.sh
-    export IRODS_HOME=$TRAVIS_BUILD_DIR/iRODS
-    export PATH=$PATH:$IRODS_HOME/clients/icommands/bin
-    export IRODS_VAULT=/usr/local/var/lib/irods/Vault
-    export IRODS_TEST_VAULT=/usr/local/var/lib/irods/Test
+if [ -n "$IRODS_RIP_DIR" ]
+then
+    export IRODS_HOME="$IRODS_RIP_DIR/iRODS"
+    baton_irods_conf="--with-irods=$IRODS_HOME"
+fi
 
-    sudo mkdir -p $IRODS_VAULT
-    sudo chown $USER:$USER $IRODS_VAULT
+./configure ${baton_irods_conf} ; make ; sudo make install
+sudo ldconfig
 
-    sudo mkdir -p $IRODS_TEST_VAULT
-    sudo chown $USER:$USER $IRODS_TEST_VAULT
 
-    tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
-    cd /tmp/baton-${BATON_VERSION}
-    ./configure --with-irods=$IRODS_HOME ; make ; sudo make install
+# WTSI NPG Perl repo dependencies, only one at the moment
+for repo in perl-dnap-utilities; do
+    cd /tmp
+    # Always clone master when using depth 1 to get current tag
+    git clone --branch master --depth 1 ${WTSI_NPG_GITHUB_URL}/${repo}.git ${repo}.git
+    cd /tmp/${repo}.git
+    # Shift off master to appropriate branch (if possible)
+    git ls-remote --heads --exit-code origin ${WTSI_NPG_BUILD_BRANCH} && git pull origin ${WTSI_NPG_BUILD_BRANCH} && echo "Switched to branch ${WTSI_NPG_BUILD_BRANCH}"
+    repos=$repos" /tmp/${repo}.git"
+done
 
-    cd $TRAVIS_BUILD_DIR
-    sudo ldconfig
-}
+# Finally, bring any common dependencies up to the latest version and
+# install
+for repo in $repos
+do
+    cd $repo
+    cpanm --quiet --notest --installdeps .
+    ./Build install
+done
 
-install_4_1_x() {
-    sudo apt-get install -qq python-psutil python-requests
-    sudo apt-get install super libjson-perl jq
-    sudo -H pip install jsonschema
+cd $TRAVIS_BUILD_DIR
 
-    sudo dpkg -i irods-icat-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb irods-database-plugin-postgres-${PG_PLUGIN_VERSION}-${PLATFORM}-${ARCH}.deb
-    sudo dpkg -i irods-runtime-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb irods-dev-${IRODS_VERSION}-${PLATFORM}-${ARCH}.deb
-
-    tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
-    cd /tmp/baton-${BATON_VERSION}
-    ./configure --with-irods ; cat config.log ; make ; sudo make install
-
-    cd $TRAVIS_BUILD_DIR
-    sudo ldconfig
-}
-
-case $IRODS_VERSION in
-
-    3.3.1)
-        install_common
-        install_3_3_1
-        ;;
-
-    4.1.9)
-        install_common
-        install_4_1_x
-        ;;
-
-    *)
-        echo Unknown iRODS version $IRODS_VERSION
-        exit 1
-esac
+cpanm --quiet --notest --installdeps .

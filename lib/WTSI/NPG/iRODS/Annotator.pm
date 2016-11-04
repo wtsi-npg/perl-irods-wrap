@@ -168,10 +168,9 @@ WTSI::NPG::iRODS::Annotator
 
 =head1 DESCRIPTION
 
-A role providing methods to calculate metadata for WTSI HTS runs. This
-is used to create all the metadata for the WTSI::NPG::HTS
-package. Please add new methods as required to create metadata, rather
-than creating it inline in your own package.
+A role providing methods to calculate metadata for data published to
+iRODS.  Please prefer the API for creating metadata, rather than
+creating it using string literals in your own package.
 
 =head1 AUTHOR
 

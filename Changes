@@ -1,58 +1,70 @@
+Release 2.6.0
+
+ - Bugfix; correctly report multiple AVUs found for a given attribute
+   by get_avu in logs.
+
+ - Support baton versiosn  >=0.16.4 and <=0.17.0
+
+ - Backported the basic data object Publisher (and support classes) from
+   npg_irods.
+
+ - Switched test matrix from iRODS 4.1.8 to iRODS 4.1.9
+
 Release 2.5.0
 
-  - Switch to logging on a per-class basis.
+ - Switch to logging on a per-class basis.
 
-  - Ensure test dependencies are installed.
+ - Ensure test dependencies are installed.
 
 Release 2.4.0
 
-  - Added a method parameter to allow server-side checksum calculation
-    to be deferred when adding or replacing data objects.
+ - Added a method parameter to allow server-side checksum calculation
+   to be deferred when adding or replacing data objects.
 
-  - Muffled spurious errors from baton-list (requires baton 0.16.4).
+ - Muffled spurious errors from baton-list (requires baton 0.16.4).
 
-  - Added iRODS 4.1.8 to the test matrix.
+ - Added iRODS 4.1.8 to the test matrix.
 
-  - In testing, the default resource is now 'testResc'.
+ - In testing, the default resource is now 'testResc'.
 
 Release 2.3.0
 
-  - Added support for data object replicate management.
+ - Added support for data object replicate management.
 
-  - Added support for use#zone syntax in permissions,
+ - Added support for use#zone syntax in permissions,
 
-  - Requires baton 0.16.3 to support use#zone syntax.
+ - Requires baton 0.16.3 to support use#zone syntax.
 
 
 Release 2.2.0
 
-  - Added caching of iRODS paths for performance.
+ - Added caching of iRODS paths for performance.
 
-  - Added caching of object AVUs for performance.
+ - Added caching of object AVUs for performance.
 
-  - Added caching of object AVUs for performance.
+ - Added caching of object AVUs for performance.
 
-  - Added a new dependency on Cache::LRU
+ - Added a new dependency on Cache::LRU
 
 Release 2.1.0
 
-  - Added reference_name and gene expression metadata keys.
+ - Added reference_name and gene expression metadata keys.
 
-  - Added destructor to WTSI::NPG::iRODS responsible for stopping
-    child processes.
+ - Added destructor to WTSI::NPG::iRODS responsible for stopping
+   child processes.
 
-  - Changed dcterms metadata values to use the normal :: namespace
-    delimiter, instead of underscore (e.g. dcterms_title to
-    dcterms::title). These have not yet been used in production.
+ - Changed dcterms metadata values to use the normal :: namespace
+   delimiter, instead of underscore (e.g. dcterms_title to
+   dcterms::title). These have not yet been used in production.
 
-  - Added metadata keys alt_process, alt_target, alignment_filter.
+ - Added metadata keys alt_process, alt_target, alignment_filter.
 
-  - Added caching behaviour for data access groups to avoid executing
-    igroupadmin in WTSI::NPG::iRODS.
+ - Added caching behaviour for data access groups to avoid executing
+   igroupadmin in WTSI::NPG::iRODS.
 
-  - Removed the TODO flag on UTF-8 round tripping.
+ - Removed the TODO flag on UTF-8 round tripping.
 
-  - Added dependency on MooseX::StrictConstructor.
+ - Added dependency on MooseX::StrictConstructor.
 
 Release 2.0.3
 

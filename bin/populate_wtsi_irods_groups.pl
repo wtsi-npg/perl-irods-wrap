@@ -12,7 +12,7 @@ use Log::Log4perl qw(:levels);
 use Net::LDAP;
 use Readonly;
 
-use npg_warehouse::Schema;
+use WTSI::DNAP::Warehouse::Schema;
 use WTSI::NPG::iRODS::GroupAdmin;
 
 our $VERSION = '';
@@ -53,8 +53,8 @@ Options:
   --dry_run
   --help        Display help.
   --logconf     A log4perl configuration file. Optional.
-  --study       Restrict updates to a study. May be used multiple times
-                to select more than one study. Optional.
+  --study       Restrict updates to a study identifier. May be used multiple
+                times to select more than one study. Optional.
   --verbose     Print messages while processing. Optional.
 
 WOE
@@ -63,7 +63,7 @@ my $debug;
 my $dry_run;
 my $log4perl_config;
 my $verbose;
-my @studies;
+my @study_ids;
 
 GetOptions('debug'                   => \$debug,
            'dry-run|dry_run'         => \$dry_run,
@@ -72,7 +72,7 @@ GetOptions('debug'                   => \$debug,
              exit 0;
            },
            'logconf=s'               => \$log4perl_config,
-           'study=s'                 => \@studies,
+           'study=i'                 => \@study_ids,
            'verbose'                 => \$verbose) or die "\n$what_on_earth\n";
 
 if ($log4perl_config) {
@@ -129,21 +129,17 @@ foreach my $group (keys %{$group2uids}){
   $log->debug("Group '$group' membership ", join q(, ), @uids);
 }
 
-my $schema = npg_warehouse::Schema->connect;
-my $rs;
-if (@studies) {
-  $rs = $schema->resultset(q(CurrentStudy))->search({internal_id => \@studies});
-}
-else {
-  $rs = $schema->resultset(q(CurrentStudy));
-}
+my $mlwh = WTSI::DNAP::Warehouse::Schema->connect;
+my $query = @study_ids ? {id_study_lims => \@study_ids} : {};
+my $studies = $mlwh->resultset('Study')->search($query,
+                                                {order_by => 'id_study_lims'});
 
 my ($group_count, $altered_count) = (0, 0);
-while (my $study = $rs->next){
-  my $study_id = $study->internal_id;
+while (my $study = $studies->next){
+  my $study_id = $study->id_study_lims;
   my $dag_str  = $study->data_access_group || q();
-  my $is_seq   = $study->npg_information->count ||
-                 $study->npg_plex_information->count;
+  my $is_seq   = $study->iseq_flowcells->count ||
+                 $study->pac_bio_runs->count;
 
   $log->debug("Working on study $study_id, SScape data access: '$dag_str'");
 

@@ -203,8 +203,8 @@ sub find_group_ids {
 sub find_primary_gid {
   my ($ld) = @_;
 
-  my $query_base   = 'ou=group,dc=sanger,dc=ac,dc=uk';
-  my $query_filter = '&(sangerActiveAccount=TRUE)(sangerRealPerson=TRUE)';
+  my $query_base   = 'ou=people,dc=sanger,dc=ac,dc=uk';
+  my $query_filter = '(sangerActiveAccount=TRUE)';
     my $search = $ld->search(base   => $query_base,
                              filter => $query_filter);
   if ($search->code) {

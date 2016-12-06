@@ -17,7 +17,7 @@ use Try::Tiny;
 
 use WTSI::DNAP::Utilities::Runnable;
 
-use WTSI::NPG::iRODS::Metadata qw($FILE_MD5);
+use WTSI::NPG::iRODS::Metadata qw($FILE_MD5 $STAGING);
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -57,6 +57,9 @@ our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
 our $DEFAULT_CACHE_SIZE = 128;
 our $OBJECT_PATH        = 'OBJECT';
 our $COLLECTION_PATH    = 'COLLECTION';
+
+our $STAGING_RAND_MAX   = 1024 * 1024 * 1024;
+our $STAGING_MAX_TRIES  = 2;
 
 our $CALC_CHECKSUM = 1;
 our $SKIP_CHECKSUM = 0;
@@ -1436,19 +1439,23 @@ sub add_object {
     $checksum_action = $CALC_CHECKSUM;
   }
 
+  $target = $self->_ensure_absolute_path($target);
+  $self->debug("Adding '$file' as new object '$target'");
+
+  my $staging_path = $self->_find_staging_path($target);
+  if (not $staging_path) {
+    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
+                    " at '$target'");
+  }
+
   my @arguments;
   if ($checksum_action) {
     push @arguments , '-K';
   }
 
-  $target = $self->_ensure_absolute_path($target);
-  $self->debug("Adding '$file' as new object '$target'");
-  push @arguments, $file, $target;
+  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
-                                       arguments   => \@arguments,
-                                       environment => $self->environment)->run;
-  return $target;
+  return $self->_unstage_object($staging_path, $target);
 }
 
 =head2 replace_object
@@ -1489,19 +1496,23 @@ sub replace_object {
     $checksum_action = $CALC_CHECKSUM;
   }
 
-  my @arguments = ('-f');
-  if ($checksum_action) {
-    push @arguments , '-K';
-  }
-
   $target = $self->_ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
-  push @arguments, $file, $target;
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
-                                       arguments   => \@arguments,
-                                       environment => $self->environment)->run;
-  return $target;
+  my $staging_path = $self->_find_staging_path($target);
+  if (not $staging_path) {
+    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
+                    " at '$target'");
+  }
+
+  my @arguments = ('-f');
+  if ($checksum_action) {
+    push @arguments, '-K';
+  }
+
+  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+
+  return $self->_unstage_object($staging_path, $target);
 }
 
 =head2 copy_object
@@ -2517,12 +2528,128 @@ sub _cache_permissions {
 sub _clear_caches {
   my ($self, $path) = @_;
 
-  $self->debug("Clearing cached path, AVUs abd ACL for '$path'");
+  $self->debug("Clearing cached path, AVUs and ACL for '$path'");
   $self->_path_cache->remove($path);
   $self->_permissions_cache->remove($path);
   $self->_metadata_cache->remove($path);
 
   return;
+}
+
+sub _stage_object {
+  my ($self, $file, $staging_path, @arguments) = @_;
+
+  defined $file or
+    $self->logconfess('A defined file argument is required');
+  defined $staging_path or
+    $self->logconfess('A defined staging_path argument is required');
+
+  my $num_errors = 0;
+  my $stage_error = q[];
+
+  try {
+    $self->debug("Staging '$file' to '$staging_path' with $IPUT");
+    WTSI::DNAP::Utilities::Runnable->new
+        (executable  => $IPUT,
+         arguments   => [@arguments, $file, $staging_path],
+         environment => $self->environment)->run;
+  } catch {
+    $num_errors++;
+    my @stack = split /\n/msx; # Chop up the stack trace
+    $stage_error = pop @stack;
+  } finally {
+    try {
+      # A failed iput may still leave orphaned replicates
+      if ($self->is_object($staging_path)) {
+        # Tag staging file for easy location with a query
+        $self->add_object_avu($staging_path, $STAGING, 1);
+      }
+    } catch {
+      my @stack = split /\n/msx;
+      $self->error("Failed to tag staging path '$staging_path': ", pop @stack);
+    };
+  };
+
+  if ($num_errors > 0) {
+    $self->logconfess("Failed to stage '$file' to '$staging_path': ",
+                      $stage_error);
+  }
+
+  return $staging_path;
+}
+
+sub _unstage_object {
+  my ($self, $staging_path, $target) = @_;
+
+  defined $staging_path or
+    $self->logconfess('A defined staging_path argument is required');
+  defined $target or
+    $self->logconfess('A defined target argument is required');
+
+  if (not $self->is_object($staging_path)) {
+    $self->logconfess("Staging path '$staging_path' is not a data object");
+  }
+
+  my $num_errors = 0;
+  my $unstage_error = q[];
+
+  try {
+    # imv will not overwrite an existing data object so we must copy
+    # all its metadata to the staged file and then remove it
+    if ($self->is_object($target)) {
+      my @target_meta = $self->get_object_meta($target);
+
+      # This includes target=1 so we are accepting a race condition
+      # between customer queries and the file move below
+      foreach my $avu (@target_meta) {
+        $self->add_object_avu($staging_path, $avu->{attribute},
+                              $avu->{value}, $avu->{units});
+      }
+      $self->remove_object($target);
+    }
+
+    $self->debug("Unstaging '$staging_path' to '$target' with $IMV");
+    WTSI::DNAP::Utilities::Runnable->new
+        (executable  => $IMV,
+         arguments   => [$staging_path, $target],
+         environment => $self->environment)->run;
+
+    # Untag the unstaged file
+    $self->remove_object_avu($target, $STAGING, 1);
+  } catch {
+    $num_errors++;
+    my @stack = split /\n/msx;
+    $self->error("Failed to move '$staging_path' to '$target': ", pop @stack);
+  };
+
+  if ($num_errors > 0) {
+    $self->logconfess("Failed to unstage '$staging_path' to '$target': ",
+                      $unstage_error);
+  }
+
+  return $target;
+}
+
+sub _find_staging_path {
+  my ($self, $target) = @_;
+
+  defined $target or
+    $self->logconfess('A defined target argument is required');
+
+  my $staging_path;
+
+  foreach my $try (1 .. $STAGING_MAX_TRIES) {
+    my $path = sprintf "%s.%d", $target, int rand $STAGING_RAND_MAX;
+    if ($self->is_object($path)) {
+      $self->warn("Path $try '$path' for '$target' is not free");
+    }
+    else {
+      $self->debug("Path $try available '$path' for '$target'");
+      $staging_path = $path;
+    }
+  }
+
+  return $staging_path;
 }
 
 sub _build_irods_major_version {

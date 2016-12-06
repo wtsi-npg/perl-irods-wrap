@@ -18,6 +18,7 @@ our @EXPORT = qw(
                   $FILE_TYPE
                   $QC_STATE
                   $RT_TICKET
+                  $STAGING
 
                   $SAMPLE_ACCESSION_NUMBER
                   $SAMPLE_COHORT
@@ -110,6 +111,7 @@ our $FILE_MD5                  = 'md5';
 our $FILE_TYPE                 = 'type';
 our $QC_STATE                  = 'manual_qc';
 our $RT_TICKET                 = 'rt_ticket';
+our $STAGING                   = 'staging';
 
 # LIMS metadata
 our $SAMPLE_ACCESSION_NUMBER   = 'sample_accession_number';

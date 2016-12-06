@@ -19,6 +19,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Module::Build'             => '>= 0.42'
                          },
    build_requires      => {
+                          'File::Copy::Recursive'     => '>= 0.38',
                           'Test::Perl::Critic'        => '0',
                           'TAP::Harness'              => '>= 3.30',
                           'Test::Class'               => '>= 0.41',

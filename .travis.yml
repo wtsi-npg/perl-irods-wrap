@@ -3,7 +3,7 @@ sudo: required
 
 perl:
   - "5.16"
-  - "5.22"
+  - "5.22-shrplib"
 
 addons:
   postgresql: "9.3"

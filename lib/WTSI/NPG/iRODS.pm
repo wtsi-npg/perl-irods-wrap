@@ -7,8 +7,8 @@ use DateTime;
 use Data::Dump qw(pp);
 use Encode qw(decode);
 use English qw(-no_match_vars);
-use File::Basename qw(basename);
-use File::Spec;
+use File::Basename qw(basename fileparse);
+use File::Spec::Functions qw(canonpath catfile splitdir);
 use List::AllUtils qw(any uniq);
 use Log::Log4perl::Level;
 use Moose;
@@ -409,7 +409,7 @@ sub absolute_path {
   defined $path or $self->logconfess('A defined path argument is required');
   $path or $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
 
   return $self->_ensure_absolute_path($path);
 }
@@ -533,7 +533,7 @@ sub find_zone_name {
 
   defined $path or $self->logconfess('A defined path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   my $abs_path = $self->_ensure_absolute_path($path);
   $abs_path =~ s/^\///msx;
 
@@ -545,7 +545,7 @@ sub find_zone_name {
     $abs_path = $self->working_collection;
   }
 
-  my @path = grep { $_ ne q{} } File::Spec->splitdir($abs_path);
+  my @path = grep { $_ ne q{} } splitdir($abs_path);
   unless (@path) {
     $self->logconfess("Failed to parse iRODS zone from path '$path'");
   }
@@ -736,7 +736,7 @@ sub is_collection {
   $path eq q{}
     and $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
   return $self->lister->is_collection($path);
@@ -764,7 +764,7 @@ sub list_collection {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
+  $collection = canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
 
   # TODO: We could check that the collection exists here. However,
@@ -796,7 +796,7 @@ sub add_collection {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
+  $collection = canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Adding collection '$collection'");
 
@@ -831,7 +831,7 @@ sub put_collection {
     $self->logconfess('A non-empty target (collection) argument is required');
 
   # iput does not accept trailing slashes on directories
-  $dir = File::Spec->canonpath($dir);
+  $dir = canonpath($dir);
   $target = $self->_ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
@@ -868,7 +868,7 @@ sub move_collection {
     $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = $self->_ensure_collection_path($source);
-  $target = File::Spec->canonpath($target);
+  $target = canonpath($target);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
 
@@ -904,7 +904,7 @@ sub get_collection {
     $self->logconfess('A non-empty target (directory) argument is required');
 
   $source = $self->_ensure_collection_path($source);
-  $target = File::Spec->canonpath($target);
+  $target = canonpath($target);
   $self->debug("Getting from '$source' to '$target'");
 
   my @args = ('-r', '-f', $source, $target);
@@ -1319,7 +1319,7 @@ sub is_object {
   $path eq q{}
     and $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
   my $is_object = 0;
@@ -1440,6 +1440,13 @@ sub add_object {
   }
 
   $target = $self->_ensure_absolute_path($target);
+
+  # Account for the target being a collection
+  if ($self->is_collection($target)) {
+    my ($file_name, $directories, $suffix) = fileparse($file);
+    $target = catfile($target, $file_name);
+  }
+
   $self->debug("Adding '$file' as new object '$target'");
 
   my $staging_path = $self->_find_staging_path($target);

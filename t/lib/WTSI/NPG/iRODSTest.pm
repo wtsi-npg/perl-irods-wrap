@@ -869,23 +869,29 @@ sub read_object : Test(2) {
      'Read expected object contents') or diag explain $content;
 }
 
-sub add_object : Test(7) {
+sub add_object : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
-  my $lorem_object = "$irods_tmp_coll/lorem_added.txt";
 
-  is($irods->add_object($lorem_file, $lorem_object), $lorem_object,
-     'Added a data object');
-  is($irods->list_object($lorem_object), $lorem_object,
-     'Found the new data object');
+  my $implicit_path = "$irods_tmp_coll/lorem.txt";
+  is($irods->add_object($lorem_file, $irods_tmp_coll), $implicit_path,
+     'Added a data object with a collection target path');
+  is($irods->list_object($implicit_path), $implicit_path,
+     'Found the new data object with an implicit path');
+
+  my $explicit_path = "$irods_tmp_coll/lorem_added.txt";
+  is($irods->add_object($lorem_file, $explicit_path), $explicit_path,
+     'Added a data object with an object target path');
+  is($irods->list_object($explicit_path), $explicit_path,
+     'Found the new data object with an explicit path');
 
  TODO: {
     local $TODO = 'Testing for a checksum will create a checksum if ' .
       'it does not exist. Requires a change in baton to test effectively';
 
-    is($irods->checksum($lorem_object), '39a4aa291ca849d601e4e5b8ed627a04',
+    is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
        'Checksum created by default');
   }
 
@@ -905,7 +911,7 @@ sub add_object : Test(7) {
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';
-  dies_ok { $irods->add_object($lorem_file, $lorem_object,
+  dies_ok { $irods->add_object($lorem_file, $explicit_path,
                                'invalid checksum action') }
     'Failed on invalid checksum option';
 }

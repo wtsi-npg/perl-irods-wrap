@@ -120,7 +120,12 @@ $ldap->unbind or $log->logwarn("LDAP failed to unbind '$host': ", $!);
 foreach my $uid (keys %{$uid2gid}) {
   my $gid           = $uid2gid->{$uid};
   my $primary_group = $gid2group->{$gid};
-  push @{$group2uids->{$primary_group}}, $uid;
+
+  # Some users in LDAP have a gidNumber that does not correspond to a
+  # Unix group
+  if (defined $primary_group) {
+    push @{$group2uids->{$primary_group}}, $uid;
+  }
 }
 
 foreach my $group (keys %{$group2uids}){
@@ -193,6 +198,7 @@ sub find_group_ids {
     my $group   = $entry->get_value('cn');
     my $gid     = $entry->get_value('gidNumber');
     my @uids    = $entry->get_value('memberUid');
+
     $group2uids{$group} = \@uids;
     $gid2group{$gid}    = $group;
   }

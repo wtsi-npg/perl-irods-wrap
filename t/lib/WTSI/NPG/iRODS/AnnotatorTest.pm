@@ -67,13 +67,36 @@ sub make_modification_metadata : Test(2) {
     'Dies on undefined modification time';
 }
 
-sub make_type_metadata : Test(2) {
+sub make_type_metadata : Test(12) {
 
-  my @expected_type = ({attribute => $FILE_TYPE,
-                        value     => 'cram'});
-  my @observed_type = TestAnnotator->new->make_type_metadata('test.cram');
+  # Some of these don't make pactical sense, but should be allowed if
+  # encountered
+  my %expected =
+    (
+     'test.txt'            => 'txt',
+     'test.txt.gz'         => 'txt.gz',
+     'test.txt.gz.bz2'     => 'txt.gz.bz2',
+     'test.txt.gz.bz2.tar' => 'tar',
+     'test.foo.txt'        => 'txt',
+     'test.gz.txt'         => 'txt',
+     'gz.txt'              => 'txt',
+     'test.custom1'        => 'custom1',
+     'test.custom2'        => 'custom2',
+     'test.custom1.gz'     => 'custom1.gz',
+     'test.custom2.gz'     => 'custom2.gz',
+    );
 
-  is_deeply(\@observed_type, \@expected_type) or diag explain \@observed_type;
+  while (my ($file, $suffix) = each %expected) {
+    my @expected_type = ({attribute => $FILE_TYPE,
+                          value     => $suffix});
+    my @observed_type = TestAnnotator->new->make_type_metadata($file,
+                                                               'custom1',
+                                                               'custom2');
+
+    is_deeply(\@observed_type, \@expected_type,
+              "File '$file' has type suffix '$suffix'")
+      or diag explain \@observed_type;
+  }
 
   my @no_type = TestAnnotator->new->make_type_metadata('test.z', '.a', '.b');
   is_deeply(\@no_type, [], 'No type metadata if type not recognised')

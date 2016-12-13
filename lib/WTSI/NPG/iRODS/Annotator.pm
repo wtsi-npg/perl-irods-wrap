@@ -139,6 +139,47 @@ sub make_md5_metadata {
   return ($self->make_avu($FILE_MD5, $md5));
 }
 
+=head2 make_sample_metadata
+
+  Arg [1]    : Array[WTSI::DNAP::Warehouse::Schema::Result::Sample]
+  Example    : my @avus = $ann->make_sample_metadata(@samples);
+  Description: Return HTS sample metadata AVUs.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub make_sample_metadata {
+  my ($self, @samples) = @_;
+  my $method_attr = {accession_number => $SAMPLE_ACCESSION_NUMBER,
+                     id_sample_lims   => $SAMPLE_ID,
+                     name             => $SAMPLE_NAME,
+                     public_name      => $SAMPLE_PUBLIC_NAME,
+                     common_name      => $SAMPLE_COMMON_NAME,
+                     supplier_name    => $SAMPLE_SUPPLIER_NAME,
+                     cohort           => $SAMPLE_COHORT,
+                     donor_id         => $SAMPLE_DONOR_ID};
+  return $self->_make_multi_value_metadata(\@samples, $method_attr);
+}
+
+=head2 make_study_metadata
+
+  Arg [1]      Array[WTSI::DNAP::Warehouse::Schema::Result::Study].
+
+  Example    : my @avus = $ann->make_sample_metadata(@studies);
+  Description: Return HTS study metadata AVUs.
+  Returntype : Array[HashRef]
+
+=cut
+
+sub make_study_metadata {
+  my ($self, @studies) = @_;
+  my $method_attr = {id_study_lims    => $STUDY_ID,
+                     accession_number => $STUDY_ACCESSION_NUMBER,
+                     name             => $STUDY_NAME,
+                     study_title      => $STUDY_TITLE};
+  return $self->_make_multi_value_metadata(\@studies, $method_attr);
+}
+
 =head2 make_ticket_metadata
 
   Arg [1]    : string filename
@@ -159,6 +200,29 @@ sub make_ticket_metadata {
     $self->logconfess('A non-empty ticket_number argument is required');
 
   return ($self->make_avu($RT_TICKET, $ticket_number));
+}
+
+sub _make_multi_value_metadata {
+  my ($self, $objs, $method_attr) = @_;
+  # The method_attr argument is a map of method name to attribute name
+  # under which the result will be stored.
+
+  my @avus;
+  foreach my $method_name (sort keys %{$method_attr}) {
+    my $attr = $method_attr->{$method_name};
+    foreach my $obj (@{$objs}) {
+      my $value = $obj->$method_name;
+      if (defined $value) {
+        $self->debug($obj, "::$method_name returned ", $value);
+        push @avus, $self->make_avu($attr, $value);
+      }
+      else {
+        $self->debug($obj, "::$method_name returned undef");
+      }
+    }
+  }
+
+  return @avus;
 }
 
 no Moose::Role;

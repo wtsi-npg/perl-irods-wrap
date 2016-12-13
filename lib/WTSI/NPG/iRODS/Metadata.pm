@@ -18,6 +18,7 @@ our @EXPORT = qw(
                   $FILE_TYPE
                   $QC_STATE
                   $RT_TICKET
+                  $STAGING
 
                   $SAMPLE_ACCESSION_NUMBER
                   $SAMPLE_COHORT
@@ -51,10 +52,20 @@ our @EXPORT = qw(
                   $SEQCHKSUM
                   $TAG
                   $TAG_INDEX
+                  $TAG_SEQUENCE
                   $TARGET
                   $TOTAL_READS
                   $XAHUMAN
                   $YHUMAN
+
+                  $PACBIO_CELL_INDEX
+                  $PACBIO_COLLECTION_NUMBER
+                  $PACBIO_INSTRUMENT_NAME
+                  $PACBIO_RUN
+                  $PACBIO_SAMPLE_LOAD_NAME
+                  $PACBIO_SET_NUMBER
+                  $PACBIO_SOURCE
+                  $PACBIO_WELL
 
                   $ANALYSIS_UUID
                   $INFINIUM_PROJECT_TITLE
@@ -100,6 +111,7 @@ our $FILE_MD5                  = 'md5';
 our $FILE_TYPE                 = 'type';
 our $QC_STATE                  = 'manual_qc';
 our $RT_TICKET                 = 'rt_ticket';
+our $STAGING                   = 'staging';
 
 # LIMS metadata
 our $SAMPLE_ACCESSION_NUMBER   = 'sample_accession_number';
@@ -118,7 +130,7 @@ our $STUDY_ID                  = 'study_id';
 our $STUDY_NAME                = 'study';
 our $STUDY_TITLE               = 'study_title';
 
-# Nucleotide sequencing
+# Nucleotide sequencing (Illumina)
 our $ALIGNMENT_FILTER          = 'alignment_filter';
 our $ALIGNMENT                 = 'alignment';
 our $ALT_PROCESS               = 'alt_process';
@@ -135,10 +147,21 @@ our $REFERENCE                 = 'reference';
 our $SEQCHKSUM                 = 'seqchksum';
 our $TAG                       = 'tag';
 our $TAG_INDEX                 = 'tag_index';
+our $TAG_SEQUENCE              = 'tag_sequence';
 our $TARGET                    = 'target';
 our $TOTAL_READS               = 'total_reads';
 our $XAHUMAN                   = 'xahuman';
 our $YHUMAN                    = 'yhuman';
+
+# PacBio
+our $PACBIO_CELL_INDEX         = 'cell_index';
+our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
+our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
+our $PACBIO_RUN                = 'run';
+our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
+our $PACBIO_SET_NUMBER         = 'set_number';
+our $PACBIO_SOURCE             = 'source';
+our $PACBIO_WELL               = 'well';
 
 # Genotyping
 our $ANALYSIS_UUID             = 'analysis_uuid';

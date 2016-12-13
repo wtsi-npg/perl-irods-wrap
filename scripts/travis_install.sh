@@ -1,10 +1,11 @@
 #!/bin/bash
 
-set -e -x
+set -e -u -x
 
 # The default build branch for all repositories. This defaults to
 # TRAVIS_BRANCH unless set in the Travis build environment.
 WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
+IRODS_RIP_DIR=${IRODS_RIP_DIR:+$IRODS_RIP_DIR}
 
 sudo apt-get install -qq odbc-postgresql unixodbc-dev
 
@@ -43,6 +44,7 @@ sudo ldconfig
 
 
 # WTSI NPG Perl repo dependencies, only one at the moment
+repos=""
 for repo in perl-dnap-utilities; do
     cd /tmp
     # Always clone master when using depth 1 to get current tag

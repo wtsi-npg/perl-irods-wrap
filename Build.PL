@@ -19,6 +19,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Module::Build'             => '>= 0.42'
                          },
    build_requires      => {
+                          'File::Copy::Recursive'     => '>= 0.38',
                           'Test::Perl::Critic'        => '0',
                           'TAP::Harness'              => '>= 3.30',
                           'Test::Class'               => '>= 0.41',
@@ -43,10 +44,11 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Set::Scalar'               => '>= 1.29',
                           'Try::Tiny'                 => '>= 0.22',
                           'URI'                       => '>= 1.67',
-                          'WTSI::DNAP::Utilities'     => '>= 0.5.2'
+                          'WTSI::DNAP::Utilities'     => '>= 0.5.2',
                          },
    recommends =>         {
-                          'Net::LDAP'                 => '0'
+                          'Net::LDAP'                     => '0',
+                          'WTSI::DNAP::Warehouse::Schema' => '0',
                          });
 
 $build->create_build_script;

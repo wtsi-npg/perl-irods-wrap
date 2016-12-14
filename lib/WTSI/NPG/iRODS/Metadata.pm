@@ -67,6 +67,11 @@ our @EXPORT = qw(
                   $PACBIO_SOURCE
                   $PACBIO_WELL
 
+                  $BIONANO_CHIP_ID
+                  $BIONANO_FLOWCELL
+                  $BIONANO_INSTRUMENT
+                  $BIONANO_UUID
+
                   $ANALYSIS_UUID
                   $INFINIUM_PROJECT_TITLE
                   $INFINIUM_BEADCHIP
@@ -162,6 +167,12 @@ our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
 our $PACBIO_SET_NUMBER         = 'set_number';
 our $PACBIO_SOURCE             = 'source';
 our $PACBIO_WELL               = 'well';
+
+# BioNano
+our $BIONANO_CHIP_ID           = 'bnx_chip_id';
+our $BIONANO_FLOWCELL          = 'bnx_flowcell';
+our $BIONANO_INSTRUMENT        = 'bnx_instrument';
+our $BIONANO_UUID              = 'bnx_uuid';
 
 # Genotyping
 our $ANALYSIS_UUID             = 'analysis_uuid';

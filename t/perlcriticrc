@@ -16,6 +16,9 @@ allow = until
 [NamingConventions::Capitalization]
 packages = :no_restriction
 
+[Subroutines::ProhibitManyArgs]
+max_arguments = 6
+
 [Subroutines::ProhibitUnusedPrivateSubroutines]
 private_name_regex = _(?!build_)\w+
 

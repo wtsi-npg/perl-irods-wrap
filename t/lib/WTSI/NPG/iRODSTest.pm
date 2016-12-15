@@ -1509,6 +1509,64 @@ sub make_avu : Test(6) {
   } 'AVU must have a non-empty value';
 }
 
+sub make_avus_from_objects: Test(4) {
+
+  {
+    package WTSI::NPG::DeepThought;
+
+    use Moose;
+
+    sub answer {
+      return 42;
+    }
+
+    sub sum_if_even {
+      # return the sum of two arguments, if the sum is even; undef otherwise
+      my ($self, $num1, $num2) = @_;
+      my $sum = $num1 + $num2;
+      if ($sum % 2 == 0) { return $sum; }
+      else { return undef; }
+    }
+
+    no Moose;
+    1;
+  }
+
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  my @objs;
+  for (1 .. 3) { push @objs, WTSI::NPG::DeepThought->new(); }
+  my $args1 = [[1,3], [3,5], [3,6]];
+  # no attribute for arguments [3,6] because sum_if_even returns undef
+  my @expected1 = (
+    {attribute => 'a', value => 4, units => 'florins'},
+    {attribute => 'a', value => 8, units => 'florins'});
+  my @avus1 = $irods->make_avus_from_objects(
+    'a', 'sum_if_even', $args1, \@objs, 'florins'
+  );
+  is_deeply(\@avus1, \@expected1,
+            'AVUs from objects, with arguments and units');
+
+  my $args2 = [];
+  my @expected2 = (
+    {attribute => 'b', value => 42},
+    {attribute => 'b', value => 42},
+    {attribute => 'b', value => 42}, );
+  my @avus2 = $irods->make_avus_from_objects('b', 'answer', $args2, \@objs);
+  is_deeply(\@avus2, \@expected2,
+            'AVUs from objects, without arguments and units');
+
+  my $args3 = [[1,2], [2,3]];
+  dies_ok {$irods->make_avus_from_objects('c', 'sum_if_even', $args3, \@objs)}
+    'Dies with incorrect number of argument ArrayRefs';
+
+  my $args4 = [1, 2, 3];
+  dies_ok {$irods->make_avus_from_objects('d', 'sum_if_even', $args4, \@objs)}
+    'Dies with arguments which are not ArrayRefs';
+
+}
+
+
 sub remote_duplicate_avus : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);

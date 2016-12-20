@@ -869,23 +869,29 @@ sub read_object : Test(2) {
      'Read expected object contents') or diag explain $content;
 }
 
-sub add_object : Test(7) {
+sub add_object : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   my $lorem_file = "$data_path/lorem.txt";
-  my $lorem_object = "$irods_tmp_coll/lorem_added.txt";
 
-  is($irods->add_object($lorem_file, $lorem_object), $lorem_object,
-     'Added a data object');
-  is($irods->list_object($lorem_object), $lorem_object,
-     'Found the new data object');
+  my $implicit_path = "$irods_tmp_coll/lorem.txt";
+  is($irods->add_object($lorem_file, $irods_tmp_coll), $implicit_path,
+     'Added a data object with a collection target path');
+  is($irods->list_object($implicit_path), $implicit_path,
+     'Found the new data object with an implicit path');
+
+  my $explicit_path = "$irods_tmp_coll/lorem_added.txt";
+  is($irods->add_object($lorem_file, $explicit_path), $explicit_path,
+     'Added a data object with an object target path');
+  is($irods->list_object($explicit_path), $explicit_path,
+     'Found the new data object with an explicit path');
 
  TODO: {
     local $TODO = 'Testing for a checksum will create a checksum if ' .
       'it does not exist. Requires a change in baton to test effectively';
 
-    is($irods->checksum($lorem_object), '39a4aa291ca849d601e4e5b8ed627a04',
+    is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
        'Checksum created by default');
   }
 
@@ -905,7 +911,7 @@ sub add_object : Test(7) {
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';
-  dies_ok { $irods->add_object($lorem_file, $lorem_object,
+  dies_ok { $irods->add_object($lorem_file, $explicit_path,
                                'invalid checksum action') }
     'Failed on invalid checksum option';
 }
@@ -1502,6 +1508,64 @@ sub make_avu : Test(6) {
     $irods->make_avu('a', q{});
   } 'AVU must have a non-empty value';
 }
+
+sub make_avus_from_objects: Test(4) {
+
+  {
+    package WTSI::NPG::DeepThought;
+
+    use Moose;
+
+    sub answer {
+      return 42;
+    }
+
+    sub sum_if_even {
+      # return the sum of two arguments, if the sum is even; undef otherwise
+      my ($self, $num1, $num2) = @_;
+      my $sum = $num1 + $num2;
+      if ($sum % 2 == 0) { return $sum; }
+      else { return undef; }
+    }
+
+    no Moose;
+    1;
+  }
+
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  my @objs;
+  for (1 .. 3) { push @objs, WTSI::NPG::DeepThought->new(); }
+  my $args1 = [[1,3], [3,5], [3,6]];
+  # no attribute for arguments [3,6] because sum_if_even returns undef
+  my @expected1 = (
+    {attribute => 'a', value => 4, units => 'florins'},
+    {attribute => 'a', value => 8, units => 'florins'});
+  my @avus1 = $irods->make_avus_from_objects(
+    'a', 'sum_if_even', $args1, \@objs, 'florins'
+  );
+  is_deeply(\@avus1, \@expected1,
+            'AVUs from objects, with arguments and units');
+
+  my $args2 = [];
+  my @expected2 = (
+    {attribute => 'b', value => 42},
+    {attribute => 'b', value => 42},
+    {attribute => 'b', value => 42}, );
+  my @avus2 = $irods->make_avus_from_objects('b', 'answer', $args2, \@objs);
+  is_deeply(\@avus2, \@expected2,
+            'AVUs from objects, without arguments and units');
+
+  my $args3 = [[1,2], [2,3]];
+  dies_ok {$irods->make_avus_from_objects('c', 'sum_if_even', $args3, \@objs)}
+    'Dies with incorrect number of argument ArrayRefs';
+
+  my $args4 = [1, 2, 3];
+  dies_ok {$irods->make_avus_from_objects('d', 'sum_if_even', $args4, \@objs)}
+    'Dies with arguments which are not ArrayRefs';
+
+}
+
 
 sub remote_duplicate_avus : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,

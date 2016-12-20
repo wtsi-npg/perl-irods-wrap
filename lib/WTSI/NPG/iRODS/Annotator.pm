@@ -1,14 +1,16 @@
 package WTSI::NPG::iRODS::Annotator;
 
-use Data::Dump qw[pp];
 use DateTime;
+use List::AllUtils qw[uniq];
 use Moose::Role;
 
 use WTSI::NPG::iRODS::Metadata;
 
 our $VERSION = '';
 
-our @GENERAL_PURPOSE_SUFFIXES = qw[bin csv h5 tgz tif tsv txt xls xlsx xml];
+our @COMPRESSION_SUFFIXES     = qw[bz2 gz xz zip];
+
+our @GENERAL_PURPOSE_SUFFIXES = qw[bin csv h5 tar tgz tif tsv txt xls xlsx xml];
 our @GENO_DATA_SUFFIXES       = qw[gtc idat];
 our @HTS_DATA_SUFFIXES        = qw[bam cram bai crai];
 our @HTS_ANCILLARY_SUFFIXES   = qw[bamcheck bed flagstat json seqchksum
@@ -18,13 +20,13 @@ our @DEFAULT_FILE_SUFFIXES = (@GENERAL_PURPOSE_SUFFIXES,
                               @GENO_DATA_SUFFIXES,
                               @HTS_DATA_SUFFIXES,
                               @HTS_ANCILLARY_SUFFIXES);
-our $SUFFIX_PATTERN = join q[|], @DEFAULT_FILE_SUFFIXES;
-our $SUFFIX_REGEX   = qr{[.]($SUFFIX_PATTERN)$}msx;
 
 with qw[
          WTSI::DNAP::Utilities::Loggable
          WTSI::NPG::iRODS::Utilities
        ];
+
+my $COMPRESSION_PATTERN = join q[|], @COMPRESSION_SUFFIXES;
 
 # See http://dublincore.org/documents/dcmi-terms/
 
@@ -82,7 +84,7 @@ sub make_modification_metadata {
   Arg [1]    : File name, Str.
   Arg [2]    : Array of valid file suffix strings, Str. Optional
 
-  Example    : my @avus = $ann->make_type_metadata($sample, '.txt', '.csv')
+  Example    : my @avus = $ann->make_type_metadata($sample, 'txt', 'csv')
   Description: Return an array of metadata AVUs describing the file 'type'
                (represented by its suffix).
   Returntype : Array[HashRef]
@@ -95,17 +97,20 @@ sub make_type_metadata {
   defined $file or $self->logconfess('A defined file argument is required');
   $file eq q[] and $self->logconfess('A non-empty file argument is required');
 
-  if (not @suffixes) {
-    @suffixes = @DEFAULT_FILE_SUFFIXES;
-  }
+  my @valid_suffixes = uniq (@DEFAULT_FILE_SUFFIXES, @suffixes);
 
-  my ($suffix) = $file =~ $SUFFIX_REGEX;
+  my $suffix_pattern = join q[|], @valid_suffixes;
+  my $suffix_regex = qr{[.]  # Don't capture the suffix dot
+                        (
+                          ($suffix_pattern)
+                          ([.]($COMPRESSION_PATTERN))*
+                        )$}msx;
+  my ($suffix) = $file =~ $suffix_regex;
 
   my @avus;
   if ($suffix) {
-    my ($base_suffix) = $suffix =~ m{^[.]?(.*)}msx;
-    $self->debug("Parsed base suffix of '$file' as '$base_suffix'");
-    push @avus, $self->make_avu($FILE_TYPE, $base_suffix);
+    $self->debug("Parsed base suffix of '$file' as '$suffix'");
+    push @avus, $self->make_avu($FILE_TYPE, $suffix);
   }
   else {
     $self->debug("Did not parse a suffix from '$file'");

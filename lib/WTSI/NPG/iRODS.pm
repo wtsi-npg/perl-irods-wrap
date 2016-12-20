@@ -7,8 +7,8 @@ use DateTime;
 use Data::Dump qw(pp);
 use Encode qw(decode);
 use English qw(-no_match_vars);
-use File::Basename qw(basename);
-use File::Spec;
+use File::Basename qw(basename fileparse);
+use File::Spec::Functions qw(canonpath catfile splitdir);
 use List::AllUtils qw(any uniq);
 use Log::Log4perl::Level;
 use Moose;
@@ -17,7 +17,7 @@ use Try::Tiny;
 
 use WTSI::DNAP::Utilities::Runnable;
 
-use WTSI::NPG::iRODS::Metadata qw($FILE_MD5);
+use WTSI::NPG::iRODS::Metadata qw($FILE_MD5 $STAGING);
 use WTSI::NPG::iRODS::ACLModifier;
 use WTSI::NPG::iRODS::DataObjectReader;
 use WTSI::NPG::iRODS::Lister;
@@ -30,7 +30,7 @@ with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.17.0';
+our $MAX_BATON_VERSION = '0.17.1';
 our $MIN_BATON_VERSION = '0.16.4';
 
 our $IADMIN      = 'iadmin';
@@ -57,6 +57,9 @@ our @VALID_PERMISSIONS = ($NULL_PERMISSION, $READ_PERMISSION,
 our $DEFAULT_CACHE_SIZE = 128;
 our $OBJECT_PATH        = 'OBJECT';
 our $COLLECTION_PATH    = 'COLLECTION';
+
+our $STAGING_RAND_MAX   = 1024 * 1024 * 1024;
+our $STAGING_MAX_TRIES  = 2;
 
 our $CALC_CHECKSUM = 1;
 our $SKIP_CHECKSUM = 0;
@@ -406,7 +409,7 @@ sub absolute_path {
   defined $path or $self->logconfess('A defined path argument is required');
   $path or $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
 
   return $self->_ensure_absolute_path($path);
 }
@@ -530,7 +533,7 @@ sub find_zone_name {
 
   defined $path or $self->logconfess('A defined path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   my $abs_path = $self->_ensure_absolute_path($path);
   $abs_path =~ s/^\///msx;
 
@@ -542,7 +545,7 @@ sub find_zone_name {
     $abs_path = $self->working_collection;
   }
 
-  my @path = grep { $_ ne q{} } File::Spec->splitdir($abs_path);
+  my @path = grep { $_ ne q{} } splitdir($abs_path);
   unless (@path) {
     $self->logconfess("Failed to parse iRODS zone from path '$path'");
   }
@@ -733,7 +736,7 @@ sub is_collection {
   $path eq q{}
     and $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
   return $self->lister->is_collection($path);
@@ -761,7 +764,7 @@ sub list_collection {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
+  $collection = canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
 
   # TODO: We could check that the collection exists here. However,
@@ -793,7 +796,7 @@ sub add_collection {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
-  $collection = File::Spec->canonpath($collection);
+  $collection = canonpath($collection);
   $collection = $self->_ensure_absolute_path($collection);
   $self->debug("Adding collection '$collection'");
 
@@ -828,7 +831,7 @@ sub put_collection {
     $self->logconfess('A non-empty target (collection) argument is required');
 
   # iput does not accept trailing slashes on directories
-  $dir = File::Spec->canonpath($dir);
+  $dir = canonpath($dir);
   $target = $self->_ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
@@ -865,7 +868,7 @@ sub move_collection {
     $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = $self->_ensure_collection_path($source);
-  $target = File::Spec->canonpath($target);
+  $target = canonpath($target);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
 
@@ -901,7 +904,7 @@ sub get_collection {
     $self->logconfess('A non-empty target (directory) argument is required');
 
   $source = $self->_ensure_collection_path($source);
-  $target = File::Spec->canonpath($target);
+  $target = canonpath($target);
   $self->debug("Getting from '$source' to '$target'");
 
   my @args = ('-r', '-f', $source, $target);
@@ -1316,7 +1319,7 @@ sub is_object {
   $path eq q{}
     and $self->logconfess('A non-empty path argument is required');
 
-  $path = File::Spec->canonpath($path);
+  $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
   my $is_object = 0;
@@ -1436,19 +1439,30 @@ sub add_object {
     $checksum_action = $CALC_CHECKSUM;
   }
 
+  $target = $self->_ensure_absolute_path($target);
+
+  # Account for the target being a collection
+  if ($self->is_collection($target)) {
+    my ($file_name, $directories, $suffix) = fileparse($file);
+    $target = catfile($target, $file_name);
+  }
+
+  $self->debug("Adding '$file' as new object '$target'");
+
+  my $staging_path = $self->_find_staging_path($target);
+  if (not $staging_path) {
+    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
+                    " at '$target'");
+  }
+
   my @arguments;
   if ($checksum_action) {
     push @arguments , '-K';
   }
 
-  $target = $self->_ensure_absolute_path($target);
-  $self->debug("Adding '$file' as new object '$target'");
-  push @arguments, $file, $target;
+  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
-                                       arguments   => \@arguments,
-                                       environment => $self->environment)->run;
-  return $target;
+  return $self->_unstage_object($staging_path, $target);
 }
 
 =head2 replace_object
@@ -1489,19 +1503,23 @@ sub replace_object {
     $checksum_action = $CALC_CHECKSUM;
   }
 
-  my @arguments = ('-f');
-  if ($checksum_action) {
-    push @arguments , '-K';
-  }
-
   $target = $self->_ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
-  push @arguments, $file, $target;
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
-                                       arguments   => \@arguments,
-                                       environment => $self->environment)->run;
-  return $target;
+  my $staging_path = $self->_find_staging_path($target);
+  if (not $staging_path) {
+    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
+                    " at '$target'");
+  }
+
+  my @arguments = ('-f');
+  if ($checksum_action) {
+    push @arguments, '-K';
+  }
+
+  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+
+  return $self->_unstage_object($staging_path, $target);
 }
 
 =head2 copy_object
@@ -2517,12 +2535,128 @@ sub _cache_permissions {
 sub _clear_caches {
   my ($self, $path) = @_;
 
-  $self->debug("Clearing cached path, AVUs abd ACL for '$path'");
+  $self->debug("Clearing cached path, AVUs and ACL for '$path'");
   $self->_path_cache->remove($path);
   $self->_permissions_cache->remove($path);
   $self->_metadata_cache->remove($path);
 
   return;
+}
+
+sub _stage_object {
+  my ($self, $file, $staging_path, @arguments) = @_;
+
+  defined $file or
+    $self->logconfess('A defined file argument is required');
+  defined $staging_path or
+    $self->logconfess('A defined staging_path argument is required');
+
+  my $num_errors = 0;
+  my $stage_error = q[];
+
+  try {
+    $self->debug("Staging '$file' to '$staging_path' with $IPUT");
+    WTSI::DNAP::Utilities::Runnable->new
+        (executable  => $IPUT,
+         arguments   => [@arguments, $file, $staging_path],
+         environment => $self->environment)->run;
+  } catch {
+    $num_errors++;
+    my @stack = split /\n/msx; # Chop up the stack trace
+    $stage_error = pop @stack;
+  } finally {
+    try {
+      # A failed iput may still leave orphaned replicates
+      if ($self->is_object($staging_path)) {
+        # Tag staging file for easy location with a query
+        $self->add_object_avu($staging_path, $STAGING, 1);
+      }
+    } catch {
+      my @stack = split /\n/msx;
+      $self->error("Failed to tag staging path '$staging_path': ", pop @stack);
+    };
+  };
+
+  if ($num_errors > 0) {
+    $self->logconfess("Failed to stage '$file' to '$staging_path': ",
+                      $stage_error);
+  }
+
+  return $staging_path;
+}
+
+sub _unstage_object {
+  my ($self, $staging_path, $target) = @_;
+
+  defined $staging_path or
+    $self->logconfess('A defined staging_path argument is required');
+  defined $target or
+    $self->logconfess('A defined target argument is required');
+
+  if (not $self->is_object($staging_path)) {
+    $self->logconfess("Staging path '$staging_path' is not a data object");
+  }
+
+  my $num_errors = 0;
+  my $unstage_error = q[];
+
+  try {
+    # imv will not overwrite an existing data object so we must copy
+    # all its metadata to the staged file and then remove it
+    if ($self->is_object($target)) {
+      my @target_meta = $self->get_object_meta($target);
+
+      # This includes target=1 so we are accepting a race condition
+      # between customer queries and the file move below
+      foreach my $avu (@target_meta) {
+        $self->add_object_avu($staging_path, $avu->{attribute},
+                              $avu->{value}, $avu->{units});
+      }
+      $self->remove_object($target);
+    }
+
+    $self->debug("Unstaging '$staging_path' to '$target' with $IMV");
+    WTSI::DNAP::Utilities::Runnable->new
+        (executable  => $IMV,
+         arguments   => [$staging_path, $target],
+         environment => $self->environment)->run;
+
+    # Untag the unstaged file
+    $self->remove_object_avu($target, $STAGING, 1);
+  } catch {
+    $num_errors++;
+    my @stack = split /\n/msx;
+    $self->error("Failed to move '$staging_path' to '$target': ", pop @stack);
+  };
+
+  if ($num_errors > 0) {
+    $self->logconfess("Failed to unstage '$staging_path' to '$target': ",
+                      $unstage_error);
+  }
+
+  return $target;
+}
+
+sub _find_staging_path {
+  my ($self, $target) = @_;
+
+  defined $target or
+    $self->logconfess('A defined target argument is required');
+
+  my $staging_path;
+
+  foreach my $try (1 .. $STAGING_MAX_TRIES) {
+    my $path = sprintf "%s.%d", $target, int rand $STAGING_RAND_MAX;
+    if ($self->is_object($path)) {
+      $self->warn("Path $try '$path' for '$target' is not free");
+    }
+    else {
+      $self->debug("Path $try available '$path' for '$target'");
+      $staging_path = $path;
+    }
+  }
+
+  return $staging_path;
 }
 
 sub _build_irods_major_version {

@@ -47,6 +47,7 @@ our @EXPORT = qw(
                   $LIBRARY_ID
                   $LIBRARY_TYPE
                   $POSITION
+                  $READ
                   $REFERENCE
                   $SEQCHKSUM
                   $TAG
@@ -131,6 +132,7 @@ our $LIBRARY                   = 'library';
 our $LIBRARY_ID                = 'library_id';
 our $LIBRARY_TYPE              = 'library_type';
 our $POSITION                  = 'lane';
+our $READ                      = 'read';
 our $REFERENCE                 = 'reference';
 our $SEQCHKSUM                 = 'seqchksum';
 our $TAG                       = 'tag';

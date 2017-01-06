@@ -67,6 +67,7 @@ our @HTS_METADATA_ATTRS = (
                            $LIBRARY_ID,
                            $POSITION,
                            $QC_STATE,
+                           $READ,
                            $REFERENCE,
                            $TAG,
                            $TAG_INDEX,

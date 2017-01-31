@@ -28,7 +28,8 @@ has 'irods' =>
   (is            => 'ro',
    isa           => 'WTSI::NPG::iRODS',
    required      => 1,
-   default       => sub { return WTSI::NPG::iRODS->new },
+   lazy          => 1,
+   builder       => '_build_irods',
    documentation => 'The iRODS connection handle');
 
 has 'checksum_cache_threshold' =>
@@ -232,6 +233,12 @@ sub publish_directory {
   }
 
   return $coll->str;
+}
+
+sub _build_irods {
+  my ($self) = @_;
+
+  return WTSI::NPG::iRODS->new;
 }
 
 sub _check_path_args {

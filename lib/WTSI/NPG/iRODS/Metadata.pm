@@ -68,6 +68,7 @@ our @EXPORT = qw(
                   $PACBIO_SET_NUMBER
                   $PACBIO_SOURCE
                   $PACBIO_WELL
+                  $PACBIO_LIBRARY_NAME
 
                   $ANALYSIS_UUID
                   $INFINIUM_PROJECT_TITLE
@@ -166,6 +167,7 @@ our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
 our $PACBIO_SET_NUMBER         = 'set_number';
 our $PACBIO_SOURCE             = 'source';
 our $PACBIO_WELL               = 'well';
+our $PACBIO_LIBRARY_NAME       = 'library_name';
 
 # Genotyping
 our $ANALYSIS_UUID             = 'analysis_uuid';

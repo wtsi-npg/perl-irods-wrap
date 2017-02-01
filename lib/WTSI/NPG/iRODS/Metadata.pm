@@ -62,11 +62,14 @@ our @EXPORT = qw(
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
                   $PACBIO_INSTRUMENT_NAME
+                  $PACBIO_MULTIPLEX
+                  $PACBIO_PRODUCTION
                   $PACBIO_RUN
                   $PACBIO_SAMPLE_LOAD_NAME
                   $PACBIO_SET_NUMBER
                   $PACBIO_SOURCE
                   $PACBIO_WELL
+                  $PACBIO_LIBRARY_NAME
 
                   $BIONANO_CHIP_ID
                   $BIONANO_FLOWCELL
@@ -164,11 +167,14 @@ our $YHUMAN                    = 'yhuman';
 our $PACBIO_CELL_INDEX         = 'cell_index';
 our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
 our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
+our $PACBIO_MULTIPLEX          = 'multiplex';
+our $PACBIO_PRODUCTION         = 'production';
 our $PACBIO_RUN                = 'run';
 our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
 our $PACBIO_SET_NUMBER         = 'set_number';
 our $PACBIO_SOURCE             = 'source';
 our $PACBIO_WELL               = 'well';
+our $PACBIO_LIBRARY_NAME       = 'library_name';
 
 # BioNano
 our $BIONANO_CHIP_ID           = 'bnx_chip_id';

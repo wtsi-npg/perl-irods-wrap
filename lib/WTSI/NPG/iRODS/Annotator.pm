@@ -194,15 +194,17 @@ sub make_type_metadata {
                           ($suffix_pattern)
                           ([.]($compress_pattern))*
                         )$}msx;
-  my ($suffix) = $file =~ $suffix_regex;
+  my ($suffix, $base, $compress) = $file =~ $suffix_regex;
+  $compress ||= q[];
 
   my @avus;
   if ($suffix) {
-    $self->debug("Parsed base suffix of '$file' as '$suffix'");
-    push @avus, $self->make_avu($FILE_TYPE, $suffix);
+    $self->debug("Parsed file type of '$file' as '$suffix' ",
+                 "(base: '$base', compress: '$compress')");
+    push @avus, $self->make_avu($FILE_TYPE, $base);
   }
   else {
-    $self->debug("Did not parse a suffix from '$file'");
+    $self->debug("Did not parse a file type from '$file'");
   }
 
   return @avus;

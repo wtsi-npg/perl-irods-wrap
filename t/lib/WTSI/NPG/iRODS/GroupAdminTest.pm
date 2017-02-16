@@ -27,15 +27,15 @@ my @groups_added;
 my @irods_users = qw(user_foo user_bar);
 my @users_added;
 
-sub setup_fixture : Test(startup) {
+sub setup_test : Test(setup) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-  if ($have_admin_rights) {
-    foreach my $group (@irods_groups) {
-      if (not $irods->group_exists($group)) {
-        push @groups_added, $irods->add_group($group);
-      }
-    }
+
+  @groups_added = $self->add_irods_groups($irods, @irods_groups);
+
+  if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
       if (system(qq{$WTSI::NPG::iRODS::IADMIN mkuser '$user' rodsuser}) == 0) {
         push @users_added, $user;
@@ -44,16 +44,15 @@ sub setup_fixture : Test(startup) {
   }
 }
 
-sub teardown_fixture : Test(shutdown) {
+sub teardown_test : Test(teardown) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  if ($have_admin_rights) {
-    foreach my $group (@groups_added) {
-      if ($irods->group_exists($group)) {
-        $irods->remove_group($group);
-      }
-    }
+  $self->remove_irods_groups($irods, @groups_added);
+
+  if ($self->have_admin_rights) {
     foreach my $user (@users_added) {
       system(qq{$WTSI::NPG::iRODS::IADMIN rmuser '$user'}) == 0
         or warn "Failed to clean up user '$user'";
@@ -73,12 +72,14 @@ sub constructor : Test(2) {
 }
 
 sub lg : Test(5) {
+  my ($self) = @_;
+
   my $iga = WTSI::NPG::iRODS::GroupAdmin->new;
 
   ok($iga->lg('public'), 'Found public group');
 
  SKIP: {
-    if (not $have_admin_rights) {
+    if (not $self->have_admin_rights) {
       skip 'No admin rights to create test groups', 2;
     }
 
@@ -99,10 +100,12 @@ sub lg : Test(5) {
 }
 
 sub set_group_membership : Test(5) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
  SKIP: {
-    if (not $have_admin_rights) {
+    if (not $self->have_admin_rights) {
       skip 'No admin rights to create test groups', 5;
     }
 

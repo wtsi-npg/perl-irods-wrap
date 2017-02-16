@@ -47,4 +47,40 @@ sub fail_if_returned_early {
   return 1;
 }
 
+sub have_admin_rights {
+  my ($self, $have_rights) = @_;
+
+  if (defined $have_rights) {
+    $self->{_have_admin_rights} = $have_rights;
+  }
+
+  return $self->{_have_admin_rights};
+}
+
+sub add_irods_groups {
+  my ($self, $irods, @groups) = @_;
+
+  my @groups_added;
+  foreach my $group (@groups) {
+    if ($self->have_admin_rights and not $irods->group_exists($group)) {
+      push @groups_added, $irods->add_group($group);
+    }
+  }
+
+  return @groups_added;
+}
+
+sub remove_irods_groups {
+  my ($self, $irods, @groups) = @_;
+
+  my @groups_removed;
+  foreach my $group (@groups) {
+    if ($self->have_admin_rights and $irods->group_exists($group)) {
+      push @groups_removed, $irods->remove_group($group);
+    }
+  }
+
+  return @groups_removed;
+}
+
 1;

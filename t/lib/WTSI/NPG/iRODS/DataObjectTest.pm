@@ -34,7 +34,9 @@ my @irods_groups = map { $group_prefix . $_ } (10, 100);
 # Groups added to the test iRODS in fixture setup
 my @groups_added;
 
-sub make_fixture : Test(setup) {
+sub setup_test : Test(setup) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -53,28 +55,17 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  foreach my $group (@irods_groups) {
-    if (not $irods->group_exists($group)) {
-      if ($have_admin_rights) {
-        push @groups_added, $irods->add_group($group);
-      }
-    }
-  }
+  @groups_added = $self->add_irods_groups($irods, @irods_groups);
 }
 
-sub teardown : Test(teardown) {
+sub teardown_test : Test(teardown) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   $irods->remove_collection($irods_tmp_coll);
-
-  if ($have_admin_rights) {
-    foreach my $group (@groups_added) {
-      if ($irods->group_exists($group)) {
-        $irods->remove_group($group);
-      }
-    }
-  }
+  $self->remove_irods_groups($irods, @groups_added);
 }
 
 sub require : Test(1) {

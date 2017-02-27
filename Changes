@@ -1,4 +1,17 @@
+Release 2.7.0
+
+ - Bugfix; clean up any iRODS groups created by the test suite
+
+ - Added methods describing know filename suffixes
+
+ - Added metadata for BioNano
+
+ - Added metadata for 10X
+
+ - Added metadata for PacBio pbi files
+
 Release 2.6.1
+
  - use ml_warehouse
  - added metadata for PacBio
  - fix for staging iput where the target path is a collection 
@@ -6,7 +19,7 @@ Release 2.6.1
  - Travis CI: build package under perl v.5.22
  - improved handling of file suffix metadata
  - Support baton versions  >=0.16.4 and <=0.17.1
- 
+
 Release 2.6.0
 
  - Bugfix; correctly report multiple AVUs found for a given attribute

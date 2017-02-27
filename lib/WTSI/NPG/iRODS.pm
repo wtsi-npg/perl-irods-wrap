@@ -2560,20 +2560,24 @@ sub _stage_object {
         (executable  => $IPUT,
          arguments   => [@arguments, $file, $staging_path],
          environment => $self->environment)->run;
+
+    # Tag staging file for easy location with a query
+    $self->add_object_avu($staging_path, $STAGING, 1);
   } catch {
     $num_errors++;
-    my @stack = split /\n/msx; # Chop up the stack trace
-    $stage_error = pop @stack;
-  } finally {
+    my @stack1 = split /\n/msx; # Chop up the stack trace
+    $stage_error = pop @stack1;
+
     try {
       # A failed iput may still leave orphaned replicates
       if ($self->is_object($staging_path)) {
-        # Tag staging file for easy location with a query
-        $self->add_object_avu($staging_path, $STAGING, 1);
+        $self->debug("Cleaning up (deleting) staging file '$staging_path'");
+        $self->remove_object($staging_path);
       }
     } catch {
-      my @stack = split /\n/msx;
-      $self->error("Failed to tag staging path '$staging_path': ", pop @stack);
+      my @stack2 = split /\n/msx;
+      $self->error("Failed to remove failed staging file '$staging_path': ",
+                   pop @stack2);
     };
   };
 
@@ -2609,8 +2613,13 @@ sub _unstage_object {
       # This includes target=1 so we are accepting a race condition
       # between customer queries and the file move below
       foreach my $avu (@target_meta) {
-        $self->add_object_avu($staging_path, $avu->{attribute},
-                              $avu->{value}, $avu->{units});
+        if ($avu->{attribute} eq $STAGING) {
+          $self->warn("Found $STAGING AVU on published file '$target'");
+        }
+        else {
+          $self->add_object_avu($staging_path, $avu->{attribute},
+                                $avu->{value}, $avu->{units});
+        }
       }
       $self->remove_object($target);
     }
@@ -2625,8 +2634,17 @@ sub _unstage_object {
     $self->remove_object_avu($target, $STAGING, 1);
   } catch {
     $num_errors++;
-    my @stack = split /\n/msx;
-    $self->error("Failed to move '$staging_path' to '$target': ", pop @stack);
+    my @stack1 = split /\n/msx;
+    $unstage_error = pop @stack1;
+
+    try {
+      $self->debug("Cleaning up (deleting) staging file '$staging_path'");
+      $self->remove_object($staging_path);
+    } catch {
+      my @stack2 = split /\n/msx;
+      $self->error("Failed to remove failed staging file '$staging_path': ",
+                   pop @stack2);
+    };
   };
 
   if ($num_errors > 0) {

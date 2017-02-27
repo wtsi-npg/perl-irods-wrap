@@ -32,7 +32,7 @@ sub is_test_zone {
   return any { $_ eq $zone } @test_hosting_zones;
 }
 
-sub make_fixture : Test(setup) {
+sub setup_test : Test(setup) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -41,7 +41,7 @@ sub make_fixture : Test(setup) {
   $fixture_counter++;
 }
 
-sub teardown : Test(teardown) {
+sub teardown_test : Test(teardown) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 

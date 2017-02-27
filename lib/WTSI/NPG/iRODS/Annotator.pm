@@ -8,25 +8,111 @@ use WTSI::NPG::iRODS::Metadata;
 
 our $VERSION = '';
 
-our @COMPRESSION_SUFFIXES     = qw[bz2 gz xz zip];
-
-our @GENERAL_PURPOSE_SUFFIXES = qw[bin csv h5 tar tgz tif tsv txt xls xlsx xml];
-our @GENO_DATA_SUFFIXES       = qw[gtc idat];
-our @HTS_DATA_SUFFIXES        = qw[bam cram bai crai];
-our @HTS_ANCILLARY_SUFFIXES   = qw[bamcheck bed flagstat json seqchksum
-                                   stats xml];
-
-our @DEFAULT_FILE_SUFFIXES = (@GENERAL_PURPOSE_SUFFIXES,
-                              @GENO_DATA_SUFFIXES,
-                              @HTS_DATA_SUFFIXES,
-                              @HTS_ANCILLARY_SUFFIXES);
-
 with qw[
          WTSI::DNAP::Utilities::Loggable
          WTSI::NPG::iRODS::Utilities
        ];
 
-my $COMPRESSION_PATTERN = join q[|], @COMPRESSION_SUFFIXES;
+=head2 general_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->general_suffixes
+  Description: Return an array of recognised file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub general_suffixes {
+  return (qw[bin csv h5 tar tgz tif tsv txt xls xlsx xml]);
+}
+
+=head2 genotype_data_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->genotype_data_suffixes
+  Description: Return an array of recognised genotype data file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub genotype_data_suffixes {
+  return (qw[gtc idat]);
+}
+
+=head2 hts_data_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->hts_data_suffixes
+  Description: Return an array of recognised high-throughput sequencing
+               data file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub hts_data_suffixes {
+  return (qw[bam cram bai crai pbi]);
+}
+
+=head2 hts_ancillary_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->hts_ancillary_suffixes
+  Description: Return an array of recognised high-throughput sequencing
+               ancillary file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub hts_ancillary_suffixes {
+  return (qw[bam_stats bamcheck bed flagstat json seqchksum stats txt xml]);
+}
+
+=head2 compress_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->compress_suffixes
+  Description: Return an array of recognised compressed file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub compress_suffixes {
+  return (qw[bz2 gz xz zip]);
+}
+
+=head2 non_compress_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->non_compress_suffixes
+  Description: Return an array of recognised file suffixes, excluding
+               recognised compressed file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub non_compress_suffixes {
+  my ($self) = @_;
+
+  my @suffixes = uniq ($self->general_suffixes,
+                       $self->hts_data_suffixes,
+                       $self->hts_ancillary_suffixes,
+                       $self->genotype_data_suffixes);
+  @suffixes = sort @suffixes;
+
+  return @suffixes;
+}
 
 # See http://dublincore.org/documents/dcmi-terms/
 
@@ -82,7 +168,9 @@ sub make_modification_metadata {
 =head2 make_type_metadata
 
   Arg [1]    : File name, Str.
-  Arg [2]    : Array of valid file suffix strings, Str. Optional
+  Arg [2]    : Array of valid file suffix strings,  (excluding and leading
+               dot), Str. Supplementary (i.e. to be added to the defaults).
+               Optional
 
   Example    : my @avus = $ann->make_type_metadata($sample, 'txt', 'csv')
   Description: Return an array of metadata AVUs describing the file 'type'
@@ -97,13 +185,14 @@ sub make_type_metadata {
   defined $file or $self->logconfess('A defined file argument is required');
   $file eq q[] and $self->logconfess('A non-empty file argument is required');
 
-  my @valid_suffixes = uniq (@DEFAULT_FILE_SUFFIXES, @suffixes);
+  my @valid_suffixes = uniq ($self->non_compress_suffixes, @suffixes);
 
+  my $compress_pattern = join q[|], $self->compress_suffixes;
   my $suffix_pattern = join q[|], @valid_suffixes;
   my $suffix_regex = qr{[.]  # Don't capture the suffix dot
                         (
                           ($suffix_pattern)
-                          ([.]($COMPRESSION_PATTERN))*
+                          ([.]($compress_pattern))*
                         )$}msx;
   my ($suffix) = $file =~ $suffix_regex;
 

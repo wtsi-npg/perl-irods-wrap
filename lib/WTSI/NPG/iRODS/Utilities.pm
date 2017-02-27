@@ -1,6 +1,6 @@
 package WTSI::NPG::iRODS::Utilities;
 
-use List::AllUtils qw(uniq);
+use List::AllUtils qw(uniq zip);
 use Moose::Role;
 
 use WTSI::DNAP::Utilities::Runnable;
@@ -101,6 +101,67 @@ sub make_avu {
   }
 
   return $avu;
+}
+
+=head2 make_avus_from_objects
+
+  Arg [1]    : An attribute, Str. Required.
+  Arg [2]    : A method name, Str. Required.
+  Arg [3]    : Arguments for the method named in [2], ArrayRef[ArrayRef].
+               Required. May be empty if no arguments are to be given;
+               otherwise, must contain one ArrayRef for each object in [4].
+  Arg [4]    : Objects on which to call the method named in [2].
+               ArrayRef. Required.
+  Arg [5]    : Units for the AVU. Str. Optional, defaults to none.
+
+  Example    : my @avus = $irods->make_avus_from_objects(
+                   $attr, $method, $args, $objs, $units
+               );
+  Description: For each member of an array of objects, call a named method
+               on the object to obtain a value. Unless the value is
+               undefined, construct an AVU triple with the given attribute
+               and units.
+
+               Will create one AVU of the form
+                 {attribute => $attribute,
+                  value     => $value,
+                  units     => $units}
+               for each object in argument [3].
+  Returntype : Array[HashRef]
+
+=cut
+
+sub make_avus_from_objects {
+    my ($self, $attr, $method, $args, $objs, $units) = @_;
+    my @objects = @{$objs};
+    my @args = @{$args};
+    my $args_total = scalar @args;
+    my $objs_total = scalar @objects;
+    if ($args_total != 0 && $args_total != $objs_total) {
+        $self->logcroak('ArrayRef of arguments must be either empty, or ',
+                        'equal in length to ArrayRef of objects; found ',
+                        $args_total, ' arguments, ', $objs_total, 'objects.'
+                    );
+    }
+    my @avus;
+    my @params = zip(@objects, @args);
+    while (@params) {
+        my $obj = shift @params;
+        my $arg = shift @params; # will be undef if @args is empty
+        my $value;
+        if ($args_total) {
+            $value = $obj->$method(@{$arg});
+        } else {
+            $value = $obj->$method;
+        }
+        if (defined $value) {
+            $self->debug($obj, "::$method returned ", $value);
+            push @avus, $self->make_avu($attr, $value, $units);
+        } else {
+            $self->debug($obj, "::$method returned undef");
+        }
+    }
+    return @avus;
 }
 
 =head2 avus_equal

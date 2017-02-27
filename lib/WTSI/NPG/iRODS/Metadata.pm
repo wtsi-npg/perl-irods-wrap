@@ -48,6 +48,7 @@ our @EXPORT = qw(
                   $LIBRARY_ID
                   $LIBRARY_TYPE
                   $POSITION
+                  $READ
                   $REFERENCE
                   $SEQCHKSUM
                   $TAG
@@ -61,11 +62,19 @@ our @EXPORT = qw(
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
                   $PACBIO_INSTRUMENT_NAME
+                  $PACBIO_MULTIPLEX
+                  $PACBIO_PRODUCTION
                   $PACBIO_RUN
                   $PACBIO_SAMPLE_LOAD_NAME
                   $PACBIO_SET_NUMBER
                   $PACBIO_SOURCE
                   $PACBIO_WELL
+                  $PACBIO_LIBRARY_NAME
+
+                  $BIONANO_CHIP_ID
+                  $BIONANO_FLOWCELL
+                  $BIONANO_INSTRUMENT
+                  $BIONANO_UUID
 
                   $ANALYSIS_UUID
                   $INFINIUM_PROJECT_TITLE
@@ -143,6 +152,7 @@ our $LIBRARY                   = 'library';
 our $LIBRARY_ID                = 'library_id';
 our $LIBRARY_TYPE              = 'library_type';
 our $POSITION                  = 'lane';
+our $READ                      = 'read';
 our $REFERENCE                 = 'reference';
 our $SEQCHKSUM                 = 'seqchksum';
 our $TAG                       = 'tag';
@@ -157,11 +167,20 @@ our $YHUMAN                    = 'yhuman';
 our $PACBIO_CELL_INDEX         = 'cell_index';
 our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
 our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
+our $PACBIO_MULTIPLEX          = 'multiplex';
+our $PACBIO_PRODUCTION         = 'production';
 our $PACBIO_RUN                = 'run';
 our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
 our $PACBIO_SET_NUMBER         = 'set_number';
 our $PACBIO_SOURCE             = 'source';
 our $PACBIO_WELL               = 'well';
+our $PACBIO_LIBRARY_NAME       = 'library_name';
+
+# BioNano
+our $BIONANO_CHIP_ID           = 'bnx_chip_id';
+our $BIONANO_FLOWCELL          = 'bnx_flowcell';
+our $BIONANO_INSTRUMENT        = 'bnx_instrument';
+our $BIONANO_UUID              = 'bnx_uuid';
 
 # Genotyping
 our $ANALYSIS_UUID             = 'analysis_uuid';

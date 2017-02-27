@@ -37,7 +37,9 @@ my @groups_added;
 # Enable group tests
 my $group_tests_enabled = 0;
 
-sub make_fixture : Test(setup) {
+sub setup_test: Test(setup) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
   $cwc = $irods->working_collection;
@@ -57,30 +59,21 @@ sub make_fixture : Test(setup) {
     }
   }
 
-  my $group_count = 0;
-  foreach my $group (@irods_groups) {
-    if ($irods->group_exists($group)) {
-      $group_count++;
-    }
-    else {
-      if ($have_admin_rights) {
-        push @groups_added, $irods->add_group($group);
-        $group_count++;
-      }
-    }
-  }
-
-  if ($group_count == scalar @irods_groups) {
+  @groups_added = $self->add_irods_groups($irods, @irods_groups);
+  if (scalar @groups_added == scalar @irods_groups) {
     $group_tests_enabled = 1;
   }
 }
 
-sub teardown : Test(teardown) {
+sub teardown_test : Test(teardown) {
+  my ($self) = @_;
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   $irods->working_collection($cwc);
   $irods->remove_collection($irods_tmp_coll);
+  $self->remove_irods_groups($irods, @groups_added);
 }
 
 sub add_group : Test(3) {

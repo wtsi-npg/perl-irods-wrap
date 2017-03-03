@@ -74,16 +74,16 @@ sub make_type_metadata : Test(12) {
   my %expected =
     (
      'test.txt'            => 'txt',
-     'test.txt.gz'         => 'txt.gz',
-     'test.txt.gz.bz2'     => 'txt.gz.bz2',
+     'test.txt.gz'         => 'txt',
+     'test.txt.gz.bz2'     => 'txt',
      'test.txt.gz.bz2.tar' => 'tar',
      'test.foo.txt'        => 'txt',
      'test.gz.txt'         => 'txt',
      'gz.txt'              => 'txt',
      'test.custom1'        => 'custom1',
      'test.custom2'        => 'custom2',
-     'test.custom1.gz'     => 'custom1.gz',
-     'test.custom2.gz'     => 'custom2.gz',
+     'test.custom1.gz'     => 'custom1',
+     'test.custom2.gz'     => 'custom2',
     );
 
   while (my ($file, $suffix) = each %expected) {

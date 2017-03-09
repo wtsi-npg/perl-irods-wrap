@@ -98,24 +98,25 @@ my $log = Log::Log4perl->get_logger('main');
 my $iga = WTSI::NPG::iRODS::GroupAdmin->new(dry_run => $dry_run);
 
 my @public = $iga->lg(q(public));
-$log->info("The iRODS public group has ", scalar @public, ' members');
-$log->debug("iRODS public group membership: ", join q(, ), @public);
+$log->info('The iRODS public group has ', scalar @public, ' members');
+$log->debug('iRODS public group membership: ', join q(, ), @public);
+my %public;
+foreach my$id (@public){ my($p)=split /\#/smx,$id; push @{$public{$p}||=[]}, $id;}
 
 sub _uid_to_irods_uid {
   my($u)=@_;
-  return grep {/^\Q$u\E\#/smx} @public;
-  # the "#" separates username from zone in the iRODS user identifiers
+  return @{$public{$u}||[]};
 }
 
 my $host = 'ldap.internal.sanger.ac.uk';
 my $ldap = Net::LDAP->new($host);
 
-$ldap->bind or $log->logcroak("LDAP failed to bind to '$host': ", $!);
+$ldap->bind or $log->logcroak("LDAP failed to bind to '$host': ", $ERRNO);
 # Get group, gid and member uids from LDAP
 my ($group2uids, $gid2group) = find_group_ids($ldap);
 # Get uids and their primary gid from LDAP
 my $uid2gid = find_primary_gid($ldap);
-$ldap->unbind or $log->logwarn("LDAP failed to unbind '$host': ", $!);
+$ldap->unbind or $log->logwarn("LDAP failed to unbind '$host': ", $ERRNO);
 
 # For each uid, merge primary gid with secondary gids
 foreach my $uid (keys %{$uid2gid}) {

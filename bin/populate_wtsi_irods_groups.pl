@@ -103,7 +103,8 @@ $log->debug("iRODS public group membership: ", join q(, ), @public);
 
 sub _uid_to_irods_uid {
   my($u)=@_;
-  return grep {/^\Q$u\E#/smx} @public;
+  return grep {/^\Q$u\E\#/smx} @public;
+  # the "#" separates username from zone in the iRODS user identifiers
 }
 
 my $host = 'ldap.internal.sanger.ac.uk';

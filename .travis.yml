@@ -8,6 +8,9 @@ perl:
 addons:
   postgresql: "9.3"
 
+services:
+  - rabbitmq
+
 env:
   global:
     - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
@@ -17,6 +20,8 @@ env:
     - DISPOSABLE_IRODS_VERSION="1.2"
     - RENCI_FTP_URL=ftp://ftp.renci.org
     - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
+    - NPG_RMQ_CONFIG='./etc/rmq_travis_config.json'
+    - NPG_RMQ_HOST='localhost'
 
   matrix:
     - IRODS_VERSION=3.3.1 IRODS_RIP_DIR=/usr/local/irods
@@ -32,6 +37,9 @@ before_install:
 
 install:
   - ./scripts/travis_install.sh
+
+before_script:
+  - ./scripts/rabbitmq_config.sh
 
 script:
   - export PATH=$IRODS_RIP_DIR/iRODS/clients/icommands/bin:$PATH

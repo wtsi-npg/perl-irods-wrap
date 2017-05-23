@@ -3,6 +3,7 @@ package WTSI::NPG::iRODS::BatonClient;
 use namespace::autoclean;
 
 use Data::Dump qw(pp);
+use File::Basename qw(fileparse);
 use JSON;
 use Moose;
 use MooseX::StrictConstructor;
@@ -23,8 +24,6 @@ around 'communicate' => sub {
 
   my $envelope = $self->$orig(@args);
 
-  $self->debug("Received envelope: ", pp($envelope));
-
   my $unwrapped;
   if (exists $envelope->{result}) {
     $unwrapped = $envelope->{result};
@@ -38,6 +37,7 @@ around 'communicate' => sub {
                       pp($envelope));
   }
 
+  # Copy any envelope error report into the response
   if (exists $envelope->{error}) {
     $unwrapped->{error} = $envelope->{error};
   }
@@ -97,6 +97,47 @@ sub is_object {
   return $is_object;
 }
 
+sub put_object {
+  my ($self, $local_path, $remote_path, $checksum) = @_;
+
+  my $args = {};
+  if ($checksum) {
+    $args->{calculate_checksum} = 1;
+  }
+
+  my ($file_name, $directory, $suffix) = fileparse($local_path);
+  my ($data_object, $collection) = fileparse($remote_path);
+
+  my $spec = {operation => 'put',
+              arguments => $self->_map_json_args($args),
+              target    => {collection  => $collection,
+                            data_object => $data_object,
+                            directory   => $directory,
+                            file        => $file_name}};
+
+  my $response = $self->communicate($spec);
+  $self->validate_response($response);
+  $self->report_error($response);
+
+  return $remote_path;
+}
+
+sub move_object {
+  my ($self, $source_path, $dest_path) = @_;
+
+  my ($data_object, $collection) = fileparse($source_path);
+
+  my $spec = {operation  => 'move',
+              arguments => {path => $dest_path},
+              target     => {collection  => $collection,
+                             data_object => $data_object}};
+
+  my $response = $self->communicate($spec);
+  $self->validate_response($response);
+  $self->report_error($response);
+
+  return $dest_path
+}
 
 =head2 list_collection
 
@@ -176,11 +217,13 @@ sub list_collection_checksums {
 
   if ($recur) {
     ($obj_specs, $coll_specs) =
-      $self->_list_collection_recur($collection, {checksum => 1});
+      $self->_list_collection_recur($collection, {contents => 1,
+                                                  checksum => 1});
   }
   else {
     ($obj_specs, $coll_specs) =
-      $self->_list_collection($collection, {checksum => 1});
+      $self->_list_collection($collection, {contents => 1,
+                                            checksum => 1});
   }
 
   my %checksums;
@@ -222,6 +265,31 @@ sub list_object_checksum {
   }
 
   return $checksum;
+}
+
+sub calculate_object_checksum {
+  my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object =~ m{^/}msx or
+    $self->logconfess("An absolute object path argument is required: ",
+                      "received '$object'");
+
+  my ($volume, $collection, $data_name) = File::Spec->splitpath($object);
+  $collection = File::Spec->canonpath($collection);
+
+  $data_name or $self->logconfess("An object path argument is required: ",
+                                  "received '$object'");
+
+  my $spec = {operation => 'checksum',
+              arguments => {},
+              target    => {collection  => $collection,
+                            data_object => $data_name}};
+  my $response = $self->communicate($spec);
+
+  return $response;
 }
 
 =head2 list_object_replicates
@@ -374,10 +442,10 @@ sub chmod_collection {
     $perm->{zone} = $zone;
   }
 
-  my $spec = {operation  => 'chmod',
-              parameters => {},
-              target     => {collection => $collection,
-                             access     => [$perm]}};
+  my $spec = {operation => 'chmod',
+              arguments => {},
+              target    => {collection => $collection,
+                            access     => [$perm]}};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
   $self->report_error($response);
@@ -412,11 +480,11 @@ sub chmod_object {
     $perm->{zone} = $zone;
   }
 
-  my $spec = {operation  => 'chmod',
-              parameters => {},
-              target     => {collection  => $collection,
-                             data_object => $data_name,
-                             access      => [$perm]}};
+  my $spec = {operation => 'chmod',
+              arguments => {},
+              target    => {collection  => $collection,
+                            data_object => $data_name,
+                            access      => [$perm]}};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
   $self->report_error($response);
@@ -436,9 +504,9 @@ sub list_collection_meta {
 
   $collection = File::Spec->canonpath($collection);
 
-  my $spec = {operation  => 'list',
-              parameters => $self->_map_json_params({avu => 1}),
-              target     => {collection => $collection}};
+  my $spec = {operation => 'list',
+              arguments => $self->_map_json_args({avu => 1}),
+              target    => {collection => $collection}};
 
   return $self->_list_path_meta($spec);
 }
@@ -459,10 +527,10 @@ sub list_object_meta {
   $data_name or $self->logconfess("An object path argument is required: ",
                                   "received '$object'");
 
-  my $spec = {operation  => 'list',
-              parameters => $self->_map_json_params({avu => 1}),
-              target     => {collection  => $collection,
-                             data_object => $data_name}};
+  my $spec = {operation => 'list',
+              arguments => $self->_map_json_args({avu => 1}),
+              target    => {collection  => $collection,
+                            data_object => $data_name}};
 
   return $self->_list_path_meta($spec);
 }
@@ -475,10 +543,10 @@ sub add_collection_avu {
 }
 
 sub add_object_avu {
-  my ($self, $collection, $attribute, $value, $units) = @_;
+  my ($self, $object, $attribute, $value, $units) = @_;
 
   return $self->_modify_object_meta
-    ($collection, $attribute, $value, $units, {operation => 'add'});
+    ($object, $attribute, $value, $units, {operation => 'add'});
 }
 
 sub remove_collection_avu {
@@ -489,10 +557,10 @@ sub remove_collection_avu {
 }
 
 sub remove_object_avu {
-  my ($self, $collection, $attribute, $value, $units) = @_;
+  my ($self, $object, $attribute, $value, $units) = @_;
 
   return $self->_modify_object_meta
-    ($collection, $attribute, $value, $units, {operation => 'rem'});
+    ($object, $attribute, $value, $units, {operation => 'rem'});
 }
 
 sub search_collections {
@@ -530,10 +598,10 @@ sub read_object {
   my ($volume, $collection, $data_name) = File::Spec->splitpath($object);
   $collection = File::Spec->canonpath($collection);
 
-  my $spec = {operation  => 'get',
-              parameters => {},
-              target     => {collection  => $collection,
-                             data_object => $data_name}};
+  my $spec = {operation => 'get',
+              arguments => {},
+              target    => {collection  => $collection,
+                            data_object => $data_name}};
 
   my $response = $self->communicate($spec);
 
@@ -549,7 +617,7 @@ sub read_object {
 }
 
 sub _search {
-  my ($self, $zone_hint, $avus, $params) = @_;
+  my ($self, $zone_hint, $avus, $args) = @_;
 
   defined $zone_hint or
     $self->logconfess('A defined zone_hint argument is required');
@@ -578,9 +646,9 @@ sub _search {
   }
 
   my $spec = {operation => 'metaquery',
-              parameters => $self->_map_json_params($params),
-              target     => {collection => $zone_hint,
-                             avus       => $avus}};
+              arguments => $self->_map_json_args($args),
+              target    => {collection => $zone_hint,
+                            avus       => $avus}};
 
   my $response = $self->communicate($spec);
   $self->_validate_response($response);
@@ -604,7 +672,7 @@ sub _validate_response {
 }
 
 sub _modify_collection_meta {
-  my ($self, $collection, $attribute, $value, $units, $params) = @_;
+  my ($self, $collection, $attribute, $value, $units, $args) = @_;
 
   defined $collection or
     $self->logconfess('A defined collection argument is required');
@@ -620,11 +688,11 @@ sub _modify_collection_meta {
 
   $collection = File::Spec->canonpath($collection);
 
-  my $spec = {operation  => 'metamod',
-              parameters => $params,
-              target     => {collection => $collection,
-                             avus       => [{attribute => $attribute,
-                                             value     => $value}]}};
+  my $spec = {operation => 'metamod',
+              arguments => $args,
+              target    => {collection => $collection,
+                            avus       => [{attribute => $attribute,
+                                            value     => $value}]}};
   if ($units) {
     $spec->{target}->{avus}->[0]->{units} = $units;
   }
@@ -637,7 +705,7 @@ sub _modify_collection_meta {
 }
 
 sub _modify_object_meta {
-  my ($self, $object, $attribute, $value, $units, $params) = @_;
+  my ($self, $object, $attribute, $value, $units, $args) = @_;
 
   defined $object or
     $self->logconfess('A defined object argument is required');
@@ -657,12 +725,12 @@ sub _modify_object_meta {
   $data_name or $self->logconfess("An object path argument is required: ",
                                   "received '$object'");
 
-  my $spec = {operation  => 'metamod',
-              parameters => $params,
-              target     => {collection  => $collection,
-                             data_object => $data_name,
-                             avus        => [{attribute => $attribute,
-                                              value     => $value}]}};
+  my $spec = {operation => 'metamod',
+              arguments => $args,
+              target    => {collection  => $collection,
+                            data_object => $data_name,
+                            avus        => [{attribute => $attribute,
+                                             value     => $value}]}};
   if ($units) {
     $spec->{target}->{avus}->[0]->{units} = $units;
   }
@@ -675,7 +743,7 @@ sub _modify_object_meta {
 }
 
 sub _list_path {
-  my ($self, $path, $params) = @_;
+  my ($self, $path, $args) = @_;
 
   defined $path or
     $self->logconfess('A defined path argument is required');
@@ -684,15 +752,15 @@ sub _list_path {
     $self->logconfess("An absolute path argument is required: ",
                       "received '$path'");
 
-  $params ||= {};
+  $args ||= {};
 
   my ($volume, $collection, $data_name) = File::Spec->splitpath($path);
   $collection = File::Spec->canonpath($collection);
 
-  my $spec = {operation  => 'list',
-              parameters => $self->_map_json_params($params),
-              target     => {collection  => $collection,
-                             data_object => $data_name}};
+  my $spec = {operation => 'list',
+              arguments => $self->_map_json_args($args),
+              target    => {collection  => $collection,
+                            data_object => $data_name}};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
 
@@ -700,7 +768,7 @@ sub _list_path {
 }
 
 sub _list_collection {
-  my ($self, $collection, $params) = @_;
+  my ($self, $collection, $args) = @_;
 
   defined $collection or
     $self->logconfess('A defined collection argument is required');
@@ -710,12 +778,12 @@ sub _list_collection {
                       "received '$collection'");
   $collection = File::Spec->canonpath($collection);
 
-  $params ||= {};
-  $params->{contents} = 1;
+  $args ||= {};
+  $args->{contents} = 1;
 
-  my $spec =  {operation  => 'list',
-               parameters => $self->_map_json_params($params),
-               target     => {collection => $collection}};
+  my $spec =  {operation => 'list',
+               arguments => $self->_map_json_args($args),
+               target    => {collection => $collection}};
   my $response = $self->communicate($spec);
   $self->validate_response($response);
 
@@ -754,10 +822,10 @@ sub _list_collection {
 
 # Return two arrays of path specs, given a collection path to recurse
 sub _list_collection_recur {
-  my ($self, $collection, $params) = @_;
+  my ($self, $collection, $args) = @_;
 
   $self->debug("Recursing into '$collection'");
-  my ($obj_specs, $coll_specs) = $self->_list_collection($collection, $params);
+  my ($obj_specs, $coll_specs) = $self->_list_collection($collection, $args);
 
   my @coll_specs = @$coll_specs;
   my $this_coll = shift @coll_specs;
@@ -770,7 +838,7 @@ sub _list_collection_recur {
     $self->debug("Recursing into sub-collection '$path'");
 
     my ($sub_obj_specs, $sub_coll_specs) =
-      $self->_list_collection_recur($path, $params);
+      $self->_list_collection_recur($path, $args);
     push @all_obj_specs,  @$sub_obj_specs;
     push @all_coll_specs, @$sub_coll_specs;
   }
@@ -834,19 +902,19 @@ sub _to_acl_str {
   return '[' . join(', ', @strs) . ']' ;
 }
 
-sub _map_json_params {
-  my ($self, $params) = @_;
+sub _map_json_args {
+  my ($self, $args) = @_;
 
-  defined $params or
-    $self->logconfess('A defined params argument is required');
+  defined $args or
+    $self->logconfess('A defined args argument is required');
 
-  ref $params eq 'HASH' or
-    $self->logconfess('The params argument must be a HashRef: ',
-                      'recieved ', ref $params);
+  ref $args eq 'HASH' or
+    $self->logconfess('The args argument must be a HashRef: ',
+                      'recieved ', ref $args);
 
   my $mapped = {};
-  foreach my $param (keys %{$params}) {
-    $mapped->{$param} = $params->{$param} ? JSON::true : JSON::false;
+  foreach my $arg (keys %{$args}) {
+    $mapped->{$arg} = $args->{$arg} ? JSON::true : JSON::false;
   }
 
   return $mapped;

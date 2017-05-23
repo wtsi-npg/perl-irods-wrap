@@ -29,7 +29,6 @@ our $MAX_BATON_VERSION = '1.0.0';
 our $MIN_BATON_VERSION = '1.0.0';
 
 our $IADMIN      = 'iadmin';
-our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
 our $IENV        = 'ienv';
 our $IGET        = 'iget';
@@ -1304,12 +1303,7 @@ sub add_object {
                     " at '$target'");
   }
 
-  my @arguments;
-  if ($checksum_action) {
-    push @arguments , '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
 
   return $self->_unstage_object($staging_path, $target);
 }
@@ -1361,12 +1355,7 @@ sub replace_object {
                     " at '$target'");
   }
 
-  my @arguments = ('-f');
-  if ($checksum_action) {
-    push @arguments, '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
 
   return $self->_unstage_object($staging_path, $target);
 }
@@ -1462,9 +1451,7 @@ sub move_object {
   $self->debug("Moving object from '$source' to '$target'");
   $self->_clear_caches($source);
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
-                                       arguments   => [$source, $target],
-                                       environment => $self->environment)->run;
+  $self->baton_client->move_object($source, $target);
   return $target
 }
 
@@ -2006,16 +1993,7 @@ sub calculate_checksum {
 
   $object = $self->_ensure_object_path($object);
 
-  my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $ICHKSUM,
-     arguments   => ['-f', $object],
-     environment => $self->environment)->run->split_stdout;
-  unless (@raw_checksum) {
-    $self->logconfess("Failed to get iRODS checksum for '$object'");
-  }
-
-  my $checksum = shift @raw_checksum;
-  $checksum =~ s/.*([\da-f]{32})$/$1/msx;
+  my $checksum = $self->baton_client->calculate_object_checksum($object);
 
   return $checksum;
 }
@@ -2411,11 +2389,8 @@ sub _stage_object {
   my $stage_error = q[];
 
   try {
-    $self->debug("Staging '$file' to '$staging_path' with $IPUT");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IPUT,
-         arguments   => [@arguments, $file, $staging_path],
-         environment => $self->environment)->run;
+    $self->debug("Staging '$file' to '$staging_path'");
+    $self->baton_client->put_object($file, $staging_path, @arguments);
   } catch {
     $num_errors++;
     my @stack = split /\n/msx; # Chop up the stack trace
@@ -2471,11 +2446,8 @@ sub _unstage_object {
       $self->remove_object($target);
     }
 
-    $self->debug("Unstaging '$staging_path' to '$target' with $IMV");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IMV,
-         arguments   => [$staging_path, $target],
-         environment => $self->environment)->run;
+    $self->debug("Unstaging '$staging_path' to '$target'");
+    $self->move_object($staging_path, $target);
 
     # Untag the unstaged file
     $self->remove_object_avu($target, $STAGING, 1);

@@ -1,0 +1,9 @@
+{
+    "password": "p455w0rd",
+    "port": 5671,
+    "ssl": 1,
+    "ssl_cacert": "",
+    "ssl_verify_host": 0,
+    "user": "test_user",
+    "vhost": "/npg"
+}

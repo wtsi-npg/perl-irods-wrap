@@ -10,10 +10,9 @@ addons:
 
 env:
   global:
-    - secure: ZYRGAGHl/9mtiuNtSPhRR34RAqQTX5qMthUO07dytNtle7EPJ+K9tNwT6RvTL6qsNxE0gtvNiAGIZP8aKo/wzEdHKMeJT7E3HaVw/7OQpd/qHegxJlLrkTbo1DlZISM0UgM1u6505ioxzKFed+YaPq+EveHT5V713qkH626GUOw=
     - PGVERSION="9.3"
-    - JANSSON_VERSION="2.7"
-    - BATON_VERSION="0.17.1"
+    - JANSSON_VERSION="2.9"
+    - BATON_VERSION="1.0.0"
     - DISPOSABLE_IRODS_VERSION="1.2"
     - RENCI_FTP_URL=ftp://ftp.renci.org
     - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
@@ -40,19 +39,3 @@ script:
   - ilsresc -l
   - ./scripts/travis_script.sh
 
-after_success:
-  - ./Build dist
-  - export DIST_FILE=$(ls WTSI-NPG-iRODS-*.tar.gz)
-  - export SHA256_FILE=$DIST_FILE.sha256
-  - shasum -a 256 $DIST_FILE > $SHA256_FILE
-
-deploy:
-  provider: releases
-  api-key: $GH_OAUTH
-  file:
-    - $DIST_FILE
-    - $SHA256_FILE
-  skip_cleanup: true
-  on:
-    tags: true
-    all_branches: true

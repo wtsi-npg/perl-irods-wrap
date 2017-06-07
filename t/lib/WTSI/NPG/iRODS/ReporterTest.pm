@@ -88,7 +88,8 @@ my @header_keys = qw[timestamp
                      user
                      irods_user
                      type
-                     method];
+                     method
+                     uuid];
 my $expected_headers = scalar @header_keys;
 
 my $irods_tmp_coll;
@@ -141,7 +142,7 @@ sub require : Test(1) {
 
 ### collection tests ###
 
-sub test_add_collection : Test(13) {
+sub test_add_collection : Test(14) {
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
                                       routing_key_prefix   => 'test',
@@ -161,7 +162,7 @@ sub test_add_collection : Test(13) {
 }
 
 
-sub test_collection_avu : Test(40) {
+sub test_collection_avu : Test(43) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -205,7 +206,7 @@ sub test_collection_avu : Test(40) {
     }
 }
 
-sub test_put_move_collection : Test(25) {
+sub test_put_move_collection : Test(27) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -232,7 +233,7 @@ sub test_put_move_collection : Test(25) {
     }
 }
 
-sub test_remove_collection : Test(13) {
+sub test_remove_collection : Test(14) {
     my $irods_no_rmq = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                              strict_baton_version => 0,
                                              no_rmq               => 1,
@@ -257,7 +258,7 @@ sub test_remove_collection : Test(13) {
     _test_collection_message($message, $method);
 }
 
-sub test_set_collection_permissions : Test(25) {
+sub test_set_collection_permissions : Test(27) {
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
                                       routing_key_prefix   => 'test',
@@ -288,7 +289,7 @@ sub test_set_collection_permissions : Test(25) {
 
 ### data object tests ###
 
-sub test_add_object : Test(49) {
+sub test_add_object : Test(52) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -318,7 +319,7 @@ sub test_add_object : Test(49) {
     }
 }
 
-sub test_copy_object : Test(17) {
+sub test_copy_object : Test(18) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -344,7 +345,7 @@ sub test_copy_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_move_object : Test(17) {
+sub test_move_object : Test(18) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -370,7 +371,7 @@ sub test_move_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_object_avu : Test(52) {
+sub test_object_avu : Test(55) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -416,7 +417,7 @@ sub test_object_avu : Test(52) {
     }
 }
 
-sub test_remove_object : Test(15) {
+sub test_remove_object : Test(16) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -435,7 +436,7 @@ sub test_remove_object : Test(15) {
     _test_object_message($message, $method);
 }
 
-sub test_replace_object : Test(65) {
+sub test_replace_object : Test(69) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,
@@ -468,7 +469,7 @@ sub test_replace_object : Test(65) {
     }
 }
 
-sub test_set_object_permissions : Test(29) {
+sub test_set_object_permissions : Test(31) {
     # change permissions on a data object, with messaging
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0,

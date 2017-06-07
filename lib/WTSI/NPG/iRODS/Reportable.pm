@@ -6,6 +6,7 @@ use Moose::Role;
 
 use DateTime;
 use JSON;
+use UUID qw[uuid];
 use WTSI::DNAP::Utilities::Runnable;
 
 our $VERSION = '';
@@ -169,6 +170,7 @@ sub _get_headers {
         user       => $ENV{USER},  # OS username (may differ from irods_user)
 	irods_user => $irods_user, # iRODS username
         type       => q{},         # file type from metadata, if any
+	uuid       => uuid(),      # unique identifier for message
     };
     my $response_data = decode_json($response);
     foreach my $avu (@{$response_data->{'avus'}}) {
@@ -199,7 +201,7 @@ sub _publish_message {
     my ($self, $spec, $name, $now) = @_;
     my $response = $self->_list_irods_details($spec);
     $self->debug('Got response from baton: ', $response);
-    my $key = $self->routing_key_prefix.'.irods.data.create';
+    my $key = $self->routing_key_prefix.'.irods.'.$name;
     my $headers = $self->_get_headers($response, $name, $now);
     $self->rmq->publish($self->channel,
                         $key,

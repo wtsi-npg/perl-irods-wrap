@@ -432,6 +432,11 @@ sub absolute_path {
 sub ensure_collection_path {
   my ($self, $target) = @_;
 
+  if (not defined $target) {
+      $self->logconfess('A defined collection argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty collection argument is required');
+  }
   my $path = $self->_ensure_absolute_path($target);
   if (not $self->is_collection($path)) {
     $self->logconfess("A collection path is required: received '$path'");
@@ -454,6 +459,11 @@ sub ensure_collection_path {
 sub ensure_object_path {
   my ($self, $target) = @_;
 
+  if (not defined $target) {
+      $self->logconfess('A defined object argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty object argument is required');
+  }
   my $path = $self->_ensure_absolute_path($target);
   if (not $self->is_object($path)) {
     $self->logconfess("A data object path is required: received '$path'");

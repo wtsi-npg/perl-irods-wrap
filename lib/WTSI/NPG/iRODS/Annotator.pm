@@ -25,7 +25,7 @@ with qw[
 =cut
 
 sub general_suffixes {
-  return (qw[bin csv h5 tar tgz tif tsv txt xls xlsx xml]);
+  return (qw[bin csv h5 tar tgz tif tsv txt xls xlsx xml pbi]);
 }
 
 =head2 genotype_data_suffixes

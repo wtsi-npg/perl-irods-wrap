@@ -1,66 +1,3 @@
-
-{
-    package WTSI::NPG::RabbitMQ::SimpleSubscriber;
-
-    # simple class to get messages from RabbitMQ for tests
-
-    use Moose;
-    use JSON;
-    with 'WTSI::NPG::RabbitMQ::Connectable';
-
-    has 'channel' =>
-        (is       => 'ro',
-         isa      => 'Int',
-         default  => 1,
-         documentation => 'A RabbitMQ channel',
-     );
-
-    sub BUILD {
-        my ($self, ) = @_;
-        $self->rmq_connect();
-        $self->rmq->channel_open($self->channel);
-    }
-
-    sub DEMOLISH {
-        my ($self, ) = @_;
-        $self->rmq_disconnect();
-    }
-
-    sub read_next {
-        my ($self, $queue_name) = @_;
-        my $gotten = $self->rmq->get($self->channel, $queue_name);
-        my ($body, $headers);
-        my $body_string = $gotten->{body};
-        if (defined $body_string) {
-            $body = decode_json($body_string);
-            $headers = $gotten->{props}->{headers};
-        }
-        return ($body, $headers);
-    }
-
-    sub read_all {
-        my ($self, $queue_name) = @_;
-        my @messages;
-        my ($body, $headers);
-        do {
-            ($body, $headers) = $self->read_next($queue_name);
-            if (defined $body) {
-                push @messages, [$body, $headers];
-            }
-        } while ($body);
-        return @messages;
-    }
-
-
-    __PACKAGE__->meta->make_immutable;
-
-    no Moose;
-
-    1;
-
-}
-
-
 package WTSI::NPG::iRODS::ReporterTest;
 
 use strict;
@@ -77,8 +14,6 @@ use base qw[WTSI::NPG::iRODS::TestRabbitMQ];
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
 my $log = Log::Log4perl::get_logger();
-
-use WTSI::NPG::iRODS;
 
 my $pid          = $PID;
 my $test_counter = 0;
@@ -100,23 +35,28 @@ my $queue = 'test_irods_data_create_messages';
 my $ssubargs = {
         hostname             => $test_host,
         rmq_config_path      => $conf,
-    }; # arguments for SimpleSubscriber creation
+    }; # arguments for TestSubscriber creation
 
-### TODO skip tests with a warning message if RabbitMQ server is not found
+my $irods_class      = 'WTSI::NPG::TestMQiRODS';
+my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestSubscriber';
+
+# Net::AMQP::RabbitMQ is not required to be installed
+eval "require $irods_class";
+eval "require $subscriber_class";
 
 sub setup_test : Test(setup) {
     # clear the message queue
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     if (scalar @messages > 0) {
         $log->warn('Got ', scalar @messages,
                    ' unread RMQ messages from previous tests');
     }
     # messaging disabled for test setup
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      no_rmq               => 1,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  no_rmq               => 1,
+                                 );
     $cwc = $irods->working_collection;
     $irods_tmp_coll =
         $irods->add_collection("PublisherTest.$pid.$test_counter");
@@ -127,10 +67,10 @@ sub setup_test : Test(setup) {
 
 sub teardown_test : Test(teardown) {
     # messaging disabled for test teardown
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      no_rmq               => 1,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  no_rmq               => 1,
+                                 );
     $irods->working_collection($cwc);
     $irods->remove_collection($irods_tmp_coll);
 }
@@ -142,16 +82,16 @@ sub require : Test(1) {
 ### collection tests ###
 
 sub test_add_collection : Test(13) {
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
 
     my $irods_new_coll = $irods_tmp_coll.'/temp';
     $irods->add_collection($irods_new_coll);
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
@@ -160,27 +100,26 @@ sub test_add_collection : Test(13) {
     _test_collection_message($message, $method);
 }
 
-
 sub test_collection_avu : Test(40) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
 
     $irods->add_collection_avu($irods_tmp_coll, 'colour', 'green');
     $irods->add_collection_avu($irods_tmp_coll, 'colour', 'purple');
     $irods->remove_collection_avu($irods_tmp_coll, 'colour', 'green');
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 3, 'Got 3 messages from queue');
 
-    my @methods = qw/add_collection_avu
+    my @methods = qw[add_collection_avu
                      add_collection_avu
-                     remove_collection_avu/;
+                     remove_collection_avu];
     my $i = 0;
 
     my $purple =  {
@@ -207,24 +146,24 @@ sub test_collection_avu : Test(40) {
 
 sub test_put_move_collection : Test(25) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
 
     $irods->put_collection($data_path, $irods_tmp_coll);
     my $dest_coll = $irods_tmp_coll.'/reporter';
     my $moved_coll = $irods_tmp_coll.'/reporter.moved';
     $irods->move_collection($dest_coll, $moved_coll);
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
 
     my $i = 0;
-    my @methods = qw/put_collection move_collection/;
+    my @methods = qw[put_collection move_collection];
 
     foreach my $message (@messages) {
         _test_collection_message($message, $methods[$i]);
@@ -233,21 +172,21 @@ sub test_put_move_collection : Test(25) {
 }
 
 sub test_remove_collection : Test(13) {
-    my $irods_no_rmq = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                             strict_baton_version => 0,
-                                             no_rmq               => 1,
-                                         );
+    my $irods_no_rmq = $irods_class->new(environment          => \%ENV,
+                                         strict_baton_version => 0,
+                                         no_rmq               => 1,
+                                        );
     my $irods_new_coll = $irods_tmp_coll.'/temp';
     $irods_no_rmq->add_collection($irods_new_coll);
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     $irods->remove_collection($irods_new_coll);
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
 
     is(scalar @messages, 1, 'Got 1 message from queue');
@@ -258,12 +197,12 @@ sub test_remove_collection : Test(13) {
 }
 
 sub test_set_collection_permissions : Test(25) {
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     my $user = 'public';
     $irods->set_collection_permissions($WTSI::NPG::iRODS::NULL_PERMISSION,
                                        $user,
@@ -274,7 +213,7 @@ sub test_set_collection_permissions : Test(25) {
                                        $irods_tmp_coll,
                                    );
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
 
@@ -290,16 +229,16 @@ sub test_set_collection_permissions : Test(25) {
 
 sub test_add_object : Test(49) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     my $added_remote_path = "$irods_tmp_coll/lorem_copy.txt";
     $irods->add_object("$data_path/lorem.txt", $added_remote_path);
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 3, 'Got 3 messages from queue');
 
@@ -320,16 +259,16 @@ sub test_add_object : Test(49) {
 
 sub test_copy_object : Test(17) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                );
     my $copied_remote_path = "$irods_tmp_coll/lorem_copy.txt";
     $irods->copy_object($remote_file_path, $copied_remote_path);
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
@@ -346,16 +285,16 @@ sub test_copy_object : Test(17) {
 
 sub test_move_object : Test(17) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     my $moved_remote_path = "$irods_tmp_coll/lorem_moved.txt";
     $irods->move_object($remote_file_path, $moved_remote_path);
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
@@ -372,22 +311,22 @@ sub test_move_object : Test(17) {
 
 sub test_object_avu : Test(52) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
 
     $irods->add_object_avu($remote_file_path, 'colour', 'green');
     $irods->add_object_avu($remote_file_path, 'colour', 'purple');
     $irods->remove_object_avu($remote_file_path, 'colour', 'green');
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 3, 'Got 3 messages from queue');
 
-    my @methods = qw/add_object_avu add_object_avu remove_object_avu/;
+    my @methods = qw[add_object_avu add_object_avu remove_object_avu];
     my $i = 0;
     my $purple =  {
         'attribute' => 'colour',
@@ -418,14 +357,14 @@ sub test_object_avu : Test(52) {
 
 sub test_remove_object : Test(15) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     $irods->remove_object($remote_file_path);
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
 
     is(scalar @messages, 1, 'Got 1 message from queue');
@@ -437,15 +376,15 @@ sub test_remove_object : Test(15) {
 
 sub test_replace_object : Test(65) {
 
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     $irods->replace_object("$data_path/lorem.txt", $remote_file_path);
 
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
 
     is(scalar @messages, 4, 'Got 4 messages from queue');
@@ -470,12 +409,12 @@ sub test_replace_object : Test(65) {
 
 sub test_set_object_permissions : Test(29) {
     # change permissions on a data object, with messaging
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0,
-                                      routing_key_prefix   => 'test',
-                                      hostname             => $test_host,
-                                      rmq_config_path      => $conf,
-                                  );
+    my $irods = $irods_class->new(environment          => \%ENV,
+                                  strict_baton_version => 0,
+                                  routing_key_prefix   => 'test',
+                                  hostname             => $test_host,
+                                  rmq_config_path      => $conf,
+                                 );
     my $user = 'public';
     $irods->set_object_permissions($WTSI::NPG::iRODS::NULL_PERMISSION,
                                    $user,
@@ -485,7 +424,7 @@ sub test_set_object_permissions : Test(29) {
                                    $user,
                                    $remote_file_path,
                                );
-    my $subscriber = WTSI::NPG::RabbitMQ::SimpleSubscriber->new($ssubargs);
+    my $subscriber = $subscriber_class->new($ssubargs);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
     my $method = 'set_object_permissions';

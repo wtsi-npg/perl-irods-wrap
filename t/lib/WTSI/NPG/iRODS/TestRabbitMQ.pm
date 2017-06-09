@@ -30,7 +30,7 @@ sub runtests {
         $skip_msg = 'TEST_RABBITMQ environment variable is false';
     }
     if (! $run_tests) {
-	$self->SKIP_CLASS($skip_msg);
+        $self->SKIP_CLASS($skip_msg);
     }
     return $self->SUPER::runtests;
 }

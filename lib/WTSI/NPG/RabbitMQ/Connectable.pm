@@ -7,6 +7,7 @@ use Moose::Role;
 use Cwd qw[abs_path];
 use JSON;
 use File::Slurp qw[read_file];
+
 use Net::AMQP::RabbitMQ;
 
 our $VERSION = '';
@@ -61,7 +62,7 @@ sub _build_connection_opts {
         $opts = from_json(read_file($self->rmq_config_path));
     }
     if ($opts->{'ssl'}) {
-	$opts->{'ssl_cacert'} ||= $SSL_CACERT_DEFAULT;
+        $opts->{'ssl_cacert'} ||= $SSL_CACERT_DEFAULT;
     }
     return $opts;
 }
@@ -137,8 +138,6 @@ sub rmq_cluster_name {
     }
     return $name;
 }
-
-
 
 no Moose::Role;
 

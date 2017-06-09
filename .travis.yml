@@ -46,4 +46,3 @@ script:
   - ils
   - ilsresc -l
   - ./scripts/travis_script.sh
-

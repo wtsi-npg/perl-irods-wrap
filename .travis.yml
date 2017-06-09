@@ -23,7 +23,7 @@ env:
     - NPG_RMQ_HOST='localhost'
 
   matrix:
-    - IRODS_VERSION=3.3.1 IRODS_RIP_DIR=/usr/local/irods
+    # - IRODS_VERSION=3.3.1 IRODS_RIP_DIR=/usr/local/irods # temporarily disable due to iRODS 3 client bug?
     - IRODS_VERSION=4.1.10 PG_PLUGIN_VERSION=1.10 PLATFORM=ubuntu12
 
 before_install:

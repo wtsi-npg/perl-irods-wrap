@@ -70,6 +70,7 @@ our @EXPORT = qw(
                   $PACBIO_SOURCE
                   $PACBIO_WELL
                   $PACBIO_LIBRARY_NAME
+                  $PACBIO_STUDY_NAME
 
                   $BIONANO_CHIP_ID
                   $BIONANO_FLOWCELL
@@ -175,6 +176,7 @@ our $PACBIO_SET_NUMBER         = 'set_number';
 our $PACBIO_SOURCE             = 'source';
 our $PACBIO_WELL               = 'well';
 our $PACBIO_LIBRARY_NAME       = 'library_name';
+our $PACBIO_STUDY_NAME         = 'study_name';
 
 # BioNano
 our $BIONANO_CHIP_ID           = 'bnx_chip_id';

@@ -33,8 +33,10 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Encode'                    => '>= 2.42',
                           'File::Which'               => '>= 1.09',
                           'DateTime'                  => '>= 1.18',
+                          'File::Slurp'               => '>= 9999.19',
                           'IO::Pty'                   => '>= 1.10',
                           'IPC::Run'                  => '>= 0.92',
+                          'JSON'                      => '>= 2.90',
                           'Log::Log4perl'             => '>= 1.46',
                           'List::AllUtils'            => '>= 0.09',
                           'Moose'                     => '>= 2.1',
@@ -47,6 +49,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'WTSI::DNAP::Utilities'     => '>= 0.5.2',
                          },
    recommends =>         {
+                          'Net::AMQP::RabbitMQ'           => '>= 2.10',
                           'Net::LDAP'                     => '0',
                           'WTSI::DNAP::Warehouse::Schema' => '0',
                          });

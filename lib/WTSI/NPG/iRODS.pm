@@ -18,23 +18,15 @@ use Try::Tiny;
 use WTSI::DNAP::Utilities::Runnable;
 
 use WTSI::NPG::iRODS::Metadata qw($FILE_MD5 $STAGING);
-use WTSI::NPG::iRODS::ACLModifier;
-use WTSI::NPG::iRODS::DataObjectReader;
-use WTSI::NPG::iRODS::Lister;
-use WTSI::NPG::iRODS::MetaLister;
-use WTSI::NPG::iRODS::MetaModifier;
-use WTSI::NPG::iRODS::MetaSearcher;
+use WTSI::NPG::iRODS::BatonClient;
 use WTSI::NPG::iRODS::Types qw(:all);
-
-with 'WTSI::DNAP::Utilities::Loggable', 'WTSI::NPG::iRODS::Utilities';
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.17.1';
-our $MIN_BATON_VERSION = '0.16.4';
+our $MAX_BATON_VERSION = '1.0.0';
+our $MIN_BATON_VERSION = '1.0.0';
 
 our $IADMIN      = 'iadmin';
-our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
 our $IENV        = 'ienv';
 our $IGET        = 'iget';
@@ -136,160 +128,13 @@ has 'working_collection' =>
    predicate => 'has_working_collection',
    clearer   => 'clear_working_collection');
 
-has 'lister' =>
+has 'baton_client' =>
   (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
+   isa      => 'WTSI::NPG::iRODS::BatonClient',
    required => 1,
    lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered',],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_lister');
-
-has 'contents_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--contents'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_contents_lister',);
-
-has 'detailed_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--checksum', '--contents',
-                        '--replicate'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_detailed_lister');
-
-has 'acl_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--acl', '--contents'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_acl_lister');
-
-has 'meta_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaLister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaLister->new
-       (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_lister');
-
-has 'meta_adder' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--unbuffered', '--operation', 'add'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_adder');
-
-has 'meta_remover' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--unbuffered', '--operation', 'rem'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_remover');
-
-has 'coll_searcher' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaSearcher->new
-       (arguments   => ['--unbuffered', '--coll'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_coll_searcher');
-
-has 'obj_searcher' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaSearcher->new
-       (arguments   => ['--unbuffered', '--obj'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_obj_searcher');
-
-has 'acl_modifier' =>
-  (is         => 'ro',
-   isa      => 'WTSI::NPG::iRODS::ACLModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::ACLModifier->new
-       (arguments   => ['--unbuffered'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_acl_modifier');
-
-has 'obj_reader' =>
-  (is         => 'ro',
-   isa      => 'WTSI::NPG::iRODS::DataObjectReader',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::DataObjectReader->new
-       (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_obj_reader');
+   builder  => '_build_baton_client',
+   predicate => 'has_baton_client');
 
 has '_path_cache' =>
   (is            => 'ro',
@@ -314,6 +159,10 @@ has '_permissions_cache' =>
    lazy          => 1,
    default       => sub { return Cache::LRU->new(size => $DEFAULT_CACHE_SIZE) },
    documentation => 'A cache mapping known iRODS paths to their permissions');
+
+
+with 'WTSI::DNAP::Utilities::Loggable',
+     'WTSI::NPG::iRODS::Utilities';
 
 sub BUILD {
   my ($self) = @_;
@@ -382,7 +231,7 @@ around 'working_collection' => sub {
     $collection eq q{} and
       $self->logconfess('A non-empty collection argument is required');
 
-    $collection = $self->_ensure_collection_path($collection);
+    $collection = $self->ensure_collection_path($collection);
     $self->debug("Changing working_collection to '$collection'");
     $self->$orig($collection);
   }
@@ -412,6 +261,60 @@ sub absolute_path {
   $path = canonpath($path);
 
   return $self->_ensure_absolute_path($path);
+}
+
+=head2 ensure_collection_path
+
+  Arg [1]    : An iRODS path.
+
+  Example    : $irods->ensure_collection_path('./path')
+  Description: Given an iRODS collection, return its absolute path. Raise
+               an error if the input path is not an iRODS collection.
+  Returntype : Str
+
+=cut
+
+sub ensure_collection_path {
+  my ($self, $target) = @_;
+
+  if (not defined $target) {
+      $self->logconfess('A defined collection argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty collection argument is required');
+  }
+  my $path = $self->_ensure_absolute_path($target);
+  if (not $self->is_collection($path)) {
+    $self->logconfess("A collection path is required: received '$path'");
+  }
+
+  return $path;
+}
+
+=head2 ensure_object_path
+
+  Arg [1]    : An iRODS path.
+
+  Example    : $irods->ensure_object_path('./path')
+  Description: Given an iRODS data object, return its absolute path. Raise
+               an error if the input path is not an iRODS data object.
+  Returntype : Str
+
+=cut
+
+sub ensure_object_path {
+  my ($self, $target) = @_;
+
+  if (not defined $target) {
+      $self->logconfess('A defined object argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty object argument is required');
+  }
+  my $path = $self->_ensure_absolute_path($target);
+  if (not $self->is_object($path)) {
+    $self->logconfess("A data object path is required: received '$path'");
+  }
+
+  return $path;
 }
 
 =head2 get_irods_env
@@ -739,7 +642,7 @@ sub is_collection {
   $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
-  return $self->lister->is_collection($path);
+  return $self->baton_client->is_collection($path);
 }
 
 =head2 list_collection
@@ -774,7 +677,7 @@ sub list_collection {
   my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
 
-  return $self->contents_lister->list_collection($collection, $recurse);
+  return $self->baton_client->list_collection($collection, $recurse);
 }
 
 =head2 add_collection
@@ -832,7 +735,7 @@ sub put_collection {
 
   # iput does not accept trailing slashes on directories
   $dir = canonpath($dir);
-  $target = $self->_ensure_collection_path($target);
+  $target = $self->ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
   my @args = ('-r', $dir, $target);
@@ -867,7 +770,7 @@ sub move_collection {
   $target eq q{} and
     $self->logconfess('A non-empty target (collection) argument is required');
 
-  $source = $self->_ensure_collection_path($source);
+  $source = $self->ensure_collection_path($source);
   $target = canonpath($target);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
@@ -903,7 +806,7 @@ sub get_collection {
   $target eq q{} and
     $self->logconfess('A non-empty target (directory) argument is required');
 
-  $source = $self->_ensure_collection_path($source);
+  $source = $self->ensure_collection_path($source);
   $target = canonpath($target);
   $self->debug("Getting from '$source' to '$target'");
 
@@ -934,7 +837,7 @@ sub remove_collection {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
   $self->debug("Removing collection '$collection'");
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
@@ -962,9 +865,9 @@ sub get_collection_permissions {
   $collection eq q{}
     and $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
-  return $self->sort_acl($self->acl_lister->get_collection_acl($collection));
+  return $self->sort_acl($self->baton_client->get_collection_acl($collection));
 }
 
 =head2 set_collection_permissions
@@ -996,7 +899,7 @@ sub set_collection_permissions {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
   my $perm_str = defined $level ? $level : 'null';
 
@@ -1018,7 +921,7 @@ sub set_collection_permissions {
                  "'$perm_str' for '$owner_name#$zone'");
   }
   else {
-    $self->acl_modifier->chmod_collection($perm_str, $owner, $collection);
+    $self->baton_client->chmod_collection($perm_str, $owner, $collection);
   }
 
   return $collection;
@@ -1049,7 +952,7 @@ sub get_collection_groups {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
   my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
@@ -1094,9 +997,9 @@ sub get_collection_meta {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
-  my @avus = $self->meta_lister->list_collection_meta($collection);
+  my @avus = $self->baton_client->list_collection_meta($collection);
 
   return $self->sort_avus(@avus);
 }
@@ -1134,7 +1037,7 @@ sub add_collection_avu {
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
   $self->debug("Adding AVU ['$attribute', '$value', $units_str] ",
                "to '$collection'");
 
@@ -1144,8 +1047,8 @@ sub add_collection_avu {
                       "already exists for '$collection'");
   }
 
-  return $self->meta_adder->modify_collection_meta($collection, $attribute,
-                                                   $value, $units);
+  return $self->baton_client->add_collection_avu($collection, $attribute,
+                                                 $value, $units);
 }
 
 =head2 remove_collection_avu
@@ -1181,7 +1084,7 @@ sub remove_collection_avu {
 
   my $units_str = defined $units ? "'$units'" : "'undef'";
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
   $self->debug("Removing AVU ['$attribute', '$value', $units_str] ",
                "from '$collection'");
 
@@ -1191,8 +1094,8 @@ sub remove_collection_avu {
                     "does not exist for '$collection'");
   }
 
-  return $self->meta_remover->modify_collection_meta($collection, $attribute,
-                                                     $value, $units);
+  return $self->baton_client->remove_collection_avu($collection, $attribute,
+                                                    $value, $units);
 }
 
 =head2 make_collection_avu_history
@@ -1231,7 +1134,7 @@ sub make_collection_avu_history {
   $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
   my @historic_avus = grep { $_->{attribute} eq $attribute }
     $self->get_collection_meta($collection);
@@ -1267,7 +1170,7 @@ sub find_collections_by_meta {
   defined $root or $self->logconfess('A defined root argument is required');
   $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
-  $root = $self->_ensure_collection_path($root);
+  $root = $self->ensure_collection_path($root);
 
   # Ensure a single trailing slash for collection boundary matching.
   $root =~ s/\/*$/\//msx;
@@ -1289,7 +1192,8 @@ sub find_collections_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->coll_searcher->search($zone_path, @avu_specs);
+  my $results = $self->baton_client->search_collections($zone_path,
+                                                        @avu_specs);
   $self->debug("Found ", scalar @$results,
                "collections (to filter by '$root')");
 
@@ -1329,7 +1233,7 @@ sub is_object {
     $is_object = 1;
   }
   else {
-    $is_object = $self->lister->is_object($path);
+    $is_object = $self->baton_client->is_object($path);
     if ($is_object) {
       $self->debug("Caching is_object for '$path'");
       $self->_path_cache->set($path, $OBJECT_PATH);
@@ -1370,7 +1274,7 @@ sub list_object {
     $result = $object; # Optimisation to use the path_cache
   }
   else {
-    $result = $self->lister->list_object($object);
+    $result = $self->baton_client->list_object($object);
   }
 
   return $result;
@@ -1395,10 +1299,10 @@ sub read_object {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
   $self->debug("Reading object '$object'");
 
-  return $self->obj_reader->read_object($object);
+  return $self->baton_client->read_object($object);
 }
 
 =head2 add_object
@@ -1455,12 +1359,7 @@ sub add_object {
                     " at '$target'");
   }
 
-  my @arguments;
-  if ($checksum_action) {
-    push @arguments , '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
 
   return $self->_unstage_object($staging_path, $target);
 }
@@ -1503,7 +1402,7 @@ sub replace_object {
     $checksum_action = $CALC_CHECKSUM;
   }
 
-  $target = $self->_ensure_object_path($target);
+  $target = $self->ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
   my $staging_path = $self->_find_staging_path($target);
@@ -1512,12 +1411,7 @@ sub replace_object {
                     " at '$target'");
   }
 
-  my @arguments = ('-f');
-  if ($checksum_action) {
-    push @arguments, '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
+  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
 
   return $self->_unstage_object($staging_path, $target);
 }
@@ -1555,7 +1449,7 @@ sub copy_object {
       $self->logconfess("translator argument must be a CodeRef");
   }
 
-  $source = $self->_ensure_object_path($source);
+  $source = $self->ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
 
   if ($self->is_collection($target)) {
@@ -1608,14 +1502,12 @@ sub move_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (object) argument is required');
 
-  $source = $self->_ensure_object_path($source);
+  $source = $self->ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving object from '$source' to '$target'");
   $self->_clear_caches($source);
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
-                                       arguments   => [$source, $target],
-                                       environment => $self->environment)->run;
+  $self->baton_client->move_object($source, $target);
   return $target
 }
 
@@ -1643,7 +1535,7 @@ sub get_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (file) argument is required');
 
-  $source = $self->_ensure_object_path($source);
+  $source = $self->ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
 
   my @args = ('-f', '-T', $source, $target);
@@ -1673,7 +1565,7 @@ sub remove_object {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
   $self->debug("Removing object '$object'");
   $self->_clear_caches($object);
 
@@ -1703,7 +1595,7 @@ sub slurp_object {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
   $self->debug("Slurping object '$object'");
 
   return $self->read_object($object);
@@ -1728,14 +1620,14 @@ sub get_object_permissions {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $cached = $self->_permissions_cache->get($object);
   if (defined $cached) {
     $self->debug("Using cached ACL for '$object': ", pp($cached));
   }
   else {
-    my @acl = $self->acl_lister->get_object_acl($object);
+    my @acl = $self->baton_client->get_object_acl($object);
     $cached = $self->_cache_permissions($object, \@acl);
   }
 
@@ -1772,7 +1664,7 @@ sub set_object_permissions {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
@@ -1792,7 +1684,7 @@ sub set_object_permissions {
                  "'$perm_str' for '$owner_name#$zone'");
   }
   else {
-    $self->acl_modifier->chmod_object($perm_str, $owner, $object);
+    $self->baton_client->chmod_object($perm_str, $owner, $object);
 
     # Having 'null' permission means having no permission, so these
     # must be removed from the cached ACL.
@@ -1833,7 +1725,7 @@ sub get_object_groups {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $perm_str = defined $level ? $level : $NULL_PERMISSION;
 
@@ -1877,14 +1769,14 @@ sub get_object_meta {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $cached = $self->_metadata_cache->get($object);
   if (defined $cached) {
     $self->debug("Using cached AVUs for '$object': ", pp($cached));
   }
   else {
-    my @avus = $self->meta_lister->list_object_meta($object);
+    my @avus = $self->baton_client->list_object_meta($object);
     $cached = $self->_cache_metadata($object, \@avus);
   }
 
@@ -1921,7 +1813,7 @@ sub add_object_avu {
   $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $avu = $self->make_avu($attribute, $value, $units);
   my $avu_str = $self->avu_str($avu);
@@ -1932,8 +1824,8 @@ sub add_object_avu {
     $self->logconfess("AVU $avu_str already exists for '$object'");
   }
   else {
-    $self->meta_adder->modify_object_meta($object, $attribute,
-                                          $value, $units);
+    $self->baton_client->add_object_avu($object, $attribute, $value,
+                                        $units);
     $self->_cache_metadata($object, [@current_meta, $avu]);
   }
 
@@ -1972,7 +1864,7 @@ sub remove_object_avu {
   $value eq q{} and
     $self->logconfess('A non-empty value argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $avu = $self->make_avu($attribute, $value, $units);
   my $avu_str = $self->avu_str($avu);
@@ -1983,8 +1875,8 @@ sub remove_object_avu {
     $self->logconfess("AVU $avu_str does not exist for '$object'");
   }
   else {
-    $self->meta_remover->modify_object_meta($object, $attribute,
-                                            $value, $units);
+    $self->baton_client->remove_object_avu($object, $attribute, $value,
+                                           $units);
     my @remain = grep { not $self->avus_equal($avu, $_) } @current_meta;
     $self->_cache_metadata($object, \@remain);
   }
@@ -2028,7 +1920,7 @@ sub make_object_avu_history {
   $attribute eq q{} and
     $self->logconfess('A non-empty attribute argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my @historic_avus = grep { $_->{attribute} eq $attribute }
     $self->get_object_meta($object);
@@ -2065,7 +1957,7 @@ sub find_objects_by_meta {
   defined $root or $self->logconfess('A defined root argument is required');
   $root eq q{} and $self->logconfess('A non-empty root argument is required');
 
-  $root = $self->_ensure_collection_path($root);
+  $root = $self->ensure_collection_path($root);
 
   # Ensure a single trailing slash for collection boundary matching.
   $root =~ s/\/*$/\//msx;
@@ -2087,7 +1979,7 @@ sub find_objects_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->obj_searcher->search($zone_path, @avu_specs);
+  my $results = $self->baton_client->search_objects($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results, " objects (to filter by '$root')");
   my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");
@@ -2116,9 +2008,9 @@ sub checksum {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
-  return $self->detailed_lister->list_object_checksum($object);
+  return $self->baton_client->list_object_checksum($object);
 }
 
 sub collection_checksums {
@@ -2130,10 +2022,9 @@ sub collection_checksums {
   $collection eq q{} and
     $self->logconfess('A non-empty collection argument is required');
 
-  $collection = $self->_ensure_collection_path($collection);
+  $collection = $self->ensure_collection_path($collection);
 
-  return $self->detailed_lister->list_collection_checksums
-    ($collection, $recurse);
+  return $self->baton_client->list_collection_checksums($collection, $recurse);
 }
 
 =head2 calculate_checksum
@@ -2156,18 +2047,9 @@ sub calculate_checksum {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
-  my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $ICHKSUM,
-     arguments   => ['-f', $object],
-     environment => $self->environment)->run->split_stdout;
-  unless (@raw_checksum) {
-    $self->logconfess("Failed to get iRODS checksum for '$object'");
-  }
-
-  my $checksum = shift @raw_checksum;
-  $checksum =~ s/.*([\da-f]{32})$/$1/msx;
+  my $checksum = $self->baton_client->calculate_object_checksum($object);
 
   return $checksum;
 }
@@ -2192,7 +2074,7 @@ sub validate_checksum_metadata {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   my $identical = 0;
   my @md5 = grep { $_->{attribute} eq $FILE_MD5 }
@@ -2253,9 +2135,9 @@ sub replicates {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
-  return $self->detailed_lister->list_object_replicates($object);
+  return $self->baton_client->list_object_replicates($object);
 }
 
 =head2 valid_replicates
@@ -2369,7 +2251,7 @@ sub remove_replicate {
   $object eq q{} and
     $self->logconfess('A non-empty object argument is required');
 
-  $object = $self->_ensure_object_path($object);
+  $object = $self->ensure_object_path($object);
 
   $replicate_num =~ m{^\d+$}msx or
     $self->logconfess('A non-negative integer replicate_num argument ',
@@ -2431,6 +2313,14 @@ sub is_avu_history_attr {
   return $attribute =~ m{.*_history$}msx;
 }
 
+sub _build_baton_client {
+  my ($self) = @_;
+
+  return WTSI::NPG::iRODS::BatonClient->new
+    (arguments   => ['--unbuffered'],
+     environment => $self->environment)->start;
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -2440,28 +2330,6 @@ sub _ensure_absolute_path {
   }
 
   return $absolute;
-}
-
-sub _ensure_collection_path {
-  my ($self, $target) = @_;
-
-  my $path = $self->_ensure_absolute_path($target);
-  if (not $self->is_collection($path)) {
-    $self->logconfess("A collection path is required: received '$path'");
-  }
-
-  return $path;
-}
-
-sub _ensure_object_path {
-  my ($self, $target) = @_;
-
-  my $path = $self->_ensure_absolute_path($target);
-  if (not $self->is_object($path)) {
-    $self->logconfess("A data object path is required: received '$path'");
-  }
-
-  return $path;
 }
 
 sub _meta_exists {
@@ -2555,25 +2423,25 @@ sub _stage_object {
   my $stage_error = q[];
 
   try {
-    $self->debug("Staging '$file' to '$staging_path' with $IPUT");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IPUT,
-         arguments   => [@arguments, $file, $staging_path],
-         environment => $self->environment)->run;
+    $self->debug("Staging '$file' to '$staging_path'");
+    $self->baton_client->put_object($file, $staging_path, @arguments);
+    # Tag staging file for easy location with a query
+    $self->add_object_avu($staging_path, $STAGING, 1);
   } catch {
     $num_errors++;
-    my @stack = split /\n/msx; # Chop up the stack trace
-    $stage_error = pop @stack;
-  } finally {
+    my @stack1 = split /\n/msx; # Chop up the stack trace
+    $stage_error = pop @stack1;
+
     try {
       # A failed iput may still leave orphaned replicates
       if ($self->is_object($staging_path)) {
-        # Tag staging file for easy location with a query
-        $self->add_object_avu($staging_path, $STAGING, 1);
+        $self->debug("Cleaning up (deleting) staging file '$staging_path'");
+        $self->remove_object($staging_path);
       }
     } catch {
-      my @stack = split /\n/msx;
-      $self->error("Failed to tag staging path '$staging_path': ", pop @stack);
+      my @stack2 = split /\n/msx;
+      $self->error("Failed to remove failed staging file '$staging_path': ",
+                   pop @stack2);
     };
   };
 
@@ -2609,24 +2477,35 @@ sub _unstage_object {
       # This includes target=1 so we are accepting a race condition
       # between customer queries and the file move below
       foreach my $avu (@target_meta) {
-        $self->add_object_avu($staging_path, $avu->{attribute},
-                              $avu->{value}, $avu->{units});
+        if ($avu->{attribute} eq $STAGING) {
+          $self->warn("Found $STAGING AVU on published file '$target'");
+        }
+        else {
+          $self->add_object_avu($staging_path, $avu->{attribute},
+                                $avu->{value}, $avu->{units});
+        }
       }
       $self->remove_object($target);
     }
 
-    $self->debug("Unstaging '$staging_path' to '$target' with $IMV");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IMV,
-         arguments   => [$staging_path, $target],
-         environment => $self->environment)->run;
+    $self->debug("Unstaging '$staging_path' to '$target'");
+    $self->move_object($staging_path, $target);
 
     # Untag the unstaged file
     $self->remove_object_avu($target, $STAGING, 1);
   } catch {
     $num_errors++;
-    my @stack = split /\n/msx;
-    $self->error("Failed to move '$staging_path' to '$target': ", pop @stack);
+    my @stack1 = split /\n/msx;
+    $unstage_error = pop @stack1;
+
+    try {
+      $self->debug("Cleaning up (deleting) staging file '$staging_path'");
+      $self->remove_object($staging_path);
+    } catch {
+      my @stack2 = split /\n/msx;
+      $self->error("Failed to remove failed staging file '$staging_path': ",
+                   pop @stack2);
+    };
   };
 
   if ($num_errors > 0) {
@@ -2690,55 +2569,27 @@ sub DEMOLISH {
 
   # Only do try to stop cleanly if the object is not already being
   # destroyed by Perl (as indicated by the flag passed in by Moose).
-
-  my @clients = qw[
-                    acl_lister
-                    acl_modifier
-                    coll_searcher
-                    contents_lister
-                    detailed_lister
-                    lister
-                    meta_adder
-                    meta_lister
-                    meta_remover
-                    obj_reader
-                    obj_searcher
-                 ];
-
-  my $handles_errors = qr/((acl|contents|detailed)_)?lister/msx;
-
   if (not $in_global_destruction) {
 
-    # Stop any active clients and log any errors that they encountered
-    # while running. This preempts the clients being stopped within
-    # their own destructors and allows our logger to be resonsible for
+    # Stop any active client and log any errors that it encountered
+    # while running. This preempts the client being stopped within its
+    # own destructor and allows our logger to be resonsible for
     # reporting any errors.
     #
-    # If stopping were left to the client destructors, Moose would
+    # If stopping were left to the client destructor, Moose would
     # handle any errors by warning to STDERR instead of using the log.
-    foreach my $client (@clients) {
-      my $predicate = "has_$client";
-      if ($self->$predicate) {
-        try {
-          $self->debug("Stopping $client client");
-          my $startable = $self->$client;
+    if ($self->has_baton_client) {
+      try {
+        $self->debug("Stopping baton client");
+        my $startable = $self->baton_client;
 
-          if ($client =~ m{$handles_errors}msx) {
-            my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
-            $muffled->level($OFF);
-            $startable->logger($muffled);
-          }
-
-          $startable->stop;
-        } catch {
-          if ($client =~ m{$handles_errors}msx) {
-            $self->debug("$client handled expected error: ", $_);
-          }
-          else {
-            $self->error("Failed to stop $client cleanly: ", $_);
-          }
-        };
-      }
+        my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
+        $muffled->level($OFF);
+        $startable->logger($muffled);
+        $startable->stop;
+      } catch {
+        $self->error("Failed to stop baton client cleanly: ", $_);
+      };
     }
   }
 

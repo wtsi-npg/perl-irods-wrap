@@ -1,0 +1,6 @@
+{
+    "password": "p455w0rd",
+    "port": 5672,
+    "user": "test_user",
+    "vhost": "test_vhost"
+}

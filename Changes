@@ -1,3 +1,15 @@
+
+Release 2.8.0
+ - (un)staging new data objects
+      error results in deletion rather than tagging for inspection
+      post-failure "staging=1" AVU ignored rather than error
+ - new PacBio legacy metadata
+ - switch to baton-do as the single baton client
+ - support for RabbitMQ messaging to report method calls
+ - stop using imv, ichksum and md5sum executables
+ - add fasta type
+ - use baton version 1.0.0 
+
 Release 2.7.1
 
  - Bug fix and speed-up for populate_wtsi_irods_groups.pl 

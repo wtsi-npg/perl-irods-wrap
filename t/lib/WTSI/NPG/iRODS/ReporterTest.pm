@@ -32,10 +32,9 @@ my $cwc;
 my $test_host = $ENV{'NPG_RMQ_HOST'} || 'localhost';
 my $conf = $ENV{'NPG_RMQ_CONFIG'} || './etc/rmq_test_config.json';
 my $queue = 'test_irods_data_create_messages';
-my $ssubargs = {
-        hostname             => $test_host,
-        rmq_config_path      => $conf,
-    }; # arguments for TestSubscriber creation
+my $subscriber_args_base = {hostname             => $test_host,
+                            rmq_config_path      => $conf,
+                        }; # arguments for TestSubscriber creation
 
 my $irods_class      = 'WTSI::NPG::TestMQiRODS';
 my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestSubscriber';
@@ -44,14 +43,19 @@ my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestSubscriber';
 eval "require $irods_class";
 eval "require $subscriber_class";
 
+# Each test has a channel number, equal to $test_counter. The channel
+# is used by the publisher (iRODS instance) and subscriber in that test only.
+
 sub setup_test : Test(setup) {
-    # clear the message queue
-    my $subscriber = $subscriber_class->new($ssubargs);
+    # Clear the message queue. For a given run of the test harness, each
+    # test has its own RabbitMQ channel; but messages may persist between runs
+    # in a given queue and channel, eg. from previous failed tests.
+    # (Assigning a unique queue name would need reconfiguration of the
+    # RabbitMQ test server.)
+    $test_counter++;
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
-    if (scalar @messages > 0) {
-        $log->warn('Got ', scalar @messages,
-                   ' unread RMQ messages from previous tests');
-    }
     # messaging disabled for test setup
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -62,7 +66,6 @@ sub setup_test : Test(setup) {
         $irods->add_collection("PublisherTest.$pid.$test_counter");
     $remote_file_path = "$irods_tmp_coll/lorem.txt";
     $irods->add_object("$data_path/lorem.txt", $remote_file_path);
-    $test_counter++;
 }
 
 sub teardown_test : Test(teardown) {
@@ -87,11 +90,14 @@ sub test_add_collection : Test(13) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
 
     my $irods_new_coll = $irods_tmp_coll.'/temp';
     $irods->add_collection($irods_new_coll);
-    my $subscriber = $subscriber_class->new($ssubargs);
+
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
@@ -107,13 +113,15 @@ sub test_collection_avu : Test(40) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
 
     $irods->add_collection_avu($irods_tmp_coll, 'colour', 'green');
     $irods->add_collection_avu($irods_tmp_coll, 'colour', 'purple');
     $irods->remove_collection_avu($irods_tmp_coll, 'colour', 'green');
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 3, 'Got 3 messages from queue');
 
@@ -151,6 +159,7 @@ sub test_put_move_collection : Test(25) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
 
     $irods->put_collection($data_path, $irods_tmp_coll);
@@ -158,7 +167,8 @@ sub test_put_move_collection : Test(25) {
     my $moved_coll = $irods_tmp_coll.'/reporter.moved';
     $irods->move_collection($dest_coll, $moved_coll);
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
 
@@ -184,9 +194,11 @@ sub test_remove_collection : Test(13) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     $irods->remove_collection($irods_new_coll);
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
 
     is(scalar @messages, 1, 'Got 1 message from queue');
@@ -202,6 +214,7 @@ sub test_set_collection_permissions : Test(25) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     my $user = 'public';
     $irods->set_collection_permissions($WTSI::NPG::iRODS::NULL_PERMISSION,
@@ -213,7 +226,8 @@ sub test_set_collection_permissions : Test(25) {
                                        $irods_tmp_coll,
                                    );
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
 
@@ -227,34 +241,32 @@ sub test_set_collection_permissions : Test(25) {
 
 ### data object tests ###
 
-sub test_add_object : Test(49) {
+sub test_add_object : Test(17) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     my $added_remote_path = "$irods_tmp_coll/lorem_copy.txt";
     $irods->add_object("$data_path/lorem.txt", $added_remote_path);
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
-    is(scalar @messages, 3, 'Got 3 messages from queue');
 
-    my @methods = qw[add_object_avu remove_object_avu add_object];
-    my $i = 0;
+    is(scalar @messages, 1, 'Got 1 message from queue');
 
-    foreach my $message (@messages) {
-        _test_object_message($message, $methods[$i]);
-        $i++;
-        my ($body, $headers) = @{$message};
-        # temporary staging object is named lorem_copy.txt.[suffix]
-        ok($body->{'data_object'} =~ /^lorem_copy\.txt/msx,
-           'Data object name starts with lorem_copy.txt');
-        ok($body->{'collection'} eq $irods_tmp_coll,
-           "Collection name is $irods_tmp_coll");
-    }
+    my $message = shift @messages;
+    _test_object_message($message, 'add_object');
+    my ($body, $headers) = @{$message};
+    # temporary staging object is named lorem_copy.txt.[suffix]
+    ok($body->{'data_object'} =~ /^lorem_copy\.txt/msx,
+       'Data object name starts with lorem_copy.txt');
+    ok($body->{'collection'} eq $irods_tmp_coll,
+       "Collection name is $irods_tmp_coll");
 }
 
 sub test_copy_object : Test(17) {
@@ -264,17 +276,18 @@ sub test_copy_object : Test(17) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                 );
     my $copied_remote_path = "$irods_tmp_coll/lorem_copy.txt";
     $irods->copy_object($remote_file_path, $copied_remote_path);
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
-    my $method = 'copy_object';
     my $message = shift @messages;
-    _test_object_message($message, $method);
+    _test_object_message($message, 'copy_object');
 
     my ($body, $headers) = @{$message};
     ok($body->{'data_object'} eq 'lorem_copy.txt',
@@ -290,17 +303,18 @@ sub test_move_object : Test(17) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     my $moved_remote_path = "$irods_tmp_coll/lorem_moved.txt";
     $irods->move_object($remote_file_path, $moved_remote_path);
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 1, 'Got 1 message from queue');
 
-    my $method = 'move_object';
     my $message = shift @messages;
-    _test_object_message($message, $method);
+    _test_object_message($message, 'move_object');
 
     my ($body, $headers) = @{$message};
     ok($body->{'data_object'} eq 'lorem_moved.txt',
@@ -316,13 +330,15 @@ sub test_object_avu : Test(52) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
 
     $irods->add_object_avu($remote_file_path, 'colour', 'green');
     $irods->add_object_avu($remote_file_path, 'colour', 'purple');
     $irods->remove_object_avu($remote_file_path, 'colour', 'green');
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 3, 'Got 3 messages from queue');
 
@@ -362,9 +378,11 @@ sub test_remove_object : Test(15) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     $irods->remove_object($remote_file_path);
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
 
     is(scalar @messages, 1, 'Got 1 message from queue');
@@ -374,37 +392,30 @@ sub test_remove_object : Test(15) {
     _test_object_message($message, $method);
 }
 
-sub test_replace_object : Test(65) {
+sub test_replace_object : Test(17) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     $irods->replace_object("$data_path/lorem.txt", $remote_file_path);
 
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
+    is(scalar @messages, 1, 'Got 1 message from queue');
 
-    is(scalar @messages, 4, 'Got 4 messages from queue');
-
-    my @methods = qw[add_object_avu
-                     remove_object
-                     remove_object_avu
-                     replace_object];
-    my $i = 0;
-
-    foreach my $message (@messages) {
-        _test_object_message($message, $methods[$i]);
-        $i++;
-        my ($body, $headers) = @{$message};
-        # temporary staging object is named lorem.txt.[suffix]
-        ok($body->{'data_object'} =~ /^lorem\.txt/msx,
-           'Data object name starts with lorem.txt');
-        ok($body->{'collection'} eq $irods_tmp_coll,
-           "Collection name is $irods_tmp_coll");
-    }
+    my $message = shift @messages;
+    _test_object_message($message, 'replace_object');
+    my ($body, $headers) = @{$message};
+    # temporary staging object is named lorem.txt.[suffix]
+    ok($body->{'data_object'} =~ /^lorem\.txt/msx,
+       'Data object name starts with lorem.txt');
+    ok($body->{'collection'} eq $irods_tmp_coll,
+       "Collection name is $irods_tmp_coll");
 }
 
 sub test_set_object_permissions : Test(29) {
@@ -414,6 +425,7 @@ sub test_set_object_permissions : Test(29) {
                                   routing_key_prefix   => 'test',
                                   hostname             => $test_host,
                                   rmq_config_path      => $conf,
+                                  channel              => $test_counter,
                                  );
     my $user = 'public';
     $irods->set_object_permissions($WTSI::NPG::iRODS::NULL_PERMISSION,
@@ -424,7 +436,8 @@ sub test_set_object_permissions : Test(29) {
                                    $user,
                                    $remote_file_path,
                                );
-    my $subscriber = $subscriber_class->new($ssubargs);
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
     my @messages = $subscriber->read_all($queue);
     is(scalar @messages, 2, 'Got 2 messages from queue');
     my $method = 'set_object_permissions';
@@ -436,8 +449,19 @@ sub test_set_object_permissions : Test(29) {
 
 ### methods for repeated tests ###
 
+sub _get_subscriber_args {
+    my ($channel, ) = @_;
+    my $args = {
+        hostname             => $test_host, # global variable
+        rmq_config_path      => $conf,      # global variable
+        channel              => $channel,
+    };
+    return $args;
+}
+
 sub _test_collection_message {
     my ($message, $method) = @_;
+    # total tests = 12
     my ($body, $headers) = @{$message};
     my @body_keys_coll = qw[collection
                             timestamps
@@ -462,6 +486,7 @@ sub _test_collection_message {
 
 sub _test_object_message {
     my ($message, $method) = @_;
+    # total tests = 14
     my ($body, $headers) = @{$message};
     my @body_keys_obj = qw[collection
                            data_object

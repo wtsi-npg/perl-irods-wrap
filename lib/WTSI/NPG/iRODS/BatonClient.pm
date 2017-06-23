@@ -535,6 +535,25 @@ sub list_object_meta {
   return $self->_list_path_meta($spec);
 }
 
+sub list_path_details {
+  my ($self, $path) = @_;
+
+  defined $path or
+    $self->logconfess('A defined path argument is required');
+  $path =~ m{^/}msx or
+      $self->logconfess("An absolute path argument is required: ",
+                        "received '$path'");
+
+  my $args = { acl => 1, avu => 1, replicate => 1, timestamp => 1 };
+  my $response = $self->_list_path($path, $args);
+
+  if (exists $response->{error}) {
+    $self->report_error($response);
+  }
+
+  return $response;
+}
+
 sub add_collection_avu {
   my ($self, $collection, $attribute, $value, $units) = @_;
 

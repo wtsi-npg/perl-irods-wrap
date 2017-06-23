@@ -263,6 +263,36 @@ sub absolute_path {
   return $self->_ensure_absolute_path($path);
 }
 
+=head2 list_path_details
+
+  Arg [1]    : An iRODS path.
+
+  Example    : $response = $irods->list_path_details($path)
+  Description: Read details of a given iRODS path: access, AVUs,
+               replicates, and timestamps. The path may represent a data
+               object or a collection. Runs baton-list with the --acl,
+               --avu, --replicate, and --timestamp options in effect, and
+               returns a data structure derived from the JSON output.
+  Returntype : HashRef
+
+=cut
+
+sub list_path_details {
+  my ($self, $path) = @_;
+
+  defined $path or
+    $self->logconfess('A defined path argument is required');
+
+  $path eq q{} and
+    $self->logconfess('A non-empty path argument is required');
+
+  $path = canonpath($path);
+  $path = $self->_ensure_absolute_path($path);
+  $self->debug("Listing details for path '$path'");
+
+  return $self->baton_client->list_path_details($path);
+}
+
 =head2 ensure_collection_path
 
   Arg [1]    : An iRODS path.

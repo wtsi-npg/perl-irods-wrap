@@ -32,9 +32,6 @@ my $cwc;
 my $test_host = $ENV{'NPG_RMQ_HOST'} || 'localhost';
 my $conf = $ENV{'NPG_RMQ_CONFIG'} || './etc/rmq_test_config.json';
 my $queue = 'test_irods_data_create_messages';
-my $subscriber_args_base = {hostname             => $test_host,
-                            rmq_config_path      => $conf,
-                        }; # arguments for TestSubscriber creation
 
 my $irods_class      = 'WTSI::NPG::TestMQiRODS';
 my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestSubscriber';
@@ -84,7 +81,7 @@ sub require : Test(1) {
 
 ### collection tests ###
 
-sub test_add_collection : Test(13) {
+sub test_add_collection : Test(14) {
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
                                   routing_key_prefix   => 'test',
@@ -106,7 +103,7 @@ sub test_add_collection : Test(13) {
     _test_collection_message($message, $method);
 }
 
-sub test_collection_avu : Test(40) {
+sub test_collection_avu : Test(43) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -152,7 +149,7 @@ sub test_collection_avu : Test(40) {
     }
 }
 
-sub test_put_move_collection : Test(25) {
+sub test_put_move_collection : Test(27) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -181,7 +178,7 @@ sub test_put_move_collection : Test(25) {
     }
 }
 
-sub test_remove_collection : Test(13) {
+sub test_remove_collection : Test(14) {
     my $irods_no_rmq = $irods_class->new(environment          => \%ENV,
                                          strict_baton_version => 0,
                                          no_rmq               => 1,
@@ -208,7 +205,7 @@ sub test_remove_collection : Test(13) {
     _test_collection_message($message, $method);
 }
 
-sub test_set_collection_permissions : Test(25) {
+sub test_set_collection_permissions : Test(27) {
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
                                   routing_key_prefix   => 'test',
@@ -241,7 +238,7 @@ sub test_set_collection_permissions : Test(25) {
 
 ### data object tests ###
 
-sub test_add_object : Test(17) {
+sub test_add_object : Test(18) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -269,7 +266,7 @@ sub test_add_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_copy_object : Test(17) {
+sub test_copy_object : Test(18) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -296,7 +293,7 @@ sub test_copy_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_move_object : Test(17) {
+sub test_move_object : Test(18) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -323,7 +320,7 @@ sub test_move_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_object_avu : Test(52) {
+sub test_object_avu : Test(55) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -371,7 +368,7 @@ sub test_object_avu : Test(52) {
     }
 }
 
-sub test_remove_object : Test(15) {
+sub test_remove_object : Test(16) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -392,7 +389,7 @@ sub test_remove_object : Test(15) {
     _test_object_message($message, $method);
 }
 
-sub test_replace_object : Test(17) {
+sub test_replace_object : Test(18) {
 
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -418,7 +415,7 @@ sub test_replace_object : Test(17) {
        "Collection name is $irods_tmp_coll");
 }
 
-sub test_set_object_permissions : Test(29) {
+sub test_set_object_permissions : Test(31) {
     # change permissions on a data object, with messaging
     my $irods = $irods_class->new(environment          => \%ENV,
                                   strict_baton_version => 0,
@@ -461,53 +458,50 @@ sub _get_subscriber_args {
 
 sub _test_collection_message {
     my ($message, $method) = @_;
-    # total tests = 12
-    my ($body, $headers) = @{$message};
-    my @body_keys_coll = qw[collection
-                            timestamps
-                            access
-                            avus];
-    my $expected_body_coll = scalar @body_keys_coll;
-    ok(scalar keys(%{$headers}) == $expected_headers,
-       'Found '.$expected_headers.' header key/value pairs.');
-    ok(scalar keys(%{$body}) == $expected_body_coll,
-       'Found '.$expected_body_coll.' body key/value pairs.');
-    ok($headers->{'method'} eq $method, 'Method name is '.$method);
-
-    foreach my $key (@header_keys) {
-        ok(defined $headers->{$key},
-           'Value defined in message header for '.$key);
-    }
-    foreach my $key (@body_keys_coll) {
-        ok(defined $body->{$key},
-           'Value defined in message body for '.$key);
-    }
+    # total tests = 11
+    my @body_keys = qw[collection
+                       access
+                       avus
+                       timestamps];
+    return _test_message($message, $method, \@body_keys);
 }
 
 sub _test_object_message {
     my ($message, $method) = @_;
-    # total tests = 14
+    # total tests = 13
+    my @body_keys = qw[collection
+                       data_object
+                       access
+                       avus
+                       replicates
+                       timestamps];
+    return _test_message($message, $method, \@body_keys);
+}
+
+sub _test_message {
+    my ($message, $method, $body_keys) = @_;
+    # total tests = 7 + number of body keys
+    #             = 13 for object, 11 for collection
     my ($body, $headers) = @{$message};
-    my @body_keys_obj = qw[collection
-                           data_object
-                           timestamps
-                           access
-                           avus
-                           replicates];
-    my $expected_body_obj = scalar @body_keys_obj;
+    my @body_keys = @{$body_keys};
+    my $expected_body_obj = scalar @body_keys;
     ok(scalar keys(%{$headers}) == $expected_headers,
        'Found '.$expected_headers.' header key/value pairs.');
     ok(scalar keys(%{$body}) == $expected_body_obj,
        'Found '.$expected_body_obj.' body key/value pairs.');
     ok($headers->{'method'} eq $method, 'Method name is '.$method);
+    my $time = $headers->{'timestamp'};
+    ok($time =~ /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}/msx,
+       "Header timestamp '$time' is in correct format");
     foreach my $key (@header_keys) {
         ok(defined $headers->{$key},
            'Value defined in message header for '.$key);
     }
-    foreach my $key (@body_keys_obj) {
+    foreach my $key (@body_keys) {
         ok(defined $body->{$key},
            'Value defined in message body for '.$key);
     }
+
 }
 
 1;

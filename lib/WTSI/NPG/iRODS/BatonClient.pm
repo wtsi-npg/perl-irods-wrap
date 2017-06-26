@@ -122,22 +122,24 @@ sub put_object {
   return $remote_path;
 }
 
-sub move_object {
-  my ($self, $source_path, $dest_path) = @_;
+# This is affected by https://github.com/wtsi-npg/baton/issues/189
 
-  my ($data_object, $collection) = fileparse($source_path);
+# sub move_object {
+#   my ($self, $source_path, $dest_path) = @_;
 
-  my $spec = {operation  => 'move',
-              arguments => {path => $dest_path},
-              target     => {collection  => $collection,
-                             data_object => $data_object}};
+#   my ($data_object, $collection) = fileparse($source_path);
 
-  my $response = $self->communicate($spec);
-  $self->validate_response($response);
-  $self->report_error($response);
+#   my $spec = {operation => 'move',
+#               arguments => {path => $dest_path},
+#               target    => {collection  => $collection,
+#                             data_object => $data_object}};
 
-  return $dest_path
-}
+#   my $response = $self->communicate($spec);
+#   $self->validate_response($response);
+#   $self->report_error($response);
+
+#   return $dest_path
+# }
 
 =head2 list_collection
 

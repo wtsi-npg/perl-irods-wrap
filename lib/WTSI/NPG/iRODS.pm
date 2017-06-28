@@ -1455,15 +1455,7 @@ sub _add_object {
 
   $self->debug("Adding '$file' as new object '$target'");
 
-  my $staging_path = $self->_find_staging_path($target);
-  if (not $staging_path) {
-    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
-                    " at '$target'");
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
-
-  return $self->_unstage_object($staging_path, $target);
+  return $self->baton_client->put_object($file, $target, $checksum_action);
 }
 
 =head2 replace_object
@@ -1516,15 +1508,7 @@ sub _replace_object {
   $target = $self->ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
-  my $staging_path = $self->_find_staging_path($target);
-  if (not $staging_path) {
-    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
-                    " at '$target'");
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, $checksum_action);
-
-  return $self->_unstage_object($staging_path, $target);
+  return $self->baton_client->put_object($file, $target, $checksum_action);
 }
 
 =head2 copy_object
@@ -1636,7 +1620,9 @@ sub _move_object {
   $self->debug("Moving object from '$source' to '$target'");
   $self->_clear_caches($source);
 
-  $self->baton_client->move_object($source, $target);
+  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
+                                       arguments   => [$source, $target],
+                                       environment => $self->environment)->run;
   return $target
 }
 
@@ -2577,133 +2563,6 @@ sub _clear_caches {
   $self->_metadata_cache->remove($path);
 
   return;
-}
-
-sub _stage_object {
-  my ($self, $file, $staging_path, @arguments) = @_;
-
-  defined $file or
-    $self->logconfess('A defined file argument is required');
-  defined $staging_path or
-    $self->logconfess('A defined staging_path argument is required');
-
-  my $num_errors = 0;
-  my $stage_error = q[];
-
-  try {
-    $self->debug("Staging '$file' to '$staging_path'");
-    $self->baton_client->put_object($file, $staging_path, @arguments);
-    # Tag staging file for easy location with a query
-    $self->_add_object_avu($staging_path, $STAGING, 1);
-  } catch {
-    $num_errors++;
-    my @stack1 = split /\n/msx; # Chop up the stack trace
-    $stage_error = pop @stack1;
-
-    try {
-      # A failed iput may still leave orphaned replicates
-      if ($self->is_object($staging_path)) {
-        $self->debug("Cleaning up (deleting) staging file '$staging_path'");
-        $self->_remove_object($staging_path);
-      }
-    } catch {
-      my @stack2 = split /\n/msx;
-      $self->error("Failed to remove failed staging file '$staging_path': ",
-                   pop @stack2);
-    };
-  };
-
-  if ($num_errors > 0) {
-    $self->logconfess("Failed to stage '$file' to '$staging_path': ",
-                      $stage_error);
-  }
-
-  return $staging_path;
-}
-
-sub _unstage_object {
-  my ($self, $staging_path, $target) = @_;
-
-  defined $staging_path or
-    $self->logconfess('A defined staging_path argument is required');
-  defined $target or
-    $self->logconfess('A defined target argument is required');
-
-  if (not $self->is_object($staging_path)) {
-    $self->logconfess("Staging path '$staging_path' is not a data object");
-  }
-
-  my $num_errors = 0;
-  my $unstage_error = q[];
-
-  try {
-    # imv will not overwrite an existing data object so we must copy
-    # all its metadata to the staged file and then remove it
-    if ($self->is_object($target)) {
-      my @target_meta = $self->get_object_meta($target);
-
-      # This includes target=1 so we are accepting a race condition
-      # between customer queries and the file move below
-      foreach my $avu (@target_meta) {
-        if ($avu->{attribute} eq $STAGING) {
-          $self->warn("Found $STAGING AVU on published file '$target'");
-        }
-        else {
-          $self->_add_object_avu($staging_path, $avu->{attribute},
-                                 $avu->{value}, $avu->{units});
-        }
-      }
-      $self->_remove_object($target);
-    }
-
-    $self->debug("Unstaging '$staging_path' to '$target'");
-    $self->_move_object($staging_path, $target);
-
-    # Untag the unstaged file
-    $self->_remove_object_avu($target, $STAGING, 1);
-  } catch {
-    $num_errors++;
-    my @stack1 = split /\n/msx;
-    $unstage_error = pop @stack1;
-
-    try {
-      $self->debug("Cleaning up (deleting) staging file '$staging_path'");
-      $self->_remove_object($staging_path);
-    } catch {
-      my @stack2 = split /\n/msx;
-      $self->error("Failed to remove failed staging file '$staging_path': ",
-                   pop @stack2);
-    };
-  };
-
-  if ($num_errors > 0) {
-    $self->logconfess("Failed to unstage '$staging_path' to '$target': ",
-                      $unstage_error);
-  }
-
-  return $target;
-}
-
-sub _find_staging_path {
-  my ($self, $target) = @_;
-
-  defined $target or
-    $self->logconfess('A defined target argument is required');
-
-  my $staging_path;
-
-  foreach my $try (1 .. $STAGING_MAX_TRIES) {
-    my $path = sprintf "%s.%d", $target, int rand $STAGING_RAND_MAX;
-    if ($self->is_object($path)) {
-      $self->warn("Path $try '$path' for '$target' is not free");
-    }
-    else {
-      $self->debug("Path $try available '$path' for '$target'");
-      $staging_path = $path;
-    }
-  }
-
-  return $staging_path;
 }
 
 sub _build_irods_major_version {

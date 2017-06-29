@@ -6,7 +6,7 @@ use Moose::Role;
 
 use DateTime;
 use JSON;
-use WTSI::DNAP::Utilities::Runnable;
+use Time::HiRes qw[gettimeofday];
 
 our $VERSION = '';
 
@@ -15,6 +15,7 @@ with 'WTSI::NPG::RabbitMQ::Connectable';
 # consuming class must have these methods
 requires qw[ensure_collection_path
             ensure_object_path
+            list_path_details
             get_irods_user];
 
 our @REPORTABLE_COLLECTION_METHODS =
@@ -91,13 +92,12 @@ foreach my $name (@REPORTABLE_COLLECTION_METHODS) {
 
     around $name => sub {
         my ($orig, $self, @args) = @_;
-	my $now = DateTime->now()->iso8601();
+	my $now = $self->_timestamp();
         my $collection = $self->$orig(@args);
         if (! $self->no_rmq) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on collection ', $collection);
-            my $spec = { collection  => $collection };
-            $self->_publish_message($spec, $name, $now);
+            $self->_publish_message($collection, $name, $now);
         }
         return $collection;
     };
@@ -108,16 +108,12 @@ foreach my $name (@REPORTABLE_OBJECT_METHODS) {
 
     around $name => sub {
         my ($orig, $self, @args) = @_;
-	my $now = DateTime->now()->iso8601();
+	my $now = $self->_timestamp();
         my $object = $self->$orig(@args);
         if (! $self->no_rmq) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on data object ', $object);
-            my ($volume, $collection, $data_name) =
-                File::Spec->splitpath($object);
-            my $spec = { collection  => $collection,
-                         data_object => $data_name  };
-            $self->_publish_message($spec, $name, $now);
+            $self->_publish_message($object, $name, $now);
         }
         return $object;
     };
@@ -128,11 +124,8 @@ before 'remove_collection' => sub {
     my ($self, @args) = @_;
     if (! $self->no_rmq) {
         my $collection = $self->ensure_collection_path($args[0]);
-        $self->debug('RabbitMQ reporting for method remove_collection',
-                     ' on collection ', $collection);
-        my $spec = { collection  => $collection };
-        my $now = DateTime->now()->iso8601();
-        $self->_publish_message($spec, 'remove_collection', $now);
+        my $now = $self->_timestamp();
+        $self->_publish_message($collection, 'remove_collection', $now);
     }
 };
 
@@ -142,12 +135,8 @@ before 'remove_object' => sub {
         my $object = $self->ensure_object_path($args[0]);
         $self->debug('RabbitMQ reporting for method remove_object',
                      ' on data object ', $object);
-        my ($volume, $collection, $data_name) =
-            File::Spec->splitpath($object);
-        my $spec = { collection  => $collection,
-                     data_object => $data_name  };
-        my $now = DateTime->now()->iso8601();
-        $self->_publish_message($spec, 'remove_object', $now);
+        my $now = $self->_timestamp();
+        $self->_publish_message($object, 'remove_object', $now);
     }
 };
 
@@ -170,8 +159,7 @@ sub _get_headers {
 	irods_user => $irods_user, # iRODS username
         type       => q{},         # file type from metadata, if any
     };
-    my $response_data = decode_json($response);
-    foreach my $avu (@{$response_data->{'avus'}}) {
+    foreach my $avu (@{$response->{'avus'}}) {
         if ($avu->{attribute} eq 'type') {
             $headers->{type} = $avu->{value};
         }
@@ -179,37 +167,29 @@ sub _get_headers {
     return $headers;
 }
 
-sub _list_irods_details {
-    my ($self, $spec) = @_;
-    my $args = ['--acl', '--avu', '--timestamp', '--replicate'];
-    # call to baton and get JSON response
-    # must have 'environment' attribute (hashref of env variables)
-    # TODO refactor this to avoid starting a new process
-    my $runnable = WTSI::DNAP::Utilities::Runnable->new
-        (executable  => 'baton-list',
-         arguments   => $args,
-         environment => $self->environment);
-    ${$runnable->stdin} .= encode_json($spec);
-    $runnable->run();
-    my $response = ${$runnable->stdout};
-    return $response;
-}
-
 sub _publish_message {
-    my ($self, $spec, $name, $now) = @_;
-    my $response = $self->_list_irods_details($spec);
-    $self->debug('Got response from baton: ', $response);
+    my ($self, $path, $name, $now) = @_;
+    my $response = $self->list_path_details($path);
+    my $response_string = encode_json($response);
+    $self->debug('Got response from baton: ', $response_string);
     my $key = $self->routing_key_prefix.'.irods.data.create';
     my $headers = $self->_get_headers($response, $name, $now);
     $self->rmq->publish($self->channel,
                         $key,
-                        $response,
+                        $response_string,
                         { exchange => $self->exchange },
                         { headers => $headers },
                     );
     return 1;
 }
 
+sub _timestamp {
+    my ($self, ) = @_;
+    my ($seconds, $microseconds) = gettimeofday();
+    my $time = DateTime->from_epoch(epoch => $seconds);
+    my $decimal_string = sprintf "%06d", $microseconds;
+    return $time->iso8601().q{.}.$decimal_string;
+}
 
 no Moose::Role;
 

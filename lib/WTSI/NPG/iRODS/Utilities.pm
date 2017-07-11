@@ -1,5 +1,6 @@
 package WTSI::NPG::iRODS::Utilities;
 
+use Digest::MD5;
 use List::AllUtils qw(uniq zip);
 use Moose::Role;
 
@@ -8,8 +9,6 @@ use WTSI::DNAP::Utilities::Runnable;
 with 'WTSI::DNAP::Utilities::Loggable';
 
 our $VERSION = '';
-
-our $MD5SUM = 'md5sum';
 
 =head2 hash_path
 
@@ -54,15 +53,14 @@ sub md5sum {
   defined $file or $self->logconfess('A defined file argument is required');
   $file eq q{} and $self->logconfess('A non-empty file argument is required');
 
-  my @result = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $MD5SUM,
-     arguments   => [$file],
-     environment => $self->environment)->run->split_stdout;
-  my $raw = shift @result;
+  open my $fh, '<', $file or
+    $self->logconfess("Failed to open '$file' for MD5 calculation: $!");
+  binmode $fh;
 
-  my ($md5) = $raw =~ m{^(\S+)\s+.*}msx;
+  my $digest = Digest::MD5->new->addfile($fh)->hexdigest;
+  close $fh or $self->logconfess("Failed to close '$file': $!");
 
-  return $md5;
+  return $digest;
 }
 
 =head2 make_avu

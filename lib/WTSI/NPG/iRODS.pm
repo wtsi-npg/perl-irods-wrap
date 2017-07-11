@@ -18,21 +18,15 @@ use Try::Tiny;
 use WTSI::DNAP::Utilities::Runnable;
 
 use WTSI::NPG::iRODS::Metadata qw($FILE_MD5 $STAGING);
-use WTSI::NPG::iRODS::ACLModifier;
-use WTSI::NPG::iRODS::DataObjectReader;
-use WTSI::NPG::iRODS::Lister;
-use WTSI::NPG::iRODS::MetaLister;
-use WTSI::NPG::iRODS::MetaModifier;
-use WTSI::NPG::iRODS::MetaSearcher;
+use WTSI::NPG::iRODS::BatonClient;
 use WTSI::NPG::iRODS::Types qw(:all);
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '0.17.1';
-our $MIN_BATON_VERSION = '0.16.4';
+our $MAX_BATON_VERSION = '1.0.0';
+our $MIN_BATON_VERSION = '1.0.0';
 
 our $IADMIN      = 'iadmin';
-our $ICHKSUM     = 'ichksum';
 our $ICP         = 'icp';
 our $IENV        = 'ienv';
 our $IGET        = 'iget';
@@ -134,160 +128,13 @@ has 'working_collection' =>
    predicate => 'has_working_collection',
    clearer   => 'clear_working_collection');
 
-has 'lister' =>
+has 'baton_client' =>
   (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
+   isa      => 'WTSI::NPG::iRODS::BatonClient',
    required => 1,
    lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered',],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_lister');
-
-has 'contents_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--contents'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_contents_lister',);
-
-has 'detailed_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--checksum', '--contents',
-                        '--replicate'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_detailed_lister');
-
-has 'acl_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::Lister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::Lister->new
-       (arguments   => ['--unbuffered', '--acl', '--contents'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_acl_lister');
-
-has 'meta_lister' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaLister',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaLister->new
-       (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_lister');
-
-has 'meta_adder' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--unbuffered', '--operation', 'add'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_adder');
-
-has 'meta_remover' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaModifier->new
-       (arguments   => ['--unbuffered', '--operation', 'rem'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_meta_remover');
-
-has 'coll_searcher' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaSearcher->new
-       (arguments   => ['--unbuffered', '--coll'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_coll_searcher');
-
-has 'obj_searcher' =>
-  (is       => 'ro',
-   isa      => 'WTSI::NPG::iRODS::MetaSearcher',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::MetaSearcher->new
-       (arguments   => ['--unbuffered', '--obj'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_obj_searcher');
-
-has 'acl_modifier' =>
-  (is         => 'ro',
-   isa      => 'WTSI::NPG::iRODS::ACLModifier',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::ACLModifier->new
-       (arguments   => ['--unbuffered'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_acl_modifier');
-
-has 'obj_reader' =>
-  (is         => 'ro',
-   isa      => 'WTSI::NPG::iRODS::DataObjectReader',
-   required => 1,
-   lazy     => 1,
-   default  => sub {
-     my ($self) = @_;
-
-     return WTSI::NPG::iRODS::DataObjectReader->new
-       (arguments   => ['--unbuffered', '--avu'],
-        environment => $self->environment)->start;
-   },
-   predicate => 'has_obj_reader');
+   builder  => '_build_baton_client',
+   predicate => 'has_baton_client');
 
 has '_path_cache' =>
   (is            => 'ro',
@@ -314,10 +161,8 @@ has '_permissions_cache' =>
    documentation => 'A cache mapping known iRODS paths to their permissions');
 
 
-with ('WTSI::DNAP::Utilities::Loggable',
-      'WTSI::NPG::iRODS::Reportable',
-      'WTSI::NPG::iRODS::Utilities',
-  );
+with 'WTSI::DNAP::Utilities::Loggable',
+     'WTSI::NPG::iRODS::Utilities';
 
 sub BUILD {
   my ($self) = @_;
@@ -418,6 +263,36 @@ sub absolute_path {
   return $self->_ensure_absolute_path($path);
 }
 
+=head2 list_path_details
+
+  Arg [1]    : An iRODS path.
+
+  Example    : $response = $irods->list_path_details($path)
+  Description: Read details of a given iRODS path: access, AVUs,
+               replicates, and timestamps. The path may represent a data
+               object or a collection. Runs baton-list with the --acl,
+               --avu, --replicate, and --timestamp options in effect, and
+               returns a data structure derived from the JSON output.
+  Returntype : HashRef
+
+=cut
+
+sub list_path_details {
+  my ($self, $path) = @_;
+
+  defined $path or
+    $self->logconfess('A defined path argument is required');
+
+  $path eq q{} and
+    $self->logconfess('A non-empty path argument is required');
+
+  $path = canonpath($path);
+  $path = $self->_ensure_absolute_path($path);
+  $self->debug("Listing details for path '$path'");
+
+  return $self->baton_client->list_path_details($path);
+}
+
 =head2 ensure_collection_path
 
   Arg [1]    : An iRODS path.
@@ -432,6 +307,11 @@ sub absolute_path {
 sub ensure_collection_path {
   my ($self, $target) = @_;
 
+  if (not defined $target) {
+      $self->logconfess('A defined collection argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty collection argument is required');
+  }
   my $path = $self->_ensure_absolute_path($target);
   if (not $self->is_collection($path)) {
     $self->logconfess("A collection path is required: received '$path'");
@@ -454,6 +334,11 @@ sub ensure_collection_path {
 sub ensure_object_path {
   my ($self, $target) = @_;
 
+  if (not defined $target) {
+      $self->logconfess('A defined object argument is required');
+  } elsif ($target eq q{}) {
+      $self->logconfess('A non-empty object argument is required');
+  }
   my $path = $self->_ensure_absolute_path($target);
   if (not $self->is_object($path)) {
     $self->logconfess("A data object path is required: received '$path'");
@@ -787,7 +672,7 @@ sub is_collection {
   $path = canonpath($path);
   $path = $self->_ensure_absolute_path($path);
 
-  return $self->lister->is_collection($path);
+  return $self->baton_client->is_collection($path);
 }
 
 =head2 list_collection
@@ -822,7 +707,7 @@ sub list_collection {
   my $recursively = $recurse ? 'recursively' : q{};
   $self->debug("Listing collection '$collection' $recursively");
 
-  return $self->contents_lister->list_collection($collection, $recurse);
+  return $self->baton_client->list_collection($collection, $recurse);
 }
 
 =head2 add_collection
@@ -831,11 +716,18 @@ sub list_collection {
 
   Example    : $irods->add_collection('/my/path/foo')
   Description: Make a new collection in iRODS. Return the new collection.
-  Returntype : Str
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
 
 =cut
 
 sub add_collection {
+  my ($self, $collection) = @_;
+  return $self->_add_collection($collection);
+}
+
+sub _add_collection {
   my ($self, $collection) = @_;
 
   defined $collection or
@@ -861,11 +753,20 @@ sub add_collection {
 
   Example    : $irods->put_collection('/my/path/foo', '/archive')
   Description: Make a new collection in iRODS. Return the new collection.
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
+
   Returntype : Str
 
 =cut
 
 sub put_collection {
+  my ($self, $dir, $target) = @_;
+  return $self->_put_collection($dir, $target);
+}
+
+sub _put_collection {
   my ($self, $dir, $target) = @_;
 
   defined $dir or
@@ -898,11 +799,19 @@ sub put_collection {
 
   Example    : $irods->move_collection('/my/path/a', '/my/path/b')
   Description: Move a collection.
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub move_collection {
+    my ($self, $source, $target) = @_;
+    return $self->_move_collection($source, $target);
+}
+
+sub _move_collection {
   my ($self, $source, $target) = @_;
 
   defined $source or
@@ -969,11 +878,20 @@ sub get_collection {
   Example    : $irods->remove_collection('/my/path/foo')
   Description: Remove a collection and contents, recursively, and return
                self.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : WTSI::NPG::iRODS
 
 =cut
 
 sub remove_collection {
+  my ($self, $collection) = @_;
+  return $self->_remove_collection($collection);
+}
+
+sub _remove_collection {
   my ($self, $collection) = @_;
 
   defined $collection or
@@ -1012,7 +930,7 @@ sub get_collection_permissions {
 
   $collection = $self->ensure_collection_path($collection);
 
-  return $self->sort_acl($self->acl_lister->get_collection_acl($collection));
+  return $self->sort_acl($self->baton_client->get_collection_acl($collection));
 }
 
 =head2 set_collection_permissions
@@ -1027,11 +945,21 @@ sub get_collection_permissions {
   Example    : $irods->set_collection_permissions('read', 'user1', $path)
   Description: Set access permissions on the collection. Return the collection
                path.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
+
 sub set_collection_permissions {
+  my ($self, $level, $owner, $collection) = @_;
+  return $self->_set_collection_permissions($level, $owner, $collection);
+}
+
+sub _set_collection_permissions {
   my ($self, $level, $owner, $collection) = @_;
 
   defined $owner or
@@ -1066,7 +994,7 @@ sub set_collection_permissions {
                  "'$perm_str' for '$owner_name#$zone'");
   }
   else {
-    $self->acl_modifier->chmod_collection($perm_str, $owner, $collection);
+    $self->baton_client->chmod_collection($perm_str, $owner, $collection);
   }
 
   return $collection;
@@ -1144,7 +1072,7 @@ sub get_collection_meta {
 
   $collection = $self->ensure_collection_path($collection);
 
-  my @avus = $self->meta_lister->list_collection_meta($collection);
+  my @avus = $self->baton_client->list_collection_meta($collection);
 
   return $self->sort_avus(@avus);
 }
@@ -1159,11 +1087,20 @@ sub get_collection_meta {
   Example    : $irods->add_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Add metadata to a collection. Return an array of
                the new attribute, value and units.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Array
 
 =cut
 
 sub add_collection_avu {
+  my ($self, $collection, $attribute, $value, $units) = @_;
+  return $self->_add_collection_avu($collection, $attribute, $value, $units);
+}
+
+sub _add_collection_avu {
   my ($self, $collection, $attribute, $value, $units) = @_;
 
   defined $collection or
@@ -1192,8 +1129,8 @@ sub add_collection_avu {
                       "already exists for '$collection'");
   }
 
-  return $self->meta_adder->modify_collection_meta($collection, $attribute,
-                                                   $value, $units);
+  return $self->baton_client->add_collection_avu($collection, $attribute,
+                                                 $value, $units);
 }
 
 =head2 remove_collection_avu
@@ -1206,11 +1143,21 @@ sub add_collection_avu {
   Example    : $irods->remove_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Removes metadata from a collection object. Return the
                collection path.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_collection_avu {
+  my ($self, $collection, $attribute, $value, $units) = @_;
+  return $self->_remove_collection_avu($collection, $attribute,
+                                       $value, $units);
+}
+
+sub _remove_collection_avu {
   my ($self, $collection, $attribute, $value, $units) = @_;
 
   defined $collection or
@@ -1239,8 +1186,8 @@ sub remove_collection_avu {
                     "does not exist for '$collection'");
   }
 
-  return $self->meta_remover->modify_collection_meta($collection, $attribute,
-                                                     $value, $units);
+  return $self->baton_client->remove_collection_avu($collection, $attribute,
+                                                    $value, $units);
 }
 
 =head2 make_collection_avu_history
@@ -1262,6 +1209,7 @@ sub remove_collection_avu {
                values will be sorted and concatenated, separated by commas.
                If there are no AVUs specified attribute, an error will be
                raised.
+
   Returntype : HashRef
 
 =cut
@@ -1337,7 +1285,8 @@ sub find_collections_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->coll_searcher->search($zone_path, @avu_specs);
+  my $results = $self->baton_client->search_collections($zone_path,
+                                                        @avu_specs);
   $self->debug("Found ", scalar @$results,
                "collections (to filter by '$root')");
 
@@ -1377,7 +1326,7 @@ sub is_object {
     $is_object = 1;
   }
   else {
-    $is_object = $self->lister->is_object($path);
+    $is_object = $self->baton_client->is_object($path);
     if ($is_object) {
       $self->debug("Caching is_object for '$path'");
       $self->_path_cache->set($path, $OBJECT_PATH);
@@ -1418,7 +1367,7 @@ sub list_object {
     $result = $object; # Optimisation to use the path_cache
   }
   else {
-    $result = $self->lister->list_object($object);
+    $result = $self->baton_client->list_object($object);
   }
 
   return $result;
@@ -1446,7 +1395,7 @@ sub read_object {
   $object = $self->ensure_object_path($object);
   $self->debug("Reading object '$object'");
 
-  return $self->obj_reader->read_object($object);
+  return $self->baton_client->read_object($object);
 }
 
 =head2 add_object
@@ -1461,11 +1410,20 @@ sub read_object {
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub add_object {
+  my ($self, $file, $target, $checksum_action) = @_;
+  return $self->_add_object($file, $target, $checksum_action);
+}
+
+sub _add_object {
   my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
@@ -1497,20 +1455,7 @@ sub add_object {
 
   $self->debug("Adding '$file' as new object '$target'");
 
-  my $staging_path = $self->_find_staging_path($target);
-  if (not $staging_path) {
-    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
-                    " at '$target'");
-  }
-
-  my @arguments;
-  if ($checksum_action) {
-    push @arguments , '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
-
-  return $self->_unstage_object($staging_path, $target);
+  return $self->baton_client->put_object($file, $target, $checksum_action);
 }
 
 =head2 replace_object
@@ -1525,11 +1470,20 @@ sub add_object {
 
   Example    : $irods->replace_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub replace_object {
+  my ($self, $file, $target, $checksum_action) = @_;
+  return $self->_replace_object($file, $target, $checksum_action);
+}
+
+sub _replace_object {
   my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
@@ -1554,20 +1508,7 @@ sub replace_object {
   $target = $self->ensure_object_path($target);
   $self->debug("Replacing object '$target' with '$file'");
 
-  my $staging_path = $self->_find_staging_path($target);
-  if (not $staging_path) {
-    $self->logcroak("Failed to obtain a clear staging path for '$file' ",
-                    " at '$target'");
-  }
-
-  my @arguments = ('-f');
-  if ($checksum_action) {
-    push @arguments, '-K';
-  }
-
-  $staging_path = $self->_stage_object($file, $staging_path, @arguments);
-
-  return $self->_unstage_object($staging_path, $target);
+  return $self->baton_client->put_object($file, $target, $checksum_action);
 }
 
 =head2 copy_object
@@ -1581,11 +1522,20 @@ sub replace_object {
   Description: Copy a data object, including all of its metadata. The
                optional third argument is a callback that may be used to
                translate metadata attributes during the copy.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub copy_object {
+  my ($self, $source, $target, $translator) = @_;
+  return $self->_copy_object($source, $target, $translator);
+}
+
+sub _copy_object {
   my ($self, $source, $target, $translator) = @_;
 
   defined $source or
@@ -1626,7 +1576,7 @@ sub copy_object {
       $attr = $translator->($attr);
     }
 
-    $self->add_object_avu($target, $attr, $avu->{value}, $avu->{units});
+    $self->_add_object_avu($target, $attr, $avu->{value}, $avu->{units});
   }
 
   return $target
@@ -1639,11 +1589,20 @@ sub copy_object {
 
   Example    : $irods->move_object('/my/path/lorem.txt', '/my/path/ipsum.txt')
   Description: Move a data object.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub move_object {
+  my ($self, $source, $target) = @_;
+  return $self->_move_object($source, $target);
+}
+
+sub _move_object {
   my ($self, $source, $target) = @_;
 
   defined $source or
@@ -1674,6 +1633,10 @@ sub move_object {
 
   Example    : $irods->get_object('/my/path/lorem.txt', 'lorem.txt')
   Description: Fetch a data object and return the path of the local copy.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
@@ -1708,11 +1671,20 @@ sub get_object {
 
   Example    : $irods->remove_object('/my/path/lorem.txt')
   Description: Remove a data object.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_object {
+  my ($self, $object) = @_;
+  return $self->_remove_object($object);
+}
+
+sub _remove_object {
   my ($self, $object) = @_;
 
   defined $object or
@@ -1783,7 +1755,7 @@ sub get_object_permissions {
     $self->debug("Using cached ACL for '$object': ", pp($cached));
   }
   else {
-    my @acl = $self->acl_lister->get_object_acl($object);
+    my @acl = $self->baton_client->get_object_acl($object);
     $cached = $self->_cache_permissions($object, \@acl);
   }
 
@@ -1803,11 +1775,20 @@ sub get_object_permissions {
   Example    : $irods->set_object_permissions('read', 'user1', $path)
   Description: Set access permissions on the data objecrt. Return the object
                path.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub set_object_permissions {
+  my ($self, $level, $owner, $object) = @_;
+  return $self->_set_object_permissions($level, $owner, $object);
+}
+
+sub _set_object_permissions {
   my ($self, $level, $owner, $object) = @_;
 
   defined $owner or
@@ -1840,7 +1821,7 @@ sub set_object_permissions {
                  "'$perm_str' for '$owner_name#$zone'");
   }
   else {
-    $self->acl_modifier->chmod_object($perm_str, $owner, $object);
+    $self->baton_client->chmod_object($perm_str, $owner, $object);
 
     # Having 'null' permission means having no permission, so these
     # must be removed from the cached ACL.
@@ -1932,7 +1913,7 @@ sub get_object_meta {
     $self->debug("Using cached AVUs for '$object': ", pp($cached));
   }
   else {
-    my @avus = $self->meta_lister->list_object_meta($object);
+    my @avus = $self->baton_client->list_object_meta($object);
     $cached = $self->_cache_metadata($object, \@avus);
   }
 
@@ -1948,11 +1929,19 @@ sub get_object_meta {
 
   Example    : add_object_avu('/my/path/lorem.txt', 'id', 'ABCD1234')
   Description: Add metadata to a data object. Return the object path.
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub add_object_avu {
+  my ($self, $object, $attribute, $value, $units) = @_;
+  return $self->_add_object_avu($object, $attribute, $value, $units);
+}
+
+sub _add_object_avu {
   my ($self, $object, $attribute, $value, $units) = @_;
 
   defined $object or
@@ -1980,8 +1969,8 @@ sub add_object_avu {
     $self->logconfess("AVU $avu_str already exists for '$object'");
   }
   else {
-    $self->meta_adder->modify_object_meta($object, $attribute,
-                                          $value, $units);
+    $self->baton_client->add_object_avu($object, $attribute, $value,
+                                        $units);
     $self->_cache_metadata($object, [@current_meta, $avu]);
   }
 
@@ -1999,11 +1988,20 @@ sub add_object_avu {
                'ABCD1234')
   Description: Remove metadata from a data object. Return the object
                path.
+
+               Implemented as a wrapper for a private method. The private
+               method can be called by other methods within the same class,
+               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_object_avu {
+  my ($self, $object, $attribute, $value, $units) = @_;
+  return $self->_remove_object_avu($object, $attribute, $value, $units);
+}
+
+sub _remove_object_avu {
   my ($self, $object, $attribute, $value, $units) = @_;
 
   defined $object or
@@ -2031,8 +2029,8 @@ sub remove_object_avu {
     $self->logconfess("AVU $avu_str does not exist for '$object'");
   }
   else {
-    $self->meta_remover->modify_object_meta($object, $attribute,
-                                            $value, $units);
+    $self->baton_client->remove_object_avu($object, $attribute, $value,
+                                           $units);
     my @remain = grep { not $self->avus_equal($avu, $_) } @current_meta;
     $self->_cache_metadata($object, \@remain);
   }
@@ -2135,7 +2133,7 @@ sub find_objects_by_meta {
     push @avu_specs, $spec;
   }
 
-  my $results = $self->obj_searcher->search($zone_path, @avu_specs);
+  my $results = $self->baton_client->search_objects($zone_path, @avu_specs);
   $self->debug("Found ", scalar @$results, " objects (to filter by '$root')");
   my @sorted = sort { $a cmp $b } @$results;
   $self->debug("Sorted ", scalar @sorted, " objects (to filter by '$root')");
@@ -2166,7 +2164,7 @@ sub checksum {
 
   $object = $self->ensure_object_path($object);
 
-  return $self->detailed_lister->list_object_checksum($object);
+  return $self->baton_client->list_object_checksum($object);
 }
 
 sub collection_checksums {
@@ -2180,8 +2178,7 @@ sub collection_checksums {
 
   $collection = $self->ensure_collection_path($collection);
 
-  return $self->detailed_lister->list_collection_checksums
-    ($collection, $recurse);
+  return $self->baton_client->list_collection_checksums($collection, $recurse);
 }
 
 =head2 calculate_checksum
@@ -2206,16 +2203,7 @@ sub calculate_checksum {
 
   $object = $self->ensure_object_path($object);
 
-  my @raw_checksum = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $ICHKSUM,
-     arguments   => ['-f', $object],
-     environment => $self->environment)->run->split_stdout;
-  unless (@raw_checksum) {
-    $self->logconfess("Failed to get iRODS checksum for '$object'");
-  }
-
-  my $checksum = shift @raw_checksum;
-  $checksum =~ s/.*([\da-f]{32})$/$1/msx;
+  my $checksum = $self->baton_client->calculate_object_checksum($object);
 
   return $checksum;
 }
@@ -2303,7 +2291,7 @@ sub replicates {
 
   $object = $self->ensure_object_path($object);
 
-  return $self->detailed_lister->list_object_replicates($object);
+  return $self->baton_client->list_object_replicates($object);
 }
 
 =head2 valid_replicates
@@ -2479,6 +2467,14 @@ sub is_avu_history_attr {
   return $attribute =~ m{.*_history$}msx;
 }
 
+sub _build_baton_client {
+  my ($self) = @_;
+
+  return WTSI::NPG::iRODS::BatonClient->new
+    (arguments   => ['--unbuffered'],
+     environment => $self->environment)->start;
+}
+
 sub _ensure_absolute_path {
   my ($self, $target) = @_;
 
@@ -2569,122 +2565,6 @@ sub _clear_caches {
   return;
 }
 
-sub _stage_object {
-  my ($self, $file, $staging_path, @arguments) = @_;
-
-  defined $file or
-    $self->logconfess('A defined file argument is required');
-  defined $staging_path or
-    $self->logconfess('A defined staging_path argument is required');
-
-  my $num_errors = 0;
-  my $stage_error = q[];
-
-  try {
-    $self->debug("Staging '$file' to '$staging_path' with $IPUT");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IPUT,
-         arguments   => [@arguments, $file, $staging_path],
-         environment => $self->environment)->run;
-  } catch {
-    $num_errors++;
-    my @stack = split /\n/msx; # Chop up the stack trace
-    $stage_error = pop @stack;
-  } finally {
-    try {
-      # A failed iput may still leave orphaned replicates
-      if ($self->is_object($staging_path)) {
-        # Tag staging file for easy location with a query
-        $self->add_object_avu($staging_path, $STAGING, 1);
-      }
-    } catch {
-      my @stack = split /\n/msx;
-      $self->error("Failed to tag staging path '$staging_path': ", pop @stack);
-    };
-  };
-
-  if ($num_errors > 0) {
-    $self->logconfess("Failed to stage '$file' to '$staging_path': ",
-                      $stage_error);
-  }
-
-  return $staging_path;
-}
-
-sub _unstage_object {
-  my ($self, $staging_path, $target) = @_;
-
-  defined $staging_path or
-    $self->logconfess('A defined staging_path argument is required');
-  defined $target or
-    $self->logconfess('A defined target argument is required');
-
-  if (not $self->is_object($staging_path)) {
-    $self->logconfess("Staging path '$staging_path' is not a data object");
-  }
-
-  my $num_errors = 0;
-  my $unstage_error = q[];
-
-  try {
-    # imv will not overwrite an existing data object so we must copy
-    # all its metadata to the staged file and then remove it
-    if ($self->is_object($target)) {
-      my @target_meta = $self->get_object_meta($target);
-
-      # This includes target=1 so we are accepting a race condition
-      # between customer queries and the file move below
-      foreach my $avu (@target_meta) {
-        $self->add_object_avu($staging_path, $avu->{attribute},
-                              $avu->{value}, $avu->{units});
-      }
-      $self->remove_object($target);
-    }
-
-    $self->debug("Unstaging '$staging_path' to '$target' with $IMV");
-    WTSI::DNAP::Utilities::Runnable->new
-        (executable  => $IMV,
-         arguments   => [$staging_path, $target],
-         environment => $self->environment)->run;
-
-    # Untag the unstaged file
-    $self->remove_object_avu($target, $STAGING, 1);
-  } catch {
-    $num_errors++;
-    my @stack = split /\n/msx;
-    $self->error("Failed to move '$staging_path' to '$target': ", pop @stack);
-  };
-
-  if ($num_errors > 0) {
-    $self->logconfess("Failed to unstage '$staging_path' to '$target': ",
-                      $unstage_error);
-  }
-
-  return $target;
-}
-
-sub _find_staging_path {
-  my ($self, $target) = @_;
-
-  defined $target or
-    $self->logconfess('A defined target argument is required');
-
-  my $staging_path;
-
-  foreach my $try (1 .. $STAGING_MAX_TRIES) {
-    my $path = sprintf "%s.%d", $target, int rand $STAGING_RAND_MAX;
-    if ($self->is_object($path)) {
-      $self->warn("Path $try '$path' for '$target' is not free");
-    }
-    else {
-      $self->debug("Path $try available '$path' for '$target'");
-      $staging_path = $path;
-    }
-  }
-
-  return $staging_path;
-}
-
 sub _build_irods_major_version {
   my ($self) = @_;
 
@@ -2716,55 +2596,27 @@ sub DEMOLISH {
 
   # Only do try to stop cleanly if the object is not already being
   # destroyed by Perl (as indicated by the flag passed in by Moose).
-
-  my @clients = qw[
-                    acl_lister
-                    acl_modifier
-                    coll_searcher
-                    contents_lister
-                    detailed_lister
-                    lister
-                    meta_adder
-                    meta_lister
-                    meta_remover
-                    obj_reader
-                    obj_searcher
-                 ];
-
-  my $handles_errors = qr/((acl|contents|detailed)_)?lister/msx;
-
   if (not $in_global_destruction) {
 
-    # Stop any active clients and log any errors that they encountered
-    # while running. This preempts the clients being stopped within
-    # their own destructors and allows our logger to be resonsible for
+    # Stop any active client and log any errors that it encountered
+    # while running. This preempts the client being stopped within its
+    # own destructor and allows our logger to be resonsible for
     # reporting any errors.
     #
-    # If stopping were left to the client destructors, Moose would
+    # If stopping were left to the client destructor, Moose would
     # handle any errors by warning to STDERR instead of using the log.
-    foreach my $client (@clients) {
-      my $predicate = "has_$client";
-      if ($self->$predicate) {
-        try {
-          $self->debug("Stopping $client client");
-          my $startable = $self->$client;
+    if ($self->has_baton_client) {
+      try {
+        $self->debug("Stopping baton client");
+        my $startable = $self->baton_client;
 
-          if ($client =~ m{$handles_errors}msx) {
-            my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
-            $muffled->level($OFF);
-            $startable->logger($muffled);
-          }
-
-          $startable->stop;
-        } catch {
-          if ($client =~ m{$handles_errors}msx) {
-            $self->debug("$client handled expected error: ", $_);
-          }
-          else {
-            $self->error("Failed to stop $client cleanly: ", $_);
-          }
-        };
-      }
+        my $muffled = Log::Log4perl->get_logger('log4perl.logger.Muffled');
+        $muffled->level($OFF);
+        $startable->logger($muffled);
+        $startable->stop;
+      } catch {
+        $self->error("Failed to stop baton client cleanly: ", $_);
+      };
     }
   }
 

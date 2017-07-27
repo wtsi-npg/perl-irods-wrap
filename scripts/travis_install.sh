@@ -7,7 +7,7 @@ set -e -u -x
 WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
 IRODS_RIP_DIR=${IRODS_RIP_DIR:+$IRODS_RIP_DIR}
 
-sudo apt-get install -qq odbc-postgresql unixodbc-dev
+sudo apt-get install -qq odbc-postgresql unixodbc-dev uuid-dev
 
 # iRODS
 wget -q https://github.com/wtsi-npg/disposable-irods/releases/download/${DISPOSABLE_IRODS_VERSION}/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz -O /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz

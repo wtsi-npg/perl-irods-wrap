@@ -37,13 +37,13 @@ $rmq->exchange_bind(
     $channel,
     $exchange_activity,
     $exchange_gateway,
-    'test.irods.data.create',
+    'test.irods.*',
 );
 $rmq->queue_bind(
     $channel,
     $queue,
     $exchange_activity,
-    'test.irods.data.create',
+    'test.irods.*',
 );
 
 $rmq->disconnect();

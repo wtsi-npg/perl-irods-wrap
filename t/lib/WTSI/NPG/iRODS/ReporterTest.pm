@@ -5,6 +5,7 @@ use warnings;
 
 use Carp;
 use English qw[-no_match_vars];
+use JSON;
 use Log::Log4perl;
 use Test::Exception;
 use Test::More;
@@ -34,14 +35,15 @@ my $conf = $ENV{'NPG_RMQ_CONFIG'} || './etc/rmq_test_config.json';
 my $queue = 'test_irods_data_create_messages';
 
 my $irods_class      = 'WTSI::NPG::TestMQiRODS';
-my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestSubscriber';
+my $subscriber_class = 'WTSI::NPG::RabbitMQ::TestCommunicator';
 
-# Net::AMQP::RabbitMQ is not required to be installed
 eval "require $irods_class";
 eval "require $subscriber_class";
 
 # Each test has a channel number, equal to $test_counter. The channel
 # is used by the publisher (iRODS instance) and subscriber in that test only.
+# Each channel *must* be declared in the RabbitMQ server configuration;
+# see scripts/rabbitmq_config.pl for an example.
 
 sub setup_test : Test(setup) {
     # Clear the message queue. For a given run of the test harness, each
@@ -77,6 +79,25 @@ sub teardown_test : Test(teardown) {
 
 sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS::Publisher');
+}
+
+sub test_message_queue : Test(2) {
+    # ensure the test message queue is working correctly
+    my $subscriber_args = _get_subscriber_args($test_counter);
+    my $subscriber = $subscriber_class->new($subscriber_args);
+    my $body = ["Hello, world!", ];
+    $subscriber->publish(encode_json($body),
+                         'npg.gateway',
+                         'test.irods.report'
+                     );
+    my @messages = $subscriber->read_all($queue);
+    is(scalar @messages, 1, 'Got 1 message from queue');
+    my $message = shift @messages;
+  SKIP: {
+        skip "RabbitMQ message not defined", 1 if not defined $message;
+        my ($msg_body, $msg_headers) = @{$message};
+        is_deeply($msg_body, $body, 'Message body has expected value');
+    }
 }
 
 ### collection tests ###
@@ -258,12 +279,16 @@ sub test_add_object : Test(18) {
 
     my $message = shift @messages;
     _test_object_message($message, 'add_object');
-    my ($body, $headers) = @{$message};
-    # temporary staging object is named lorem_copy.txt.[suffix]
-    ok($body->{'data_object'} =~ /^lorem_copy\.txt/msx,
-       'Data object name starts with lorem_copy.txt');
-    ok($body->{'collection'} eq $irods_tmp_coll,
-       "Collection name is $irods_tmp_coll");
+  SKIP: {
+        skip "RabbitMQ message not defined", 2, if not defined($message);
+        my ($body, $headers) = @{$message};
+        # temporary staging object is named lorem_copy.txt.[suffix]
+        ok($body->{'data_object'} =~ /^lorem_copy\.txt/msx,
+           'Data object name starts with lorem_copy.txt');
+        ok($body->{'collection'} eq $irods_tmp_coll,
+           "Collection name is $irods_tmp_coll");
+
+    }
 }
 
 sub test_copy_object : Test(18) {
@@ -285,12 +310,14 @@ sub test_copy_object : Test(18) {
 
     my $message = shift @messages;
     _test_object_message($message, 'copy_object');
-
-    my ($body, $headers) = @{$message};
-    ok($body->{'data_object'} eq 'lorem_copy.txt',
-       'Data object name is lorem_copy.txt');
-    ok($body->{'collection'} eq $irods_tmp_coll,
-       "Collection name is $irods_tmp_coll");
+  SKIP: {
+        skip "RabbitMQ message not defined", 2, if not defined($message);
+        my ($body, $headers) = @{$message};
+        ok($body->{'data_object'} eq 'lorem_copy.txt',
+           'Data object name is lorem_copy.txt');
+        ok($body->{'collection'} eq $irods_tmp_coll,
+           "Collection name is $irods_tmp_coll");
+    }
 }
 
 sub test_move_object : Test(18) {
@@ -313,11 +340,14 @@ sub test_move_object : Test(18) {
     my $message = shift @messages;
     _test_object_message($message, 'move_object');
 
-    my ($body, $headers) = @{$message};
-    ok($body->{'data_object'} eq 'lorem_moved.txt',
-       'Data object name is lorem_moved.txt');
-    ok($body->{'collection'} eq $irods_tmp_coll,
-       "Collection name is $irods_tmp_coll");
+   SKIP: {
+        skip "RabbitMQ message not defined", 2, if not defined($message);
+        my ($body, $headers) = @{$message};
+        ok($body->{'data_object'} eq 'lorem_moved.txt',
+           'Data object name is lorem_moved.txt');
+        ok($body->{'collection'} eq $irods_tmp_coll,
+           "Collection name is $irods_tmp_coll");
+    }
 }
 
 sub test_object_avu : Test(55) {
@@ -407,12 +437,15 @@ sub test_replace_object : Test(18) {
 
     my $message = shift @messages;
     _test_object_message($message, 'replace_object');
-    my ($body, $headers) = @{$message};
-    # temporary staging object is named lorem.txt.[suffix]
-    ok($body->{'data_object'} =~ /^lorem\.txt/msx,
-       'Data object name starts with lorem.txt');
-    ok($body->{'collection'} eq $irods_tmp_coll,
-       "Collection name is $irods_tmp_coll");
+  SKIP: {
+        skip "RabbitMQ message not defined", 2, if not defined($message);
+        my ($body, $headers) = @{$message};
+        # temporary staging object is named lorem.txt.[suffix]
+        ok($body->{'data_object'} =~ /^lorem\.txt/msx,
+           'Data object name starts with lorem.txt');
+        ok($body->{'collection'} eq $irods_tmp_coll,
+           "Collection name is $irods_tmp_coll");
+    }
 }
 
 sub test_set_object_permissions : Test(31) {
@@ -482,26 +515,30 @@ sub _test_message {
     my ($message, $method, $body_keys) = @_;
     # total tests = 7 + number of body keys
     #             = 13 for object, 11 for collection
-    my ($body, $headers) = @{$message};
-    my @body_keys = @{$body_keys};
-    my $expected_body_obj = scalar @body_keys;
-    ok(scalar keys(%{$headers}) == $expected_headers,
-       'Found '.$expected_headers.' header key/value pairs.');
-    ok(scalar keys(%{$body}) == $expected_body_obj,
-       'Found '.$expected_body_obj.' body key/value pairs.');
-    ok($headers->{'method'} eq $method, 'Method name is '.$method);
-    my $time = $headers->{'timestamp'};
-    ok($time =~ /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}/msx,
-       "Header timestamp '$time' is in correct format");
-    foreach my $key (@header_keys) {
-        ok(defined $headers->{$key},
-           'Value defined in message header for '.$key);
-    }
-    foreach my $key (@body_keys) {
-        ok(defined $body->{$key},
-           'Value defined in message body for '.$key);
-    }
+    my $total_tests = 7 + (scalar @{$body_keys});
 
+  SKIP: {
+        skip "RabbitMQ message not defined", $total_tests if not defined($message);
+        my ($body, $headers) = @{$message};
+        my @body_keys = @{$body_keys};
+        my $expected_body_obj = scalar @body_keys;
+        ok(scalar keys(%{$headers}) == $expected_headers,
+           'Found '.$expected_headers.' header key/value pairs.');
+        ok(scalar keys(%{$body}) == $expected_body_obj,
+           'Found '.$expected_body_obj.' body key/value pairs.');
+        ok($headers->{'method'} eq $method, 'Method name is '.$method);
+        my $time = $headers->{'timestamp'};
+        ok($time =~ /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}/msx,
+           "Header timestamp '$time' is in correct format");
+        foreach my $key (@header_keys) {
+            ok(defined $headers->{$key},
+               'Value defined in message header for '.$key);
+        }
+        foreach my $key (@body_keys) {
+            ok(defined $body->{$key},
+               'Value defined in message body for '.$key);
+        }
+    }
 }
 
 1;

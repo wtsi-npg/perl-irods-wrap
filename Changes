@@ -1,3 +1,7 @@
+Release 2.8.2
+ - make internal iRODS.pm method calls private
+ - RabbitMQ: add UUID to message header; change routing key format
+             use API for baton calls
 
 Release 2.8.1
  - Disabled staging/unstaging data objects to work around a baton bug

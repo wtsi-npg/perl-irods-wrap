@@ -81,6 +81,15 @@ sub _build_rmq {
 
 # methods have rmq_ prefix to avoid clashes in consuming classes
 
+=head2 rmq_connect
+
+  Args       : None
+  Example    : $irods->rmq_connect
+  Description: Check connection status; if appropriate, establish a
+               connection to the RabbitMQ server with object parameters.
+
+=cut
+
 sub rmq_connect {
     my ($self, ) = @_;
 
@@ -106,6 +115,16 @@ sub rmq_connect {
     return 1;
 }
 
+
+=head2 rmq_connect
+
+  Args       : None
+  Example    : $irods->rmq_connect
+  Description: Check connection status; if appropriate, disconnect from
+               the RabbitMQ server.
+
+=cut
+
 sub rmq_disconnect {
     my ($self, ) = @_;
     if ($self->rmq->is_connected()) {
@@ -125,6 +144,16 @@ sub rmq_disconnect {
     }
     return 1;
 }
+
+=head2 rmq_connect
+
+  Args       : None
+  Example    : $irods->rmq_connect
+  Description: If connected to a RabbitMQ server, return its cluster name;
+               otherwise return undef.
+  Returntype : Maybe[Str]
+
+=cut
 
 sub rmq_cluster_name {
     my ($self, ) = @_;

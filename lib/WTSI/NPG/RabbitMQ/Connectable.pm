@@ -116,7 +116,7 @@ sub rmq_connect {
 }
 
 
-=head2 rmq_connect
+=head2 rmq_disconnect
 
   Args       : None
   Example    : $irods->rmq_connect
@@ -145,7 +145,7 @@ sub rmq_disconnect {
     return 1;
 }
 
-=head2 rmq_connect
+=head2 rmq_cluster_name
 
   Args       : None
   Example    : $irods->rmq_connect

@@ -172,7 +172,7 @@ sub _publish_message {
     my $response = $self->list_path_details($path);
     my $response_string = encode_json($response);
     $self->debug('Got response from baton: ', $response_string);
-    my $key = $self->routing_key_prefix.'.irods.data.create';
+    my $key = $self->routing_key_prefix.'.irods.report';
     my $headers = $self->_get_headers($response, $name, $now);
     $self->rmq->publish($self->channel,
                         $key,
@@ -180,6 +180,8 @@ sub _publish_message {
                         { exchange => $self->exchange },
                         { headers => $headers },
                     );
+    # Net::AMQP::RabbitMQ documentation specifies 'header' as key in
+    # props argument to 'publish', but this is incorrect (2017-07-31)
     return 1;
 }
 

@@ -1,6 +1,6 @@
-package WTSI::NPG::RabbitMQ::TestSubscriber;
+package WTSI::NPG::RabbitMQ::TestCommunicator;
 
-# simple class to get messages from RabbitMQ for tests
+# simple class to send/receive RabbitMQ messages for tests
 
 use Moose;
 use JSON;
@@ -23,6 +23,23 @@ sub BUILD {
 sub DEMOLISH {
     my ($self, ) = @_;
     $self->rmq_disconnect();
+}
+
+sub publish {
+    my ($self, $body, $exchange, $routing_key) = @_;
+    $exchange ||= 'npg.gateway';
+    $routing_key ||= 'test.irods.rmq_publish';
+    my $options = { exchange => $exchange };
+    my $time = localtime;
+    my $header = { time => $time };
+    my $props = { headers => $header };
+    # Net::AMQP::RabbitMQ documentation specifies 'header' as key in
+    # props argument to 'publish', but this is incorrect (2017-07-31)
+    $self->rmq->publish($self->channel,
+                        $routing_key,
+                        $body,
+                        $options,
+                        $props);
 }
 
 sub read_next {

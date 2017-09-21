@@ -35,14 +35,13 @@ has 'routing_key_prefix' =>
          'used to distinguish test from production messages.',
 );
 
-has 'no_rmq' =>
+has 'enable_rmq' =>
     (is       => 'ro',
      isa      => 'Bool',
      lazy     => 1,
-     builder  => '_build_no_rmq',
-     documentation => 'If true, do not publish messages to the RabbitMQ '.
-         'server. True by default unless the rmq_config_path attribute in '.
-         'the WTSI::NPG::RabbitMQ::Connectable role is defined.',
+     default  => 1,
+     documentation => 'If true, publish messages to the RabbitMQ '.
+         'server. True by default.',
  );
 
 requires qw[get_irods_user];
@@ -114,15 +113,6 @@ sub rmq_timestamp {
     return $time->iso8601().q{.}.$decimal_string;
 }
 
-sub _build_no_rmq {
-    my ($self, ) = @_;
-    my $no_rmq = 1;
-    if (defined $self->rmq_config_path) {
-        $no_rmq = 0;
-    }
-    return $no_rmq;
-}
-
 sub _get_headers {
     my ($self, $body, $name, $time) = @_;
     my $irods_user = $self->get_irods_user();
@@ -130,7 +120,7 @@ sub _get_headers {
         method     => $name,       # name of Moose method called
         timestamp  => $time,       # time immediately before method call
         user       => $ENV{USER},  # OS username (may differ from irods_user)
-	irods_user => $irods_user, # iRODS username
+    irods_user => $irods_user, # iRODS username
         type       => q{},         # file type from metadata, if any
     };
     my $response = {};

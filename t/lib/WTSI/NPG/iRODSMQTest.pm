@@ -1,4 +1,4 @@
-package WTSI::NPG::TestMQiRODS;
+package WTSI::NPG::iRODSMQTest;
 
 use Moose;
 

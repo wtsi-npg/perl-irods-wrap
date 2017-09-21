@@ -16,9 +16,9 @@ foreach my $name (@REPORTABLE_METHODS) {
 
     around $name => sub {
         my ($orig, $self, @args) = @_;
- 	my $now = $self->rmq_timestamp();
+     my $now = $self->rmq_timestamp();
         my $obj = $self->$orig(@args);
-        if (! $self->no_rmq) {
+        if ($self->enable_rmq) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on path ', $obj->str() );
             $self->publish_rmq_message($obj->json(), $name, $now);

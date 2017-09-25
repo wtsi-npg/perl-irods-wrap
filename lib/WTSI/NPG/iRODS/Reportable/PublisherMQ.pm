@@ -16,23 +16,25 @@ foreach my $name (@REPORTABLE_METHODS) {
 
     around $name => sub {
         my ($orig, $self, @args) = @_;
-     my $now = $self->rmq_timestamp();
+        my $now = $self->rmq_timestamp();
         my $obj = $self->$orig(@args);
         if ($self->enable_rmq) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on path ', $obj->str() );
-            $self->publish_rmq_message($obj->json(), $name, $now);
+        my $body;
+        if ($obj->meta->has_attribute('data_object')) {
+                $body = $self->object_message_body($obj->str(),
+                                                   $self->irods);
+        } else {
+                $body = $self->collection_message_body($obj->str(),
+                                                       $self->irods);
+        }
+            my $user = $self->irods->get_irods_user;
+            my $headers = $self->message_headers($body, $name, $now, $user);
+            $self->publish_rmq_message($body, $headers);
         }
         return $obj;
     };
-
-}
-
-### subroutines required by WTSI::NPG::iRODS::Reportable::Base
-
-sub get_irods_user {
-    my ($self,) = @_;
-    return $self->irods->get_irods_user;
 }
 
 no Moose::Role;

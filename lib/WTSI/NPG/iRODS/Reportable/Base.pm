@@ -5,6 +5,7 @@ use warnings;
 use Moose::Role;
 
 use DateTime;
+use File::Basename qw[fileparse];
 use JSON;
 use Time::HiRes qw[gettimeofday];
 use Try::Tiny;
@@ -44,15 +45,108 @@ has 'enable_rmq' =>
          'server. True by default.',
  );
 
-requires qw[get_irods_user];
+
+=head2 collection_message_body
+
+  Arg [1]    : [Str] iRODS collection path
+  Arg [2]    : [WTSI::NPG::iRODS] iRODS instance. Optional, defaults to
+               $self (useful if the class consuming this Role is a subclass
+               of WTSI::NPG::iRODS).
+
+  Example    : $irods->collection_message_body($path, $irods);
+  Description: Generates a data structure describing an iRODS collection,
+               and encodes as JSON to form the body of a RabbitMQ message.
+  Returntype:  HashRef
+
+=cut
+
+sub collection_message_body {
+    my ($self, $path, $irods) = @_;
+    $irods ||= $self;
+    $path = $irods->ensure_collection_path($path);
+    my @avus = $irods->get_collection_meta($path);
+    # $spec based on json() method of DataObject; also records permissions
+
+    my @permissions = $irods->get_collection_permissions($path);
+    my $spec = { collection  => $path,
+                 avus        => \@avus,
+         acl         => \@permissions,
+             };
+    my $body = encode_json($spec);
+    return $body;
+}
+
+
+=head2 message_headers
+
+  Arg [1]    : [Str] RabbitMQ message body as a JSON string; used to obtain
+               the file type AVU (if any)
+  Arg [2]    : [Str] name of method called
+  Arg [3]    : [Str] timestamp, in format output by rmq_timestamp()
+  Arg [4]    : [Str] iRODS username
+
+  Example    : $irods->message_headers($avus, $my_method, $timestamp, $user);
+  Description: Generate a HashRef for use as the RabbitMQ message headers.
+  Returntype:  HashRef
+
+=cut
+
+sub message_headers {
+    my ($self, $body, $method_name, $time, $irods_user) = @_;
+    my $type = $self->_type_from_message_body($body);
+    my $headers = {
+        method     => $method_name, # name of Moose method called
+        timestamp  => $time,        # time immediately before method call
+        user       => $ENV{USER},   # OS username (may differ from irods_user)
+        irods_user => $irods_user,  # iRODS username
+        type       => $type,        # file type from metadata, if any
+    };
+    if (defined $type) {
+        $headers->{type} = $type;
+    }
+    return $headers;
+}
+
+=head2 object_message_body
+
+  Arg [1]    : [Str] iRODS data object path
+  Arg [2]    : [WTSI::NPG::iRODS] iRODS instance. Optional, defaults to
+               $self (useful if the class consuming this Role is a subclass
+               of WTSI::NPG::iRODS).
+
+  Example    : $irods->object_message_body($path, $irods);
+  Description: Generates a data structure describing an iRODS data object.
+               Can be encoded as JSON to form the body of a RabbitMQ message.
+  Returntype:  Str
+
+=cut
+
+sub object_message_body {
+    my ($self, $path, $irods) = @_;
+    $irods ||= $self;
+    $path = $irods->ensure_object_path($path); # uses path cache
+    my ($obj, $collection, $suffix) = fileparse($path);
+    $collection =~ s/\/$//msx; # remove trailing /
+    my @avus = $irods->get_object_meta($path); # uses metadata cache
+    # $spec based on json() method of DataObject; also records permissions
+
+    my @permissions = $irods->get_object_permissions($path);
+    my $spec = { collection  => $collection,
+                 data_object => $obj,
+                 avus        => \@avus,
+         acl         => \@permissions,
+             };
+    my $body = encode_json($spec);
+    return $body;
+}
+
 
 =head2 publish_rmq_message
 
   Arg [1]    : Message body in JSON string format [Str]
-  Arg [2]    : Method name for header field [Str]
-  Arg [3]    : Timestamp [Str]
+  Arg [2]    : Message headers [HashRef]
 
-  Example    : $irods->publish_rmq_message($body, $name, $now)
+  Example    : $irods->publish_rmq_message($body, $headers)
   Description: Publishes a RabbitMQ message to the channel and exchange
                determined by object attributes.
 
@@ -63,9 +157,8 @@ requires qw[get_irods_user];
 =cut
 
 sub publish_rmq_message {
-    my ($self, $body, $name, $now) = @_;
+    my ($self, $body, $headers) = @_;
     my $key = $self->routing_key_prefix.'.irods.report';
-    my $headers = $self->_get_headers($body, $name, $now);
     $self->rmq->publish($self->channel,
                         $key,
                         $body,
@@ -113,29 +206,31 @@ sub rmq_timestamp {
     return $time->iso8601().q{.}.$decimal_string;
 }
 
-sub _get_headers {
-    my ($self, $body, $name, $time) = @_;
-    my $irods_user = $self->get_irods_user();
-    my $headers = {
-        method     => $name,       # name of Moose method called
-        timestamp  => $time,       # time immediately before method call
-        user       => $ENV{USER},  # OS username (may differ from irods_user)
-    irods_user => $irods_user, # iRODS username
-        type       => q{},         # file type from metadata, if any
-    };
-    my $response = {};
+### private methods
+
+sub _type_from_message_body {
+    # convenience method to get file type AVU (if any) from message body JSON
+    # returns an empty string if AVU is not found
+    my ($self, $body) = @_;
+    my $response;
     try {
         $response = decode_json($body);
     } catch {
-        $self->warn(q{Unable to decode JSON from message body: '},
-                    $body, q{'});
+        $self->logwarn(q{Unable to decode JSON from message body: '},
+                       $body, q{'});
     };
+    my $type = q{};
     foreach my $avu (@{$response->{'avus'}}) {
         if ($avu->{attribute} eq 'type') {
-            $headers->{type} = $avu->{value};
+            if ($type) {
+                $self->logwarn('More than one file type AVU in message body,',
+                               " using '", $type, "': '", $body, q{'});
+                last;
+            }
+            $type = $avu->{value};
         }
     }
-    return $headers;
+    return $type;
 }
 
 no Moose::Role;

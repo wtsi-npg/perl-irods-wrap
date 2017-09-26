@@ -22,7 +22,7 @@ with qw[
          WTSI::NPG::Accountable
          WTSI::NPG::iRODS::AVUCollator
          WTSI::NPG::iRODS::Annotator
-       ];
+];
 
 has 'irods' =>
   (is            => 'ro',
@@ -57,6 +57,7 @@ has 'checksum_cache_time_delta' =>
                     'cache by more than this number of seconds, the cache ' .
                     'is stale');
 
+
 =head2 publish
 
   Arg [1]    : Path to local file for directory, Str.
@@ -72,7 +73,7 @@ has 'checksum_cache_time_delta' =>
   Description: Publish a local file or directory to iRODS, detecting which
                has been passed as an argument and then delegating to
                'publish_file' or 'publish_directory' as appropriate.
-  Returntype : Str
+  Returntype : WTSI::NPG::iRODS::DataObject or WTSI::NPG::iRODS::Collection
 
 =cut
 
@@ -104,10 +105,10 @@ sub publish {
   Arg [4]    : Timestamp to use in metadata, DateTime. Optional, defaults
                to current time.
 
-  Example    : my $path = $pub->publish_file('./local/file.txt',
-                                             '/zone/path/file.txt',
-                                             [{attribute => 'x',
-                                               value     => 'y'}])
+  Example    : my $obj = $pub->publish_file('./local/file.txt',
+                                            '/zone/path/file.txt',
+                                            [{attribute => 'x',
+                                              value     => 'y'}])
   Description: Publish a local file to iRODS, create and/or supersede
                metadata (both default and custom) and update permissions,
                returning the absolute path of the published data object.
@@ -123,7 +124,7 @@ sub publish {
                and custom metadata will be superseded.
 
                In both cases, permissions will be updated.
-  Returntype : Str
+  Returntype : WTSI::NPG::iRODS::DataObject
 
 =cut
 
@@ -141,17 +142,16 @@ sub publish_file {
     $timestamp = DateTime->now;
   }
 
-  my $path;
+  my $obj;
   if ($self->irods->is_collection($remote_path)) {
     $self->info("Remote path '$remote_path' is a collection");
 
     my ($loc_vol, $dir, $file) = splitpath($local_path);
-    $path = $self->publish_file($local_path, catfile($remote_path, $file),
-                                $metadata, $timestamp)
+    $obj = $self->publish_file($local_path, catfile($remote_path, $file),
+                               $metadata, $timestamp)
   }
   else {
     my $local_md5 = $self->_get_md5($local_path);
-    my $obj;
     if ($self->irods->is_object($remote_path)) {
       $self->info("Remote path '$remote_path' is an existing object");
       $obj = $self->_publish_file_overwrite($local_path, $local_md5,
@@ -170,10 +170,9 @@ sub publish_file {
                        '(see log for details)');
      }
 
-    $path = $obj->str;
   }
 
-  return $path;
+  return $obj;
 }
 
 =head2 publish_directory
@@ -184,7 +183,7 @@ sub publish_file {
   Arg [4]    : Timestamp to use in metadata, DateTime. Optional, defaults
                to current time.
 
-  Example    : my $path = $pub->publish_directory('./local/dir',
+  Example    : my $coll = $pub->publish_directory('./local/dir',
                                                   '/zone/path',
                                                   [{attribute => 'x',
                                                     value     => 'y'}])
@@ -195,7 +194,7 @@ sub publish_file {
                The local directory will be inserted into the destination
                collection as a new sub-collection. No checks are made on the
                files with in the new collection.
-  Returntype : Str
+  Returntype : WTSI::NPG::iRODS::Collection
 
 =cut
 
@@ -232,7 +231,7 @@ sub publish_directory {
                     '(see log for details)');
   }
 
-  return $coll->str;
+  return $coll;
 }
 
 sub _build_irods {

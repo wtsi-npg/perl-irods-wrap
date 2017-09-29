@@ -16,10 +16,6 @@ Log::Log4perl::init('./etc/log4perl_tests.conf');
 
 my $log = Log::Log4perl::get_logger();
 
-use WTSI::NPG::iRODSMQTest;
-use WTSI::NPG::PublisherMQTest;
-use WTSI::NPG::RabbitMQ::TestCommunicator;
-
 my $pid          = $PID;
 my $test_counter = 0;
 my $data_path    = './t/data/reporter';

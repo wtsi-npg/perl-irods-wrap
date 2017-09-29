@@ -36,6 +36,11 @@ sub runtests {
 	     'false; or TEST_RABBITMQ is not set, and TEST_AUTHOR ',
 	     'is false or not set');
         $self->SKIP_CLASS($skip_msg);
+    } else {
+	# optional modules, needed for RabbitMQ tests
+	require WTSI::NPG::iRODSMQTest;
+	require WTSI::NPG::PublisherMQTest;
+	require WTSI::NPG::RabbitMQ::TestCommunicator;
     }
     return $self->SUPER::runtests;
 }

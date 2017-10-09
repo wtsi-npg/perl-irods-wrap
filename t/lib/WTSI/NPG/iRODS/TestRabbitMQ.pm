@@ -33,8 +33,8 @@ sub runtests {
     }
     if (! $run_tests) {
         diag('Omitting RabbitMQ tests: Either TEST_RABBITMQ is set to ',
-	     'false; or TEST_RABBITMQ is not set, and TEST_AUTHOR ',
-	     'is false or not set');
+             'false; or TEST_RABBITMQ is not set, and TEST_AUTHOR ',
+             'is false or not set');
         $self->SKIP_CLASS($skip_msg);
     } else {
 	# optional modules, needed for RabbitMQ tests

@@ -1,3 +1,15 @@
+Release 3.0.0
+ - API change for WTSI::NPG::iRODS::Publisher
+   - Publication returns iRODS DataObject or Collection, instead of string
+   - Affects methods: publish, publish_file, publish_directory
+ - Remove the list_path_details method from WTSI::NPG::iRODS
+ - RabbitMQ:
+   - Messaging for method calls in Publisher as well as iRODS
+   - Reportable Role refactored into Base, PublisherMQ, and iRODSMQ Roles
+   - Enable RabbitMQ for Travis tests
+   - Bugfix; no error if RabbitMQ tests are disabled and
+     Net::AMQP::RabbitMQ is not installed 
+
 Release 2.8.2
  - make internal iRODS.pm method calls private
  - RabbitMQ: add UUID to message header; change routing key format

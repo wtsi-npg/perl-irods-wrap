@@ -1,11 +1,12 @@
-package WTSI::NPG::TestMQiRODS;
+package WTSI::NPG::iRODSMQTest;
 
 use Moose;
 
 use WTSI::NPG::iRODS;
 
 extends 'WTSI::NPG::iRODS';
-with 'WTSI::NPG::iRODS::Reportable';
+
+with 'WTSI::NPG::iRODS::Reportable::iRODSMQ';
 
 __PACKAGE__->meta->make_immutable;
 

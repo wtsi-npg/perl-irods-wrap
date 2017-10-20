@@ -5,6 +5,8 @@ use warnings;
 
 use base qw(WTSI::NPG::iRODS::Test);
 
+use Test::More;
+
 # Run full tests (requiring a test RabbitMQ server) only if specified by
 # environment variables:
 #
@@ -30,7 +32,15 @@ sub runtests {
         $skip_msg = 'TEST_RABBITMQ environment variable is false';
     }
     if (! $run_tests) {
+        diag('Omitting RabbitMQ tests: Either TEST_RABBITMQ is set to ',
+             'false; or TEST_RABBITMQ is not set, and TEST_AUTHOR ',
+             'is false or not set');
         $self->SKIP_CLASS($skip_msg);
+    } else {
+	# optional modules, needed for RabbitMQ tests
+	require WTSI::NPG::iRODSMQTest;
+	require WTSI::NPG::PublisherMQTest;
+	require WTSI::NPG::RabbitMQ::TestCommunicator;
     }
     return $self->SUPER::runtests;
 }

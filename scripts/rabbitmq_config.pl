@@ -18,32 +18,41 @@ my $host = $ENV{'NPG_RMQ_HOST'};
 my $opts = from_json(read_file($ENV{'NPG_RMQ_CONFIG'}));
 
 $rmq->connect($host, $opts);
-$rmq->channel_open($channel);
-$rmq->exchange_declare(
-    $channel,
-    $exchange_gateway,
-    { exchange_type => 'fanout' },
-);
-$rmq->exchange_declare(
-    $channel,
-    $exchange_activity,
-    { exchange_type => 'topic' },
-);
-$rmq->queue_declare(
-    $channel,
-    $queue,
-);
-$rmq->exchange_bind(
-    $channel,
-    $exchange_activity,
-    $exchange_gateway,
-    'test.irods.*',
-);
-$rmq->queue_bind(
-    $channel,
-    $queue,
-    $exchange_activity,
-    'test.irods.*',
-);
+
+# We want to increment the channel number for each test
+# So we declare 100 channels (many more than currently needed)
+
+while ($channel <= 100) {
+
+    $rmq->channel_open($channel);
+    $rmq->exchange_declare(
+        $channel,
+        $exchange_gateway,
+        { exchange_type => 'fanout' },
+    );
+    $rmq->exchange_declare(
+        $channel,
+        $exchange_activity,
+        { exchange_type => 'topic' },
+    );
+    $rmq->queue_declare(
+        $channel,
+        $queue,
+    );
+    $rmq->exchange_bind(
+        $channel,
+        $exchange_activity,
+        $exchange_gateway,
+        'test.irods.*',
+    );
+    $rmq->queue_bind(
+        $channel,
+        $queue,
+        $exchange_activity,
+        'test.irods.*',
+    );
+
+    $channel++;
+}
 
 $rmq->disconnect();

@@ -58,7 +58,6 @@ t/data/path/test_dir/contents/c/30.txt
 t/data/path/test_dir/contents/c/z/3.txt
 t/data/path/test_dir/test_file.txt
 t/lib/WTSI/NPG/DriRODSTest.pm
-t/lib/WTSI/NPG/TestMQiRODS.pm
 t/lib/WTSI/NPG/iRODSTest.pm
 t/lib/WTSI/NPG/iRODS/AnnotatorTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm

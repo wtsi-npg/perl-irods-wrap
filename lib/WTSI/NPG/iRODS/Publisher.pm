@@ -17,13 +17,6 @@ use WTSI::NPG::iRODS;
 
 our $VERSION = '';
 
-with qw[
-         WTSI::DNAP::Utilities::Loggable
-         WTSI::NPG::Accountable
-         WTSI::NPG::iRODS::AVUCollator
-         WTSI::NPG::iRODS::Annotator
-];
-
 has 'irods' =>
   (is            => 'ro',
    isa           => 'WTSI::NPG::iRODS',
@@ -57,6 +50,13 @@ has 'checksum_cache_time_delta' =>
                     'cache by more than this number of seconds, the cache ' .
                     'is stale');
 
+with qw[
+         WTSI::DNAP::Utilities::Loggable
+         WTSI::NPG::Accountable
+         WTSI::NPG::iRODS::AVUCollator
+         WTSI::NPG::iRODS::Annotator
+         WTSI::NPG::iRODS::Reportable::PublisherMQ
+];
 
 =head2 publish
 

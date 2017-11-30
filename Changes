@@ -1,3 +1,6 @@
+Release 3.0.1
+ - Support baton versions  >=1.0.0 and <=1.1.0
+
 Release 3.0.0
  - API change for WTSI::NPG::iRODS::Publisher
    - Publication returns iRODS DataObject or Collection, instead of string

@@ -58,7 +58,7 @@ my $SSL_CACERT_DEFAULT = $ENV{'HOME'}.'/.ssh/ssl-cert-snakeoil.pem';
 sub _build_connection_opts {
     my ($self, ) = @_;
     my $opts= {};
-    if (defined $self->rmq_config_path) {
+    if ($self->rmq_config_path) {
         $opts = from_json(read_file($self->rmq_config_path));
     }
     if ($opts->{'ssl'}) {

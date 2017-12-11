@@ -88,7 +88,7 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub compatible_baton_versions : Test(8) {
+sub compatible_baton_versions : Test(9) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -105,7 +105,7 @@ sub compatible_baton_versions : Test(8) {
        "Incompatible with baton $version");
   }
 
-  my @compatible_versions = qw(1.0.0);
+  my @compatible_versions = qw(1.1.0 1.2.0);
   foreach my $version (@compatible_versions) {
     ok($irods->match_baton_version($version),
        "Compatible with baton $version");
@@ -123,9 +123,9 @@ sub match_baton_version : Test(11) {
     ok(!$irods->match_baton_version('2.2.2'), 'Too new, major version');
     ok(!$irods->match_baton_version('1.3.2',  'Too new, minor version'));
     ok(!$irods->match_baton_version('1.2.3'), 'Too new, patch version');
-    ok($irods->match_baton_version('1.2.2'),     'In range, max version');
-    ok($irods->match_baton_version('1.2.0'),     'In range version');
-    ok($irods->match_baton_version('1.1.1'),     'In range, min version');
+    ok($irods->match_baton_version('1.2.2'),  'In range, max version');
+    ok($irods->match_baton_version('1.2.0'),  'In range version');
+    ok($irods->match_baton_version('1.1.1'),  'In range, min version');
     ok(!$irods->match_baton_version('1.1.0'), 'Too old, patch version');
     ok(!$irods->match_baton_version('1.0.1'), 'Too old, minor version');
     ok(!$irods->match_baton_version('0.1.1'), 'Too old, major version');
@@ -133,6 +133,13 @@ sub match_baton_version : Test(11) {
     ok($irods->match_baton_version('1.2.0-abcdef'));
     ok($irods->match_baton_version('1.2.0-1-abcdef'));
   }
+}
+
+sub single_server : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    single_server        => 1,
+                                    strict_baton_version => 0);
+  ok($irods->single_server, 'Can start in single-server mode');
 }
 
 sub group_prefix : Test(6) {

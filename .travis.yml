@@ -2,7 +2,6 @@ language: perl
 sudo: required
 
 perl:
-  - "5.16"
   - "5.22-shrplib"
 
 addons:
@@ -15,7 +14,7 @@ env:
   global:
     - PGVERSION="9.3"
     - JANSSON_VERSION="2.9"
-    - BATON_VERSION="1.0.0"
+    - BATON_VERSION="1.1.0"
     - DISPOSABLE_IRODS_VERSION="1.2"
     - RENCI_FTP_URL=ftp://ftp.renci.org
     - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
@@ -23,7 +22,6 @@ env:
     - NPG_RMQ_HOST='localhost'
 
   matrix:
-    # - IRODS_VERSION=3.3.1 IRODS_RIP_DIR=/usr/local/irods # temporarily disable due to iRODS 3 client bug?
     - IRODS_VERSION=4.1.10 PG_PLUGIN_VERSION=1.10 PLATFORM=ubuntu12
 
 before_install:

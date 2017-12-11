@@ -23,8 +23,8 @@ use WTSI::NPG::iRODS::Types qw(:all);
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '1.1.0';
-our $MIN_BATON_VERSION = '1.0.0';
+our $MAX_BATON_VERSION = '1.2.0';
+our $MIN_BATON_VERSION = '1.1.0';
 
 our $IADMIN      = 'iadmin';
 our $ICP         = 'icp';
@@ -135,6 +135,15 @@ has 'baton_client' =>
    lazy     => 1,
    builder  => '_build_baton_client',
    predicate => 'has_baton_client');
+
+has 'single_server' =>
+  (is            => 'ro',
+   isa           => 'Bool',
+   default       => 0,
+   documentation => 'If true, connect ony a single iRODS server by avoiding ' .
+                    'any direct connections to resource servers. This mode will ' .
+                    'be much slower to transfer large files, but does not ' .
+                    'resource servers to be accessible');
 
 has '_path_cache' =>
   (is            => 'ro',
@@ -2440,8 +2449,14 @@ sub is_avu_history_attr {
 sub _build_baton_client {
   my ($self) = @_;
 
+  my @arguments = ('--unbuffered');
+  if ($self->single_server) {
+    $self->info('Starting the baton client in single-server mode');
+    push @arguments, '--single-server';
+  }
+
   return WTSI::NPG::iRODS::BatonClient->new
-    (arguments   => ['--unbuffered'],
+    (arguments   => \@arguments,
      environment => $self->environment)->start;
 }
 

@@ -16,6 +16,8 @@ lib/WTSI/NPG/iRODS/GroupAdmin.pm
 lib/WTSI/NPG/iRODS/Metadata.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Publisher.pm
+lib/WTSI/NPG/iRODS/PublisherFactory.pm
+lib/WTSI/NPG/iRODS/PublisherWithReporting.pm
 lib/WTSI/NPG/iRODS/Replicate.pm
 lib/WTSI/NPG/iRODS/Reportable/Base.pm
 lib/WTSI/NPG/iRODS/Reportable/iRODSMQ.pm
@@ -58,14 +60,15 @@ t/data/path/test_dir/contents/c/30.txt
 t/data/path/test_dir/contents/c/z/3.txt
 t/data/path/test_dir/test_file.txt
 t/lib/WTSI/NPG/DriRODSTest.pm
-t/lib/WTSI/NPG/TestMQiRODS.pm
 t/lib/WTSI/NPG/iRODSTest.pm
 t/lib/WTSI/NPG/iRODS/AnnotatorTest.pm
 t/lib/WTSI/NPG/iRODS/CollectionTest.pm
 t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODS/GroupAdminTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
+t/lib/WTSI/NPG/iRODS/PublisherFactoryTest.pm
 t/lib/WTSI/NPG/iRODS/PublisherTest.pm
+t/lib/WTSI/NPG/iRODS/PublisherWithReportingTest.pm
 t/lib/WTSI/NPG/iRODS/ReporterTest.pm
 t/lib/WTSI/NPG/iRODS/Test.pm
 t/lib/WTSI/NPG/iRODS/TestRabbitMQ.pm
@@ -73,4 +76,6 @@ t/lib/WTSI/NPG/RabbitMQ/TestCommunicator.pm
 t/performance.t
 t/perlcriticrc
 t/publisher.t
+t/publisher_factory.t
+t/publisher_with_reporting.t
 t/reporter.t

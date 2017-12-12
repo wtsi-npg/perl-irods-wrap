@@ -1,11 +1,40 @@
 package WTSI::NPG::iRODS::PublisherFactory;
 
-use namespace::autoclean;
-use Moose;
+use strict;
+use warnings;
+use Moose::Role;
 
 use WTSI::NPG::iRODS::Publisher;
 
+with 'WTSI::DNAP::Utilities::Loggable';
+
 our $VERSION = '';
+
+has 'enable_rmq' =>
+    (is       => 'ro',
+     isa      => 'Bool',
+     lazy     => 1,
+     default  => 0,
+     documentation => 'If true, publish messages to the RabbitMQ '.
+         'server. False by default.',
+ );
+
+has 'exchange' =>
+    (is       => 'ro',
+     isa      => 'Maybe[Str]',
+     documentation => 'A RabbitMQ exchange name. Relevant only if '.
+         'enable_rmq is True.',
+);
+
+has 'routing_key_prefix' =>
+    (is       => 'ro',
+     isa      => 'Maybe[Str]',
+     documentation => 'Prefix for the RabbitMQ routing key. May be '.
+         'used to distinguish test from production messages. Relevant '.
+         'only if enable_rmq is True.',
+);
+
+
 
 =head2 make_publisher
 
@@ -16,6 +45,11 @@ our $VERSION = '';
   Description: Factory for creating Publisher objects of an appropriate
                class, depending if RabbitMQ messaging is enabled.
 
+               The RabbitMQ parameters 'exchange' and 'routing_key_prefix'
+               are specified by attributes of the PublisherFactory Role;
+               they must not be included in the list of arguments input to
+               this method.
+
   Returntype : WTSI::NPG::iRODS::Publisher or
                WTSI::NPG::iRODS::PublisherWithReporting
 
@@ -23,8 +57,9 @@ our $VERSION = '';
 
 sub make_publisher {
     my ($self, @args) = @_;
+    @args = $self->_process_args(@args);
     my $publisher;
-    if ($ENV{NPG_RMQ_CONFIG}) {
+    if ($self->enable_rmq) {
         # 'require' ensures PublisherWithReporting not used unless wanted
         # eg. prerequisite module Net::AMQP::RabbitMQ may not be installed
         require WTSI::NPG::iRODS::PublisherWithReporting;
@@ -36,10 +71,39 @@ sub make_publisher {
 }
 
 
+# check and update publisher creation arguments
+# - if exchange or routing_key_prefix is defined in arguments, croak
+# - if RabbitMQ is enabled:
+#   - if exchange or routing_key_prefix attribute is defined, populate
+#   argument from attribute
+#   - otherwise, do not populate argument (Publisher default will be used)
 
-__PACKAGE__->meta->make_immutable;
+sub _process_args {
+    my ($self, %args) = @_;
+    my $exchange_key = 'exchange';
+    my $prefix_key = 'routing_key_prefix';
+    my @rmq_keys = ($exchange_key, $prefix_key);
+    foreach my $key (@rmq_keys) {
+        if (defined $args{$key}) {
+            $self->logcroak
+                ('Key/value pair for ', $key, ' must not be defined ',
+                 'in Publisher arguments; instead, may be defined in ',
+                 'attribute of WTSI::NPG::iRODS::PublisherFactory.');
+        }
+    }
+    if ($self->enable_rmq) {
+        if (defined $self->exchange) {
+            $args{$exchange_key} = $self->exchange;
+        }
+        if (defined $self->routing_key_prefix) {
+            $args{$prefix_key} = $self->routing_key_prefix;
+        }
+    }
+    return %args;
+}
 
-no Moose;
+
+no Moose::Role;
 
 1;
 
@@ -53,7 +117,7 @@ WTSI::NPG::iRODS::PublisherFactory
 
 =head1 DESCRIPTION
 
-A factory for creating Publisher objects of an appropriate class:
+A Role for creating Publisher objects of an appropriate class:
 
 =over
 
@@ -67,9 +131,11 @@ WTSI::NPG::iRODS::Publisher otherwise.
 
 =back
 
-RabbitMQ is enabled if the environment variable NPG_RMQ_CONFIG is set
-to a true value; disabled otherwise.
 
+RabbitMQ is enabled if the attribute enable_rmq is true; disabled otherwise.
+
+This role also includes attributes which may be used to store RabbitMQ
+parameters: exchange and routing_key_prefix.
 
 =head1 AUTHOR
 

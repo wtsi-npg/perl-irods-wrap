@@ -181,8 +181,13 @@ sub publish_rmq_message {
 
 sub rmq_init {
     my ($self,) = @_;
-    $self->rmq_connect();
-    $self->rmq->channel_open($self->channel);
+    if ($self->rmq->is_connected()) {
+        $self->debug("Called rmq_init, but already connected to ",
+                     "RabbitMQ server; no action taken.");
+    } else {
+        $self->rmq_connect();
+        $self->rmq->channel_open($self->channel);
+    }
     $self->debug('Server properties: ',
                  encode_json($self->rmq->get_server_properties));
     return 1;

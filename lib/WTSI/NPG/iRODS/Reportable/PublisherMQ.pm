@@ -21,14 +21,14 @@ foreach my $name (@REPORTABLE_METHODS) {
         if ($self->enable_rmq) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on path ', $obj->str() );
-        my $body;
-        if ($obj->meta->has_attribute('data_object')) {
+            my $body;
+            if ($obj->meta->has_attribute('data_object')) {
                 $body = $self->object_message_body($obj->str(),
                                                    $self->irods);
-        } else {
+            } else {
                 $body = $self->collection_message_body($obj->str(),
                                                        $self->irods);
-        }
+            }
             my $user = $self->irods->get_irods_user;
             my $headers = $self->message_headers($body, $name, $now, $user);
             $self->publish_rmq_message($body, $headers);

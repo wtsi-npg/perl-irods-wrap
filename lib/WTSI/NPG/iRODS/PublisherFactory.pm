@@ -63,6 +63,7 @@ sub make_publisher {
     my ($self, ) = @_;
     my @args;
     if ($self->enable_rmq) {
+        push @args, 'enable_rmq'         => 1;
         push @args, 'channel'            => $self->channel;
         push @args, 'exchange'           => $self->exchange;
         push @args, 'routing_key_prefix' => $self->routing_key_prefix;
@@ -85,7 +86,7 @@ sub make_publisher {
 }
 
 
-no Moose::Role;
+no Moose;
 
 1;
 
@@ -116,8 +117,11 @@ WTSI::NPG::iRODS::Publisher otherwise.
 
 RabbitMQ is enabled if the attribute enable_rmq is true; disabled otherwise.
 
+<<<<<<< HEAD
 This role also includes attributes which may be used to store RabbitMQ
 parameters: exchange and routing_key_prefix.
+=======
+>>>>>>> rmq_publisher_devel
 
 =head1 AUTHOR
 

@@ -15,7 +15,7 @@ sub require : Test(1) {
     require_ok('WTSI::NPG::iRODS::PublisherFactory');
 }
 
-sub make_publishers : Test(6) {
+sub make_publishers : Test(7) {
 
     my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                       strict_baton_version => 0);
@@ -40,6 +40,7 @@ sub make_publishers : Test(6) {
     my $publisher1 = $factory1->make_publisher();
     isa_ok($publisher1, 'WTSI::NPG::iRODS::PublisherWithReporting');
     is($publisher1->channel, 42, 'channel attribute is correct');
+    is($publisher1->enable_rmq, 1, 'enable_rmq attribute is correct');
     is($publisher1->exchange, 'foo', 'exchange attribute is correct');
     is($publisher1->routing_key_prefix, 'bar',
        'routing_key_prefix attribute is correct');

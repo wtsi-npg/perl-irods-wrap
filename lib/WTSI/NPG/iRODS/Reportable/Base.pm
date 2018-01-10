@@ -64,6 +64,7 @@ sub message_headers {
     my ($self, $body, $method_name, $time, $irods_user) = @_;
     my $type = $self->_type_from_message_body($body);
     my $headers = {
+	publisher  => $self->meta->name, # name of publisher class
         method     => $method_name, # name of Moose method called
         timestamp  => $time,        # time immediately before method call
         user       => $ENV{USER},   # OS username (may differ from irods_user)

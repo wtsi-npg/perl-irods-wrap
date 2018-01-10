@@ -91,7 +91,8 @@ sub _test_message {
 
   my $log = Log::Log4perl::get_logger();
 
-  my $expected_headers = 5; # timestamp, user, irods_user, type, method
+  my $expected_headers = 6;
+  # expected headers: publisher, timestamp, user, irods_user, type, method
   my $expected_body_keys_total = scalar keys(%{$expected_body});
 
   my $total_tests = 10;

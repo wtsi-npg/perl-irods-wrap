@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Moose::Role;
 
-our $VERSION = '';
+our $VERSION = '2.6.2-dev0-102-gd9cc2d7';
 
 with 'WTSI::NPG::iRODS::Reportable::Base';
 
@@ -22,13 +22,16 @@ foreach my $name (@REPORTABLE_METHODS) {
             $self->debug('RabbitMQ reporting for method ', $name,
                          ' on path ', $obj->str() );
             my $body;
-            if ($obj->meta->has_attribute('data_object')) {
+            if ($self->irods->is_object($obj->str())) {
                 $body = $self->object_message_body($obj->str(),
                                                    $self->irods);
-            } else {
+            } elsif ($self->irods->is_collection($obj->str())) {
                 $body = $self->collection_message_body($obj->str(),
                                                        $self->irods);
-            }
+            } else {
+		$self->logcroak('Value returned to method modifier is not an',
+				'iRODS data object or collection');
+	    }
             my $user = $self->irods->get_irods_user;
             my $headers = $self->message_headers($body, $name, $now, $user);
             $self->publish_rmq_message($body, $headers);

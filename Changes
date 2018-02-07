@@ -1,3 +1,7 @@
+Release 3.0.2
+ - support for single-server mode
+ - add "quant" and "tab" to HTS ancillary suffixes list
+
 Release 3.0.1
  - Support baton versions  >=1.0.0 and <=1.1.0
 

@@ -73,7 +73,7 @@ sub collection_message_body {
     my @permissions = $irods->get_collection_permissions($path);
     my $spec = { collection  => $path,
                  avus        => \@avus,
-         acl         => \@permissions,
+                 acl         => \@permissions,
              };
     my $body = encode_json($spec);
     return $body;
@@ -137,7 +137,7 @@ sub object_message_body {
     my $spec = { collection  => $collection,
                  data_object => $obj,
                  avus        => \@avus,
-         acl         => \@permissions,
+                 acl         => \@permissions,
              };
     my $body = encode_json($spec);
     return $body;

@@ -274,13 +274,35 @@ configuration. The user must have read, write, and configure permissions
 on the given RabbitMQ virtual host. If SSL is enabled for tests, the user
 must also have a valid SSL certificate for connection to the host.
 
+=head1 DEPENDENCIES
+
+=over
+
+=item strict
+
+=item warnings
+
+=item Moose::Role
+
+=item DateTime
+
+=item File::Basename
+
+=item JSON
+
+=item Time::HiRes
+
+=item Try::Tiny
+
+=back
+
 =head1 AUTHOR
 
 Iain Bancarz <ib5@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2017 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2017, 2018 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

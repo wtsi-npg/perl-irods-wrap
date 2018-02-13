@@ -7,10 +7,13 @@ use Moose::Role;
 use DateTime;
 use File::Basename qw[fileparse];
 use JSON;
+use Readonly;
 use Time::HiRes qw[gettimeofday];
 use Try::Tiny;
 
 our $VERSION = '';
+
+Readonly::Scalar my $DELIVERY_MODE_PERSISTENT => 2;
 
 with 'WTSI::NPG::RabbitMQ::Connectable';
 
@@ -163,10 +166,12 @@ sub publish_rmq_message {
                         $key,
                         $body,
                         { exchange => $self->exchange },
-                        { headers => $headers },
-                    );
+                        { headers       => $headers,
+                          delivery_mode => $DELIVERY_MODE_PERSISTENT },
+    );
     # Net::AMQP::RabbitMQ documentation specifies 'header' as key in
-    # props argument to 'publish', but this is incorrect (2017-07-31)
+    # props argument to 'publish', but this is incorrect, it should
+    # be 'headers' (2017-07-31)
     return 1;
 }
 
@@ -289,6 +294,8 @@ must also have a valid SSL certificate for connection to the host.
 =item File::Basename
 
 =item JSON
+
+=item Readonly
 
 =item Time::HiRes
 

@@ -75,6 +75,22 @@ sub hts_ancillary_suffixes {
   return (qw[bam_stats bamcheck bed fasta flagstat hops json quant seqchksum stats tab txt xml]);
 }
 
+=head2 hts_genotype_suffixes
+
+  Arg [1]    : None
+
+  Example    : my @suffixes = $ann->hts_genotype_suffixes
+  Description: Return an array of recognised high-throughput sequencing
+               genotype file suffixes.
+
+  Returntype : Array[Str]
+
+=cut
+
+sub hts_genotype_suffixes {
+  return (qw[geno vcf]);
+}
+
 =head2 compress_suffixes
 
   Arg [1]    : None

@@ -15,8 +15,7 @@ env:
     - PGVERSION="9.3"
     - JANSSON_VERSION="2.9"
     - BATON_VERSION="1.1.0"
-    - DISPOSABLE_IRODS_VERSION="1.2"
-    - RENCI_FTP_URL=ftp://ftp.renci.org
+    - DISPOSABLE_IRODS_VERSION="1.3"
     - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
     - NPG_RMQ_CONFIG='./etc/rmq_travis_config.json'
     - NPG_RMQ_HOST='localhost'

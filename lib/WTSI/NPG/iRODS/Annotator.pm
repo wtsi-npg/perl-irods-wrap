@@ -124,6 +124,7 @@ sub non_compress_suffixes {
   my @suffixes = uniq ($self->general_suffixes,
                        $self->hts_data_suffixes,
                        $self->hts_ancillary_suffixes,
+                       $self->hts_genotype_suffixes,
                        $self->genotype_data_suffixes);
   @suffixes = sort @suffixes;
 

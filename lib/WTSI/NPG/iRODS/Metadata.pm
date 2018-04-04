@@ -59,6 +59,8 @@ our @EXPORT = qw(
                   $XAHUMAN
                   $YHUMAN
 
+                  $GBS_PLEX_NAME
+
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
                   $PACBIO_INSTRUMENT_NAME
@@ -163,6 +165,9 @@ our $TARGET                    = 'target';
 our $TOTAL_READS               = 'total_reads';
 our $XAHUMAN                   = 'xahuman';
 our $YHUMAN                    = 'yhuman';
+
+# Genotyping by Sequencing (Illumina)
+our $GBS_PLEX_NAME             = 'gbs_plex';
 
 # PacBio
 our $PACBIO_CELL_INDEX         = 'cell_index';

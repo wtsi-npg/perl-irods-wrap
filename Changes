@@ -1,4 +1,10 @@
 
+Release 3.2.0
+ - added hts genotype suffixes to Annotator
+ - switched to disposable-irods 1.3 (uses WSI S3 for iRODS packages).
+ - added gbs_plex to Metadata.pm and hts genotype to non_compress_suffixes
+   in Annotator
+
 Release 3.1.0
  - add "hops" to HTS ancillary suffixes list
 

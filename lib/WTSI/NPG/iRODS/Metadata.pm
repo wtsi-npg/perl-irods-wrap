@@ -61,6 +61,8 @@ our @EXPORT = qw(
 
                   $GBS_PLEX_NAME
 
+                  $COMPOSITION
+
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
                   $PACBIO_INSTRUMENT_NAME
@@ -168,6 +170,9 @@ our $YHUMAN                    = 'yhuman';
 
 # Genotyping by Sequencing (Illumina)
 our $GBS_PLEX_NAME             = 'gbs_plex';
+
+# Composition JSON string for merged data
+our $COMPOSITION               = 'composition';
 
 # PacBio
 our $PACBIO_CELL_INDEX         = 'cell_index';

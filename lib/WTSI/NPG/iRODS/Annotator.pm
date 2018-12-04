@@ -72,7 +72,7 @@ sub hts_data_suffixes {
 =cut
 
 sub hts_ancillary_suffixes {
-  return (qw[bam_stats bamcheck bed fasta flagstat hops json quant seqchksum stats tab txt xml]);
+  return (qw[bam_stats bcfstats bamcheck bed fasta flagstat hops json quant seqchksum stats tab txt xml]);
 }
 
 =head2 hts_genotype_suffixes

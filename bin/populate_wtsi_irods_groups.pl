@@ -146,8 +146,8 @@ while (my $study = $studies->next){
   my $study_id = $study->id_study_lims;
   my $dag_str  = $study->data_access_group || q();
   my $is_seq   = $study->iseq_flowcells->count ||
-                 $study->pac_bio_runs->count;
-
+                 $study->pac_bio_runs->count   ||
+                 $study->oseq_flowcells->count;
   $log->debug("Working on study $study_id, SScape data access: '$dag_str'");
 
   my @members;

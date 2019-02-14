@@ -488,6 +488,9 @@ sub pf_md5_cache_ro {
   try {
     chmod 0555, "$data_path/publish_file/";
 
+    -w "$data_path/publish_file/" and
+      fail "Failed to make $data_path/publish_file/ non-writable";
+
     is($publisher->publish_file($local_path_d, $remote_path)->str(),
        $remote_path,
        'publish_file, ro MD5 cache dir');

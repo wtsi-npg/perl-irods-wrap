@@ -556,24 +556,29 @@ sub _make_md5_cache_file {
   $self->debug("Adding missing MD5 cache file '$cache_file'");
 
   my ($filename, $cache_dir) = fileparse($cache_file);
-  if (-w $cache_dir) {
-    try {
-      my $out;
-      open $out, '>', $cache_file or
-        croak "Failed to open '$cache_file' for writing: $ERRNO";
+
+  if (not -w $cache_dir) {
+    $self->warn("Cache directory '$cache_dir' is not writable");
+    return $cache_file;
+  }
+  if (not -x $cache_dir) {
+    $self->warn("Cache directory '$cache_dir' is not executable");
+    return $cache_file;
+  }
+
+  try {
+    my $out;
+    open $out, '>', $cache_file or
+      croak "Failed to open '$cache_file' for writing: $ERRNO";
       print $out "$md5\n" or
         croak "Failed to write MD5 to '$cache_file': $ERRNO";
-      close $out or
-        $self->warn("Failed to close '$cache_file' cleanly: $ERRNO");
-    } catch {
-      # Failure to create a cache should not be a hard error. Here we
-      # just forward the message from croak above.
-      $self->error($_);
-    };
-  }
-  else {
-    $self->warn("Cache directory '$cache_dir' is not writable");
-  }
+    close $out or
+      $self->warn("Failed to close '$cache_file' cleanly: $ERRNO");
+  } catch {
+    # Failure to create a cache should not be a hard error. Here we
+    # just forward the message from croak above.
+    $self->error($_);
+  };
 
   return $cache_file;
 }

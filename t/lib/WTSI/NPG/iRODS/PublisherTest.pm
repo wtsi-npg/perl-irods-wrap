@@ -6,12 +6,14 @@ use warnings;
 use Carp;
 use Data::Dump qw[pp];
 use English qw[-no_match_vars];
+use File::Basename;
 use File::Copy::Recursive qw[dircopy];
 use File::Spec::Functions;
 use File::Temp;
 use Log::Log4perl;
 use Test::Exception;
 use Test::More;
+use Try::Tiny;
 use URI;
 
 use base qw[WTSI::NPG::iRODS::Test];
@@ -36,7 +38,8 @@ sub setup_test : Test(setup) {
   $cwc = $irods->working_collection;
 
   # Prepare a copy of the test data because the tests will modify it
-  $tmp_data_path = File::Temp->newdir;
+  $tmp_data_path = File::Temp->newdir(TEMPLATE => 'publishertest.XXXXXX',
+                                      CLEANUP  => 1);
   dircopy($data_path, $tmp_data_path) or
     croak "Failed to copy test data from $data_path to $tmp_data_path";
 
@@ -94,38 +97,42 @@ sub publish : Test(8) {
   } 'publish, cram no MD5 fails';
 }
 
-sub publish_file : Test(41) {
+sub publish_file : Test(43) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   # publish_file with new full path, no metadata, no timestamp
-  pf_new_full_path_no_meta_no_stamp($irods, $data_path, $irods_tmp_coll);
+  pf_new_full_path_no_meta_no_stamp($irods, $tmp_data_path, $irods_tmp_coll);
   # publish_file with new full path, some metadata, no timestamp
-  pf_new_full_path_meta_no_stamp($irods, $data_path, $irods_tmp_coll);
+  pf_new_full_path_meta_no_stamp($irods, $tmp_data_path, $irods_tmp_coll);
   # publish_file with new full path, no metadata, with timestamp
-  pf_new_full_path_no_meta_stamp($irods, $data_path, $irods_tmp_coll);
+  pf_new_full_path_no_meta_stamp($irods, $tmp_data_path, $irods_tmp_coll);
 
   # publish_file with existing full path, no metadata, no timestamp,
   # matching MD5
-  pf_exist_full_path_no_meta_no_stamp_match($irods, $data_path,
+  pf_exist_full_path_no_meta_no_stamp_match($irods, $tmp_data_path,
                                             $irods_tmp_coll);
   # publish_file with existing full path, some metadata, no timestamp,
   # matching MD5
-  pf_exist_full_path_meta_no_stamp_match($irods, $data_path,
+  pf_exist_full_path_meta_no_stamp_match($irods, $tmp_data_path,
                                          $irods_tmp_coll);
 
   # publish_file with existing full path, no metadata, no timestamp,
   # non-matching MD5
-  pf_exist_full_path_no_meta_no_stamp_no_match($irods, $data_path,
+  pf_exist_full_path_no_meta_no_stamp_no_match($irods, $tmp_data_path,
                                                $irods_tmp_coll);
   # publish_file with existing full path, some metadata, no timestamp,
   # non-matching MD5
-  pf_exist_full_path_meta_no_stamp_no_match($irods, $data_path,
+  pf_exist_full_path_meta_no_stamp_no_match($irods, $tmp_data_path,
                                             $irods_tmp_coll);
 
   # publish file where the cached md5 file is stale and must be
   # regenerated
-  pf_stale_md5_cache($irods, $data_path, $irods_tmp_coll);
+  pf_stale_md5_cache($irods, $tmp_data_path, $irods_tmp_coll);
+
+  # publish filewhere the MD5 file is absent, yet where the source
+  # directory is read-only
+  pf_md5_cache_ro($irods, $tmp_data_path, $irods_tmp_coll);
 }
 
 sub publish_directory : Test(11) {
@@ -133,10 +140,10 @@ sub publish_directory : Test(11) {
                                     strict_baton_version => 0);
 
   # publish_directory with new full path, no metadata, no timestamp
-  pd_new_full_path_no_meta_no_stamp($irods, $data_path, $irods_tmp_coll);
+  pd_new_full_path_no_meta_no_stamp($irods, $tmp_data_path, $irods_tmp_coll);
 
   # publish_file with new full path, some metadata, no timestamp
-  pd_new_full_path_meta_no_stamp($irods, $data_path, $irods_tmp_coll);
+  pd_new_full_path_meta_no_stamp($irods, $tmp_data_path, $irods_tmp_coll);
 }
 
 sub pf_new_full_path_no_meta_no_stamp {
@@ -146,7 +153,7 @@ sub pf_new_full_path_no_meta_no_stamp {
 
   # publish_file with new full path, no metadata, no timestamp
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_new_full_path_no_meta_no_stamp.txt";
   is($publisher->publish_file($local_path_a, $remote_path)->str(),
      $remote_path,
@@ -172,7 +179,7 @@ sub pf_new_full_path_meta_no_stamp {
   my $publisher = WTSI::NPG::iRODS::Publisher->new(irods => $irods);
 
   # publish_file with new full path, some metadata, no timestamp
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_new_full_path_meta_no_stamp.txt";
   my $extra_avu1 = $irods->make_avu($RT_TICKET, '1234567890');
   my $extra_avu2 = $irods->make_avu($ANALYSIS_UUID,
@@ -218,7 +225,7 @@ sub pf_new_full_path_no_meta_stamp {
 
   # publish_file with new full path, no metadata, no timestamp
   my $timestamp = DateTime->now;
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_new_full_path_no_meta_stamp.txt";
 
   is($publisher->publish_file($local_path_a,
@@ -249,7 +256,7 @@ sub pf_exist_full_path_no_meta_no_stamp_match {
 
   # publish_file with existing full path, no metadata, no timestamp,
   # matching MD5
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_exist_full_path_no_meta_no_stamp_match.txt";
   $publisher->publish_file($local_path_a, $remote_path) or fail;
 
@@ -272,7 +279,7 @@ sub pf_exist_full_path_meta_no_stamp_match {
 
   # publish_file with existing full path, some metadata, no timestamp,
   # matching MD5
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_exist_full_path_meta_no_stamp_match.txt";
   my $extra_avu1 = $irods->make_avu($RT_TICKET, '1234567890');
   my $extra_avu2 = $irods->make_avu($ANALYSIS_UUID,
@@ -320,7 +327,7 @@ sub pf_exist_full_path_no_meta_no_stamp_no_match {
   # publish_file with existing full path, no metadata, no timestamp,
   # non-matching MD5
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path =
     "$irods_tmp_coll/pf_exist_full_path_no_meta_no_stamp_no_match";
   $publisher->publish_file($local_path_a, $remote_path) or fail;
@@ -345,7 +352,7 @@ sub pf_exist_full_path_meta_no_stamp_no_match {
   # publish_file with existing full path, some metadata, no timestamp,
   # non-matching MD5
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
-  my $local_path_a = "$tmp_data_path/publish_file/a.txt";
+  my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path =
     "$irods_tmp_coll/pf_exist_full_path_meta_no_stamp_no_match.txt";
   my $extra_avu1 = $irods->make_avu($RT_TICKET, '1234567890');
@@ -381,7 +388,7 @@ sub pd_new_full_path_no_meta_no_stamp {
 
   # publish_directory with new full path, no metadata, no timestamp
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
-  my $local_path = "$tmp_data_path/publish_directory";
+  my $local_path = "$data_path/publish_directory";
 
   my $remote_path = "$coll_path/pd_new_full_path_no_meta_no_stamp";
   my $sub_coll = "$remote_path/publish_directory";
@@ -407,7 +414,7 @@ sub pd_new_full_path_meta_no_stamp {
 
   # publish_directory with new full path, no metadata, no timestamp
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
-  my $local_path = "$tmp_data_path/publish_directory";
+  my $local_path = "$data_path/publish_directory";
   my $extra_avu1 = $irods->make_avu($RT_TICKET, '1234567890');
   my $extra_avu2 = $irods->make_avu($ANALYSIS_UUID,
                                     'abcdefg-01234567890-wxyz');
@@ -447,7 +454,7 @@ sub pf_stale_md5_cache {
     (irods                     => $irods,
      checksum_cache_time_delta => $cache_timeout);
 
-  my $local_path_c = "$tmp_data_path/publish_file/c.txt";
+  my $local_path_c = "$data_path/publish_file/c.txt";
   my $remote_path = "$coll_path/pf_stale_md5_cache.txt";
 
   open my $md5_out, '>>', "$local_path_c.md5"
@@ -455,12 +462,7 @@ sub pf_stale_md5_cache {
   print $md5_out "fake_md5_string\n";
   close $md5_out or warn "Failed to close $local_path_c.md5";
 
-  sleep $cache_timeout + 5;
-
-  open my $data_out, '>>', $local_path_c
-    or die "Failed to open $local_path_c for writing";
-  print $data_out "extra data\n";
-  close $data_out or warn "Failed to close $local_path_c";
+  _expire_cache($local_path_c, $cache_timeout);
 
   is($publisher->publish_file($local_path_c, $remote_path)->str(),
      $remote_path,
@@ -469,6 +471,46 @@ sub pf_stale_md5_cache {
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
   is($obj->get_avu($FILE_MD5)->{value}, 'c8a3fa18c7c1402c953415a6b4f8ef7d',
      'Stale MD5 was regenerated') or diag explain $obj->metadata;
+}
+
+sub pf_md5_cache_ro {
+  my ($irods, $data_path, $coll_path) = @_;
+
+  my $cache_threshold = 1; # Create MD5 cache for files of 1 byte or
+                           # more
+  my $publisher = WTSI::NPG::iRODS::Publisher->new
+    (irods                    => $irods,
+     checksum_cache_threshold => $cache_threshold);
+
+  my $local_path_d = "$data_path/publish_file/d.txt";
+  my $remote_path = "$coll_path/pf_md5_cache_ro.txt";
+
+  try {
+    chmod 0555, "$data_path/publish_file/";
+
+    is($publisher->publish_file($local_path_d, $remote_path)->str(),
+       $remote_path,
+       'publish_file, ro MD5 cache dir');
+
+    my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
+    is($obj->get_avu($FILE_MD5)->{value}, 'd429d9fcd9b12418aa725c32bd6fbc3f',
+       'MD5 was generated') or diag explain $obj->metadata;
+  } catch {
+    die "$_\n";
+  } finally {
+    chmod 0755, "$data_path/publish_file/";
+  };
+}
+
+sub _expire_cache {
+  my ($local_path, $cache_timeout) = @_;
+
+  sleep $cache_timeout + 5;
+
+  open my $data_out, '>>', $local_path
+    or die "Failed to open $local_path for writing";
+  print $data_out "extra data\n";
+  close $data_out or warn "Failed to close $local_path";
 }
 
 1;

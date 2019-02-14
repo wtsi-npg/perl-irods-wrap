@@ -1,22 +1,26 @@
+Release 3.4.0
+ - Allow publishing from read-only directories
+ - Reduced the log level of creating missing MD5 cache files from
+   warning to debug
 
 Release 3.3.0
- - add composition to metadata
- - added COMPONENT to standard metadata
- - add bcfstats as a standard file type
- - add the public group members to sequencing studies on ONT platforms
+ - Add composition to metadata
+ - Added COMPONENT to standard metadata
+ - Add bcfstats as a standard file type
+ - Add the public group members to sequencing studies on ONT platforms
 
 Release 3.2.0
- - added hts genotype suffixes to Annotator
- - switched to disposable-irods 1.3 (uses WSI S3 for iRODS packages).
- - added gbs_plex to Metadata.pm and hts genotype to non_compress_suffixes
+ - Added hts genotype suffixes to Annotator
+ - Switched to disposable-irods 1.3 (uses WSI S3 for iRODS packages).
+ - Added gbs_plex to Metadata.pm and hts genotype to non_compress_suffixes
    in Annotator
 
 Release 3.1.0
- - add "hops" to HTS ancillary suffixes list
+ - Added "hops" to HTS ancillary suffixes list
 
 Release 3.0.2
- - support for single-server mode
- - add "quant" and "tab" to HTS ancillary suffixes list
+ - Support for single-server mode
+ - Added "quant" and "tab" to HTS ancillary suffixes list
 
 Release 3.0.1
  - Support baton versions  >=1.0.0 and <=1.1.0
@@ -34,7 +38,7 @@ Release 3.0.0
      Net::AMQP::RabbitMQ is not installed 
 
 Release 2.8.2
- - make internal iRODS.pm method calls private
+ - Make internal iRODS.pm method calls private
  - RabbitMQ: add UUID to message header; change routing key format
              use API for baton calls
 
@@ -45,15 +49,15 @@ Release 2.8.1
    little benefit in practice.
 
 Release 2.8.0
- - (un)staging new data objects
+ - (Un)staging new data objects
       error results in deletion rather than tagging for inspection
       post-failure "staging=1" AVU ignored rather than error
- - new PacBio legacy metadata
- - switch to baton-do as the single baton client
- - support for RabbitMQ messaging to report method calls
- - stop using imv, ichksum and md5sum executables
- - add fasta type
- - use baton version 1.0.0 
+ - New PacBio legacy metadata
+ - Switch to baton-do as the single baton client
+ - Support for RabbitMQ messaging to report method calls
+ - Stop using imv, ichksum and md5sum executables
+ - Add fasta type
+ - Use baton version 1.0.0 
 
 Release 2.7.1
 
@@ -62,23 +66,19 @@ Release 2.7.1
 Release 2.7.0
 
  - Bugfix; clean up any iRODS groups created by the test suite
-
  - Added methods describing know filename suffixes
-
  - Added metadata for BioNano
-
  - Added metadata for 10X
-
  - Added metadata for PacBio pbi files
 
 Release 2.6.1
 
- - use ml_warehouse
- - added metadata for PacBio
- - fix for staging iput where the target path is a collection 
+ - Use ml_warehouse
+ - Added metadata for PacBio
+ - Fix for staging iput where the target path is a collection 
  - check for cases where a user's gidNumber doesn't have a group
  - Travis CI: build package under perl v.5.22
- - improved handling of file suffix metadata
+ - Improved handling of file suffix metadata
  - Support baton versions  >=0.16.4 and <=0.17.1
 
 Release 2.6.0

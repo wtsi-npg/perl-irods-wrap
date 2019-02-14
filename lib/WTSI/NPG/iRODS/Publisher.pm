@@ -5,6 +5,7 @@ use Carp;
 use Data::Dump qw[pp];
 use DateTime;
 use English qw[-no_match_vars];
+use File::Basename;
 use File::Spec::Functions qw[catdir catfile splitdir splitpath];
 use File::stat;
 use List::AllUtils qw[any];
@@ -552,20 +553,31 @@ sub _read_md5_cache_file {
 sub _make_md5_cache_file {
   my ($self, $cache_file, $md5) = @_;
 
-  $self->warn("Adding missing MD5 cache file '$cache_file'");
+  $self->debug("Adding missing MD5 cache file '$cache_file'");
+
+  my ($filename, $cache_dir) = fileparse($cache_file);
+
+  if (not -w $cache_dir) {
+    $self->warn("Cache directory '$cache_dir' is not writable");
+    return $cache_file;
+  }
+  if (not -x $cache_dir) {
+    $self->warn("Cache directory '$cache_dir' is not executable");
+    return $cache_file;
+  }
 
   try {
     my $out;
     open $out, '>', $cache_file or
       croak "Failed to open '$cache_file' for writing: $ERRNO";
-    print $out "$md5\n" or
-      croak "Failed to write MD5 to '$cache_file': $ERRNO";
+      print $out "$md5\n" or
+        croak "Failed to write MD5 to '$cache_file': $ERRNO";
     close $out or
       $self->warn("Failed to close '$cache_file' cleanly: $ERRNO");
   } catch {
     # Failure to create a cache should not be a hard error. Here we
     # just forward the message from croak above.
-    $self->warn($_);
+    $self->error($_);
   };
 
   return $cache_file;

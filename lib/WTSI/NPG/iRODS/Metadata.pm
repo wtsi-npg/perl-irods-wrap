@@ -63,6 +63,7 @@ our @EXPORT = qw(
 
                   $COMPOSITION
                   $COMPONENT
+                  $ID_PRODUCT
 
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
@@ -172,9 +173,11 @@ our $YHUMAN                    = 'yhuman';
 # Genotyping by Sequencing (Illumina)
 our $GBS_PLEX_NAME             = 'gbs_plex';
 
-# Composition JSON string for merged data
+# Composition and component JSON strings
+# and a unique product id based on composition
 our $COMPOSITION               = 'composition';
 our $COMPONENT                 = 'component';
+our $ID_PRODUCT                = 'id_product';
 
 # PacBio
 our $PACBIO_CELL_INDEX         = 'cell_index';

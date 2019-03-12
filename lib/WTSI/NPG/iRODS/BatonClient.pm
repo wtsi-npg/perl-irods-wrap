@@ -211,6 +211,20 @@ sub list_object {
   return $path;
 }
 
+=head2 list_collection_checksums
+
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : Recurse, Bool. Optional, defaults to false.
+
+  Example    : my $checksums =
+                 $irods->list_collection_checksums('/path/to/collection')
+  Description: Return the checksums of the data objects in a collection
+               as a mapping of data object path to corresponding checksum.
+               This method is present for speed.
+  Returntype : HashRef
+
+=cut
+
 sub list_collection_checksums {
   my ($self, $collection, $recur) = @_;
 

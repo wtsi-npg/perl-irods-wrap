@@ -1,3 +1,7 @@
+Release 3.5.0
+ - Added a new metadata attribute - id_product - to capture the digest
+   of composition JSON
+
 Release 3.4.0
  - Allow publishing from read-only directories
  - Reduced the log level of creating missing MD5 cache files from

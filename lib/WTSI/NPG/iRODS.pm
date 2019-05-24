@@ -2146,6 +2146,19 @@ sub checksum {
   return $self->baton_client->list_object_checksum($object);
 }
 
+=head2 collection_checksums
+
+  Arg [1]    : iRODS collection path.
+  Arg [2]    : Recurse, Bool. Optional, defaults to false.
+
+  Example    : $cs = $irods->collection_checksums('/my/path/')
+  Description: Return the MD5 checksum of the iRODS data objects in a
+               collection as a mapping of data object path to corresponding
+               checksum.
+  Returntype : HashRef
+
+=cut
+
 sub collection_checksums {
   my ($self, $collection, $recurse) = @_;
 

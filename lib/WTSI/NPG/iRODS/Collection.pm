@@ -1,6 +1,7 @@
 package WTSI::NPG::iRODS::Collection;
 
 use namespace::autoclean;
+use File::Basename qw(fileparse);
 use File::Spec;
 use Moose;
 use MooseX::StrictConstructor;
@@ -114,7 +115,7 @@ sub add_avu {
 
   Arg [1]    : attribute
   Arg [2]    : value
-  Arg [2]    : units (optional)
+  Arg [3]    : units (optional)
 
   Example    : $path->remove_avu('foo', 'bar')
   Description: Remove an AVU from an iRODS path (data object or collection)
@@ -162,9 +163,10 @@ sub make_avu_history {
 
 =head2 get_contents
 
-  Arg [1]    :
+  Arg [1]    : Recurse, Bool. Optional, defaults to false.
+  Arg [2]    : Fetch checksums, Bool. Optional, defaults to false.
 
-  Example    : my ($objs, $cols) = $coll->get_contents
+  Example    : my ($objs, $cols) = $coll->get_contents()
   Description: Return the contents of the collection as two arrayrefs,
                the first listing data objects, the second listing nested
                collections.
@@ -188,11 +190,14 @@ sub get_contents {
    my @collections;
 
    foreach my $obj (@$objs) {
-     my $object = WTSI::NPG::iRODS::DataObject->new($irods, $obj);
+     my ($dobj, $coll) = fileparse($obj);
+     my @init_args = (irods       => $irods,
+                      collection  => $coll,
+                      data_object => $dobj);
 
      if ($checksums) {
        if (exists $object_checksums->{$obj}) {
-         $object->checksum($checksums->{$obj});
+         push @init_args, checksum => $object_checksums->{$obj};
        }
        else {
          $self->logwarn("Failed to find a checksum for '$obj' when getting ",
@@ -200,7 +205,7 @@ sub get_contents {
        }
      }
 
-     push @objects, $object;
+     push @objects, WTSI::NPG::iRODS::DataObject->new(@init_args);
    }
    foreach my $coll (@$colls) {
      push @collections, WTSI::NPG::iRODS::Collection->new($irods, $coll);
@@ -380,8 +385,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
-Rights Reserved.
+Copyright (C) 2013, 2014, 2015, 2016, 2019 Genome Research
+Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

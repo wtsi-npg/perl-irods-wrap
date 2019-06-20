@@ -67,6 +67,7 @@ our @EXPORT = qw(
 
                   $PACBIO_CELL_INDEX
                   $PACBIO_COLLECTION_NUMBER
+                  $PACBIO_DATA_LEVEL
                   $PACBIO_INSTRUMENT_NAME
                   $PACBIO_MULTIPLEX
                   $PACBIO_PRODUCTION
@@ -182,6 +183,7 @@ our $ID_PRODUCT                = 'id_product';
 # PacBio
 our $PACBIO_CELL_INDEX         = 'cell_index';
 our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
+our $PACBIO_DATA_LEVEL         = 'data_level';
 our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
 our $PACBIO_MULTIPLEX          = 'multiplex';
 our $PACBIO_PRODUCTION         = 'production';

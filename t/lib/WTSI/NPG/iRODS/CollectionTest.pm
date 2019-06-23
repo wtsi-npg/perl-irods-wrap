@@ -235,7 +235,7 @@ sub str : Test(1) {
   is($coll->str, $coll_path, 'Collection string');
 }
 
-sub get_contents : Test(4) {
+sub get_contents : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
   my $coll_path = "$irods_tmp_coll/path/test_dir/contents";
@@ -282,6 +282,26 @@ sub get_contents : Test(4) {
 
   is_deeply(\@coll_paths_r, $expected_colls_r, 'Collection recursive contents')
     or diag explain \@coll_paths_r;
+
+  # Checksums read individually, on demand
+  my @checksums_r = map { $_->checksum } @$objs_r;
+  is_deeply(\@checksums_r, [('d41d8cd98f00b204e9800998ecf8427e') x 6 ],
+            'Object checksums') or diag explain \@checksums_r;
+
+  my ($objs_rc, $colls_rc) = $coll->get_contents('RECURSE', 'CHECKSUM');
+  my @obj_paths_rc  = map { $_->str } @$objs_r;
+  my @coll_paths_rc = map { $_->str } @$colls_r;
+
+  is_deeply(\@obj_paths_rc, $expected_objs_r, 'Object recursive contents')
+    or diag explain \@obj_paths_rc;
+
+  is_deeply(\@coll_paths_rc, $expected_colls_r, 'Collection recursive contents')
+    or diag explain \@coll_paths_rc;
+
+  # Checksums fetched as a batch
+  my @checksums_rc = map { $_->checksum } @$objs_rc;
+  is_deeply(\@checksums_r, [('d41d8cd98f00b204e9800998ecf8427e') x 6 ],
+            'Object checksums') or diag explain \@checksums_rc;
 }
 
 sub get_permissions : Test(1) {

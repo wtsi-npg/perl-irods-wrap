@@ -1,6 +1,7 @@
 package WTSI::NPG::iRODS::GroupAdmin;
 
 use namespace::autoclean;
+use Data::Dump qw(pp);
 use Moose;
 use MooseX::StrictConstructor;
 use IPC::Run qw(start run);
@@ -10,6 +11,8 @@ use List::AllUtils qw(any none);
 use Log::Log4perl;
 use Readonly;
 use Carp;
+
+use WTSI::NPG::iRODS;
 
 our $VERSION = '';
 
@@ -148,21 +151,16 @@ has '_user' => (
 );
 sub _build__user {
   my ($self) = @_;
-  my $out = q();
-  my $cmd = which $IENV;
-  if (not $cmd) {
-    $self->logcroak(qq(Command '$IENV' not found));
-  }
-  run [abs_path $cmd], q(>), \$out;
-  my ($key1, $sep1, $user) = $out =~
-    m/(irodsUserName|irods_user_name)(=|\s-\s)(\S+)/smx;
-  my ($key2, $sep2, $zone) = $out =~
-    m/(irodsZone|irods_zone_name)(=|\s-\s)(\S+)/smx;
+
+  my $irods = WTSI::NPG::iRODS->new;
+  my $env = $irods->get_irods_env;
+  my $user = $env->{irods_user_name};
+  my $zone = $env->{irods_zone_name};
 
   if ($user and $zone) {
     return "$user#$zone";
   } else {
-    $self->logcroak('Could not obtain user and zone from ienv: ', $out);
+    $self->logcroak('Could not obtain user and zone from ienv ', pp($env));
   }
 
   return;

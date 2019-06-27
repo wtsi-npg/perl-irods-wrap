@@ -18,6 +18,10 @@ env:
     - DOCKER_IMAGE=wsinpg/ub-16.04-irods-4.2:latest
     - DOCKER_IMAGE=wsinpg/ub-12.04-irods-4.1:latest
 
+matrix:
+  allow_failures:
+    - env: DOCKER_IMAGE=wsinpg/ub-16.04-irods-4.2:latest
+
 before_install:
   - docker pull "$DOCKER_IMAGE"
   - docker run -d -p 1247:1247 "$DOCKER_IMAGE"

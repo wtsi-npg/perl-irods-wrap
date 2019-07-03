@@ -17,17 +17,13 @@ Perl      https://github.com/wtsi-npg/perl-dnap-utilities
 
           Version described in Build.PL
 
-iRODS     https://github.com/irods/irods-legacy
-
-          Versions 3.2, 3.3 or 3.3.1
-
-          https://github.com/irods/irods
+iRODS     https://github.com/irods/irods
 
           Versions >= 4.1.8
 
 baton     https://github.com/wtsi-npg/baton
 
-          Version 1.0.0 only
+          Version >= 1.0.0 only
 
 RabbitMQ  https://www.rabbitmq.com
 

@@ -21,25 +21,21 @@ my $group_prefix = 'ss_';
 
 # Groups to be added to the test iRODS
 my @irods_groups = map { $group_prefix . $_ } (0 .. 100);
-# Groups added to the test iRODS in fixture setup
-my @groups_added;
-
 my @irods_users = qw(user_foo user_bar);
-my @users_added;
 
 sub setup_test : Test(setup) {
   my ($self) = @_;
 
+  $self->have_admin_rights($have_admin_rights);
+
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  @groups_added = $self->add_irods_groups($irods, @irods_groups);
-
+  $self->add_irods_groups($irods, @irods_groups);
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
-      if (system(qq{$WTSI::NPG::iRODS::IADMIN mkuser '$user' rodsuser}) == 0) {
-        push @users_added, $user;
-      }
+      system(qq{$WTSI::NPG::iRODS::IADMIN mkuser '$user' rodsuser}) == 0 or
+        warn "Faled to add user test '$user'";
     }
   }
 }
@@ -50,12 +46,12 @@ sub teardown_test : Test(teardown) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  $self->remove_irods_groups($irods, @groups_added);
+  $self->remove_irods_groups($irods, @irods_groups);
 
   if ($self->have_admin_rights) {
-    foreach my $user (@users_added) {
-      system(qq{$WTSI::NPG::iRODS::IADMIN rmuser '$user'}) == 0
-        or warn "Failed to clean up user '$user'";
+    foreach my $user (@irods_users) {
+      system(qq{$WTSI::NPG::iRODS::IADMIN rmuser '$user'}) == 0 or
+        warn "Failed to clean up test user '$user'";
     }
   }
 }
@@ -63,19 +59,24 @@ sub teardown_test : Test(teardown) {
 sub constructor : Test(2) {
   new_ok('WTSI::NPG::iRODS::GroupAdmin');
 
-  throws_ok {
-    local %ENV = %ENV;
-    $ENV{PATH} = q();
+  my $stderr = '';
+  {
+    local *STDERR;
+    open STDERR, '>', \$stderr;
 
-    WTSI::NPG::iRODS::GroupAdmin->new;
-  } qr/Command 'i\S+' not found/sm, 'No igroupadmin';
+    throws_ok {
+      local %ENV = %ENV;
+      $ENV{PATH} = q();
+
+      WTSI::NPG::iRODS::GroupAdmin->new;
+    } qr/Command 'i\S+' not found/sm, 'No igroupadmin';
+  }
 }
 
 sub lg : Test(5) {
   my ($self) = @_;
 
   my $iga = WTSI::NPG::iRODS::GroupAdmin->new;
-
   ok($iga->lg('public'), 'Found public group');
 
  SKIP: {

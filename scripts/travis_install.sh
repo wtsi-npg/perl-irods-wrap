@@ -5,43 +5,37 @@ set -e -u -x
 # The default build branch for all repositories. This defaults to
 # TRAVIS_BRANCH unless set in the Travis build environment.
 WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
-IRODS_RIP_DIR=${IRODS_RIP_DIR:+$IRODS_RIP_DIR}
 
-sudo apt-get install -qq odbc-postgresql unixodbc-dev uuid-dev
+sudo apt-get install -qq uuid-dev
 
-# iRODS
-wget -q https://github.com/wtsi-npg/disposable-irods/releases/download/${DISPOSABLE_IRODS_VERSION}/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz -O /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz
-tar xfz /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}.tar.gz -C /tmp
-cd /tmp/disposable-irods-${DISPOSABLE_IRODS_VERSION}
-./scripts/download_and_verify_irods.sh
-./scripts/install_irods.sh
-./scripts/configure_irods.sh
+wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh
 
-# Jansson
-wget -q https://github.com/akheron/jansson/archive/v${JANSSON_VERSION}.tar.gz -O /tmp/jansson-${JANSSON_VERSION}.tar.gz
-tar xfz /tmp/jansson-${JANSSON_VERSION}.tar.gz -C /tmp
-cd /tmp/jansson-${JANSSON_VERSION}
-autoreconf -fi
-./configure ; make ; sudo make install
-sudo ldconfig
+/bin/bash ~/miniconda.sh -b -p ~/miniconda
+~/miniconda/bin/conda clean -tipsy
+echo ". ~/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+echo "conda activate base" >> ~/.bashrc
 
-# baton
-wget -q https://github.com/wtsi-npg/baton/releases/download/${BATON_VERSION}/baton-${BATON_VERSION}.tar.gz -O /tmp/baton-${BATON_VERSION}.tar.gz
-tar xfz /tmp/baton-${BATON_VERSION}.tar.gz -C /tmp
-cd /tmp/baton-${BATON_VERSION}
+. ~/miniconda/etc/profile.d/conda.sh
+conda activate base
+conda config --set auto_update_conda False
+conda config --add channels https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic/
+conda create -y -n travis
+conda activate travis
+conda install -y baton-bin
+conda install -y irods-icommands
 
-IRODS_HOME=
-baton_irods_conf="--with-irods"
-
-if [ -n "$IRODS_RIP_DIR" ]
-then
-    export IRODS_HOME="$IRODS_RIP_DIR/iRODS"
-    baton_irods_conf="--with-irods=$IRODS_HOME"
-fi
-
-./configure ${baton_irods_conf} ; make ; sudo make install
-sudo ldconfig
-
+mkdir -p ~/.irods
+cat <<EOF > ~/.irods/irods_environment.json
+{
+    "irods_host": "localhost",
+    "irods_port": 1247,
+    "irods_user_name": "irods",
+    "irods_zone_name": "testZone",
+    "irods_home": "/testZone/home/irods",
+    "irods_plugins_home": "$HOME/miniconda/envs/travis/lib/irods/plugins/",
+    "irods_default_resource": "testResc"
+}
+EOF
 
 # WTSI NPG Perl repo dependencies, only one at the moment
 repos=""

@@ -10,6 +10,8 @@ use Log::Log4perl;
 use Test::Exception;
 use Test::More;
 
+use WTSI::NPG::iRODS;
+
 use base qw[WTSI::NPG::iRODS::TestRabbitMQ];
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
@@ -700,7 +702,10 @@ sub _test_message {
        "Header timestamp '$time' is in correct format");
     my $user = $ENV{'USER'};
     ok($headers->{'user'} eq $user, "Header user name is $user");
-    ok($headers->{'irods_user'} eq $user, "Header iRODS user name is $user");
+
+    my $irods_user = WTSI::NPG::iRODS->new->get_irods_user;
+    ok($headers->{'irods_user'} eq $irods_user,
+       "Header iRODS user name is $irods_user");
     ok(defined $headers->{'type'},
        "Header file type is defined (may be an empty string)");
 

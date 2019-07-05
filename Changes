@@ -1,3 +1,10 @@
+
+ - Added PACBIO_DATA_LEVEL metadata for PacBio - data_level denotes whether 
+   the sequence data is primary; off instrument base calls -or- secondary; has 
+   been subsequently post processed via additional analysis e.g. raw subreads 
+   from the same SMRTbell sequence have been combined to produce a one 
+   high quality (circular consensus) sequence.
+
 Release 3.5.1
  - Fixed null dereference in Collection::collection_checksums
 

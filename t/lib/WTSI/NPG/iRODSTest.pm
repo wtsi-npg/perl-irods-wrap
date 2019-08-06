@@ -5,6 +5,7 @@ use utf8;
 use strict;
 use version;
 use warnings;
+
 use English qw(-no_match_vars);
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -31,9 +32,6 @@ my $irods_tmp_coll;
 my $alt_resource = $ENV{WTSI_NPG_iRODS_Test_Resource};
 $alt_resource ||= 'demoResc';
 
-my $have_admin_rights =
-  system(qq{$WTSI::NPG::iRODS::IADMIN lu >/dev/null 2>&1}) == 0;
-
 # Prefix for test iRODS data access groups
 my $group_prefix = 'ss_';
 # Groups to be added to the test iRODS
@@ -45,8 +43,6 @@ my $group_tests_enabled = 0;
 
 sub setup_test : Test(setup) {
   my ($self) = @_;
-
-  $self->have_admin_rights($have_admin_rights);
 
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
@@ -411,7 +407,8 @@ sub set_collection_permissions : Test(8) {
                  exists $_->{zone}  && $_->{zone}  eq $zone    &&
                  exists $_->{level} && $_->{level} eq 'read' }
     $irods->get_collection_permissions($coll);
-  ok($r1, 'Added public read access');
+  ok($r1, 'Added public read access') or
+      diag explain [$irods->get_collection_permissions($coll)];
 
   ok($irods->set_collection_permissions(undef, 'public', $coll));
 
@@ -1327,8 +1324,8 @@ sub invalid_replicates : Test(3) {
       or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
 
     # Make the original replicate (0) stale
-    my $other_object = "$irods_tmp_coll/irods/test.txt";
-    system("icp -f -R $alt_resource " .
+    my $other_object = "$data_path/test.txt";
+    system("iput -f -R $alt_resource " .
            "$other_object $lorem_object >/dev/null") == 0 or
       die "Failed to make an invalid replicate: $ERRNO";
 

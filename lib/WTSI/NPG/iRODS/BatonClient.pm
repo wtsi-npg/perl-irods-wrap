@@ -26,10 +26,15 @@ around 'communicate' => sub {
 
   my $unwrapped;
   if (exists $envelope->{result}) {
-    $unwrapped = $envelope->{result};
+    if (exists $envelope->{result}->{single}) {
+      $unwrapped = $envelope->{result}->{single}
+    }
+    elsif (exists $envelope->{result}->{multiple}) {
+      $unwrapped = $envelope->{result}->{multiple}
+    }
   }
-  else {
-    $unwrapped = $envelope->{target};
+  elsif (exists $envelope->{target}) {
+    $unwrapped = $envelope->{target}
   }
 
   if (not $unwrapped) {
@@ -305,7 +310,20 @@ sub calculate_object_checksum {
                             data_object => $data_name}};
   my $response = $self->communicate($spec);
 
-  return $response;
+  my $checksum;
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return undef
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    $checksum = $response->{checksum};
+  }
+
+  return $checksum;
 }
 
 =head2 list_object_replicates

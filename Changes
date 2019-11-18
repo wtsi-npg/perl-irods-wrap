@@ -1,3 +1,5 @@
+Release 3.7.0
+ - Added bqsr_table and tbi to recognised file types.
 
 Release 3.6.0
  - Added PACBIO_DATA_LEVEL metadata for PacBio - data_level denotes whether 

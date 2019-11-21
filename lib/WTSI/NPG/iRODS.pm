@@ -23,8 +23,8 @@ use WTSI::NPG::iRODS::Types qw(:all);
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '1.2.0';
-our $MIN_BATON_VERSION = '1.1.0';
+our $MAX_BATON_VERSION = '2.99.99';
+our $MIN_BATON_VERSION = '2.0.0';
 
 our $IADMIN      = 'iadmin';
 our $ICP         = 'icp';
@@ -763,7 +763,7 @@ sub _put_collection {
   $target = $self->ensure_collection_path($target);
   $self->debug("Putting directory '$dir' into collection '$target'");
 
-  my @args = ('-r', $dir, $target);
+  my @args = ('-k', '-r', $dir, $target);
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IPUT,
                                        arguments   => \@args,
                                        environment => $self->environment)->run;

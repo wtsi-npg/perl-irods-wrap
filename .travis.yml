@@ -1,19 +1,28 @@
+dist: bionic
+
 sudo: required
+
+addons:
+  apt:
+    packages:
+      - rabbitmq-server
 
 services:
   - docker
+  - postgresql
   - rabbitmq
 
 language: perl
 
 perl:
-  - "5.22-shrplib"
+  - "5.26"
 
 env:
   global:
     - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
     - NPG_RMQ_CONFIG='./etc/rmq_travis_config.json'
     - NPG_RMQ_HOST='localhost'
+    - BATON_VERSION=2.0.0
   matrix:
     - DOCKER_IMAGE=wsinpg/ub-16.04-irods-4.2:latest
     - DOCKER_IMAGE=wsinpg/ub-12.04-irods-4.1:latest

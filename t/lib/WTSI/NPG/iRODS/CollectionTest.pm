@@ -283,10 +283,17 @@ sub get_contents : Test(8) {
   is_deeply(\@coll_paths_r, $expected_colls_r, 'Collection recursive contents')
     or diag explain \@coll_paths_r;
 
+  my $expected_checksums = ['31d30eea8d0968d6458e0ad0027c9f80',
+                            'b026324c6904b2a9cb4b88d6d61c81d1',
+                            'dbbf8220893d497d403bb9cdf49db7a4',
+                            '26ab0db90d72e28ad0ba1e22ee510510',
+                            'd5b4c7d9b06b60a7846c4529834c9812',
+                            '6d7fce9fee471194aa8b5b6e47267f03'];
+
   # Checksums read individually, on demand
   my @checksums_r = map { $_->checksum } @$objs_r;
-  is_deeply(\@checksums_r, [('d41d8cd98f00b204e9800998ecf8427e') x 6 ],
-            'Object checksums') or diag explain \@checksums_r;
+  is_deeply(\@checksums_r, $expected_checksums, 'Object checksums') or
+      diag explain \@checksums_r;
 
   my ($objs_rc, $colls_rc) = $coll->get_contents('RECURSE', 'CHECKSUM');
   my @obj_paths_rc  = map { $_->str } @$objs_r;
@@ -300,8 +307,8 @@ sub get_contents : Test(8) {
 
   # Checksums fetched as a batch
   my @checksums_rc = map { $_->checksum } @$objs_rc;
-  is_deeply(\@checksums_r, [('d41d8cd98f00b204e9800998ecf8427e') x 6 ],
-            'Object checksums') or diag explain \@checksums_rc;
+  is_deeply(\@checksums_r, $expected_checksums, 'Object checksums') or
+      diag explain \@checksums_rc;
 }
 
 sub get_permissions : Test(1) {

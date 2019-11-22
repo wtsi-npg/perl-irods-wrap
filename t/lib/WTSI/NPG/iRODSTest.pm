@@ -882,13 +882,8 @@ sub add_object : Test(9) {
   is($irods->list_object($explicit_path), $explicit_path,
      'Found the new data object with an explicit path');
 
- TODO: {
-    local $TODO = 'iRODS is currently creating these checksums by default, ' .
-      'even without the -k option to iput';
-
-    is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
+  is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
        'Checksum created by default');
-  }
 
   my $lorem_object_no_checksum = "$irods_tmp_coll/lorem_added_no_checksum.txt";
   is($irods->add_object($lorem_file, $lorem_object_no_checksum,
@@ -896,13 +891,8 @@ sub add_object : Test(9) {
      $lorem_object_no_checksum,
      'Added a data object without checksum calculation');
 
- TODO: {
-    local $TODO = 'iRODS is currently creating these checksums by default, ' .
-        'even without the -k option to iput';
-
-    is($irods->checksum($lorem_object_no_checksum), q[],
+  is($irods->checksum($lorem_object_no_checksum), undef,
        'Checksum not created');
-  }
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';
@@ -911,7 +901,7 @@ sub add_object : Test(9) {
     'Failed on invalid checksum option';
 }
 
-sub replace_object : Test(9) {
+sub replace_object : Test(14) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -927,27 +917,37 @@ sub replace_object : Test(9) {
   is($irods->replace_object($empty_file, $to_replace), $to_replace,
      'Replaced a data object');
 
-    my $checksum_after = $irods->checksum($to_replace);
-    ok($checksum_after, 'Checksum created by default');
-    isnt($checksum_after, $checksum_before, 'Data object was replaced');
-    is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
-       'Data object was replaced with an empty file');
+  my $checksum_after = $irods->checksum($to_replace);
+  ok($checksum_after, 'Checksum created by default');
+  isnt($checksum_after, $checksum_before, 'Data object was replaced');
+  is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
+    'Data object was replaced with an empty file');
+
+  ok($irods->replace_object($empty_file, $to_replace,
+                         $WTSI::NPG::iRODS::SKIP_CHECKSUM));
+  ok($irods->checksum($to_replace), 'checksum exists in case ' .
+     'when it existed for the original file');
 
   my $to_replace_no_checksum =
     "$irods_tmp_coll/lorem_to_replace_no_checksum.txt";
-  $irods->add_object($lorem_file, $to_replace_no_checksum);
+  $irods->add_object($lorem_file, $to_replace_no_checksum,
+                     $WTSI::NPG::iRODS::SKIP_CHECKSUM);
+  is($irods->checksum($to_replace_no_checksum),
+    undef,'checksum is not created');
 
   is($irods->replace_object($empty_file, $to_replace_no_checksum,
                             $WTSI::NPG::iRODS::SKIP_CHECKSUM),
      $to_replace_no_checksum, 'Replaced a data object without checksum');
 
-  TODO: {
-    local $TODO = 'iRODS is currently creating these checksums by default, ' .
-        'even without the -k option to iput';
-
-    is($irods->checksum($to_replace_no_checksum), q[],
+  is($irods->checksum($to_replace_no_checksum), undef,
        'Checksum not created');
-  }
+
+  ok($irods->replace_object($empty_file, $to_replace_no_checksum));
+  ok(!$irods->checksum($to_replace_no_checksum),
+     'Checksum is not created by default if the replaced object ' .
+     'did not have a checksum');
+
+  $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
   dies_ok { $irods->replace_object($lorem_file, undef) }
     'Failed to replace an undefined object';

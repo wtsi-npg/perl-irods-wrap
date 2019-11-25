@@ -105,16 +105,11 @@ sub is_object {
 sub put_object {
   my ($self, $local_path, $remote_path, $checksum) = @_;
 
-  my $args = {};
-  if ($checksum) {
-    $args->{calculate_checksum} = 1;
-  }
-
   my ($file_name, $directory, $suffix) = fileparse($local_path);
   my ($data_object, $collection) = fileparse($remote_path);
 
   my $spec = {operation => 'put',
-              arguments => $self->_map_json_args($args),
+              arguments => $self->_map_json_args({checksum => $checksum}),
               target    => {collection  => $collection,
                             data_object => $data_object,
                             directory   => $directory,

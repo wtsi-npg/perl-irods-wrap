@@ -1,4 +1,6 @@
 Release 3.7.0
+
+ - Requires baton >= 2.0.1
  - Added bqsr_table and tbi to recognised file types.
 
 Release 3.6.0
@@ -40,7 +42,7 @@ Release 3.0.2
  - Added "quant" and "tab" to HTS ancillary suffixes list
 
 Release 3.0.1
- - Support baton versions  >=1.0.0 and <=1.1.0
+ - Support for baton versions >=1.0.0 and <=1.1.0
 
 Release 3.0.0
  - API change for WTSI::NPG::iRODS::Publisher

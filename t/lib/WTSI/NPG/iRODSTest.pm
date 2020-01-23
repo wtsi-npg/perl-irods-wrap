@@ -84,7 +84,7 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub compatible_baton_versions : Test(9) {
+sub compatible_baton_versions : Test(10) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -94,14 +94,16 @@ sub compatible_baton_versions : Test(9) {
                                  0.16.3
                                  0.16.4
                                  0.17.0
-                                 0.17.1);
+                                 0.17.1
+                                 1.1.0
+                                 1.2.0);
 
   foreach my $version (@incompatible_versions) {
     ok(!$irods->match_baton_version($version),
        "Incompatible with baton $version");
   }
 
-  my @compatible_versions = qw(1.1.0 1.2.0);
+  my @compatible_versions = qw(2.0.0);
   foreach my $version (@compatible_versions) {
     ok($irods->match_baton_version($version),
        "Compatible with baton $version");
@@ -542,7 +544,6 @@ sub list_collection : Test(5) {
 sub collection_checksums : Test(3) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
-
   my $checksums = $irods->collection_checksums("$irods_tmp_coll/irods");
   is_deeply($checksums,
             {"$irods_tmp_coll/irods/lorem.txt" =>
@@ -566,27 +567,27 @@ sub collection_checksums : Test(3) {
              "$irods_tmp_coll/irods/utf-8.txt" =>
              "500cec3fbb274064e2a25fa17a69638a",
              "$irods_tmp_coll/irods/collect_files/a/10.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "31d30eea8d0968d6458e0ad0027c9f80",
              "$irods_tmp_coll/irods/collect_files/a/x/1.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "b026324c6904b2a9cb4b88d6d61c81d1",
              "$irods_tmp_coll/irods/collect_files/b/20.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "dbbf8220893d497d403bb9cdf49db7a4",
              "$irods_tmp_coll/irods/collect_files/b/y/2.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "26ab0db90d72e28ad0ba1e22ee510510",
              "$irods_tmp_coll/irods/collect_files/c/30.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "d5b4c7d9b06b60a7846c4529834c9812",
              "$irods_tmp_coll/irods/collect_files/c/z/3.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "6d7fce9fee471194aa8b5b6e47267f03",
              "$irods_tmp_coll/irods/md5sum/lorem.txt" =>
              "39a4aa291ca849d601e4e5b8ed627a04",
              "$irods_tmp_coll/irods/test/file1.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "5149d403009a139c7e085405ef762e1a",
              "$irods_tmp_coll/irods/test/file2.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "3d709e89c8ce201e3c928eb917989aef",
              "$irods_tmp_coll/irods/test/dir1/file3.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e",
+             "60b91f1875424d3b4322b0fdd0529d5d",
              "$irods_tmp_coll/irods/test/dir2/file4.txt" =>
-             "d41d8cd98f00b204e9800998ecf8427e"
+             "857c6673d7149465c8ced446769b523c"
             })
     or diag explain $checksums_deep;
 }
@@ -881,13 +882,8 @@ sub add_object : Test(9) {
   is($irods->list_object($explicit_path), $explicit_path,
      'Found the new data object with an explicit path');
 
- TODO: {
-    local $TODO = 'Testing for a checksum will create a checksum if ' .
-      'it does not exist. Requires a change in baton to test effectively';
-
-    is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
+  is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
        'Checksum created by default');
-  }
 
   my $lorem_object_no_checksum = "$irods_tmp_coll/lorem_added_no_checksum.txt";
   is($irods->add_object($lorem_file, $lorem_object_no_checksum,
@@ -895,13 +891,8 @@ sub add_object : Test(9) {
      $lorem_object_no_checksum,
      'Added a data object without checksum calculation');
 
- TODO: {
-    local $TODO = 'Testing for an absent checksum will create a checksum if ' .
-      'it does not exist. Requires a change in baton to test effectively';
-
-    is($irods->checksum($lorem_object_no_checksum), q[],
+  is($irods->checksum($lorem_object_no_checksum), undef,
        'Checksum not created');
-  }
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';
@@ -910,7 +901,7 @@ sub add_object : Test(9) {
     'Failed on invalid checksum option';
 }
 
-sub replace_object : Test(9) {
+sub replace_object : Test(14) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -926,32 +917,37 @@ sub replace_object : Test(9) {
   is($irods->replace_object($empty_file, $to_replace), $to_replace,
      'Replaced a data object');
 
- TODO: {
-    local $TODO = 'Testing for a checksum will create a checksum if ' .
-      'it does not exist. Requires a change in baton to test effectively';
+  my $checksum_after = $irods->checksum($to_replace);
+  ok($checksum_after, 'Checksum created by default');
+  isnt($checksum_after, $checksum_before, 'Data object was replaced');
+  is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
+    'Data object was replaced with an empty file');
 
-    my $checksum_after = $irods->checksum($to_replace);
-    ok($checksum_after, 'Checksum created by default');
-    isnt($checksum_after, $checksum_before, 'Data object was replaced');
-    is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
-       'Data object was replaced with an empty file');
-  }
+  ok($irods->replace_object($empty_file, $to_replace,
+                         $WTSI::NPG::iRODS::SKIP_CHECKSUM));
+  ok($irods->checksum($to_replace), 'checksum exists in case ' .
+     'when it existed for the original file');
 
   my $to_replace_no_checksum =
     "$irods_tmp_coll/lorem_to_replace_no_checksum.txt";
-  $irods->add_object($lorem_file, $to_replace_no_checksum);
+  $irods->add_object($lorem_file, $to_replace_no_checksum,
+                     $WTSI::NPG::iRODS::SKIP_CHECKSUM);
+  is($irods->checksum($to_replace_no_checksum),
+    undef,'checksum is not created');
 
   is($irods->replace_object($empty_file, $to_replace_no_checksum,
                             $WTSI::NPG::iRODS::SKIP_CHECKSUM),
      $to_replace_no_checksum, 'Replaced a data object without checksum');
 
- TODO: {
-    local $TODO = 'Testing for an absent checksum will create a checksum if ' .
-      'it does not exist. Requires a change in baton to test effectively';
-
-    is($irods->checksum($to_replace_no_checksum), q[],
+  is($irods->checksum($to_replace_no_checksum), undef,
        'Checksum not created');
-  }
+
+  ok($irods->replace_object($empty_file, $to_replace_no_checksum));
+  ok(!$irods->checksum($to_replace_no_checksum),
+     'Checksum is not created by default if the replaced object ' .
+     'did not have a checksum');
+
+  $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
   dies_ok { $irods->replace_object($lorem_file, undef) }
     'Failed to replace an undefined object';
@@ -1233,6 +1229,9 @@ sub checksum : Test(1) {
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
+
+  #########################################################
+  $irods->calculate_checksum($lorem_object);
 
   is($irods->checksum($lorem_object), $expected_checksum,
      'Checksum matched');

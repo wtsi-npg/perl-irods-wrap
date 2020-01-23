@@ -8,7 +8,7 @@ WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
 
 sudo apt-get install -qq uuid-dev
 
-wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh
+wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.6.14-Linux-x86_64.sh -O ~/miniconda.sh
 
 /bin/bash ~/miniconda.sh -b -p ~/miniconda
 ~/miniconda/bin/conda clean -tipsy
@@ -21,7 +21,7 @@ conda config --set auto_update_conda False
 conda config --add channels https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic/
 conda create -y -n travis
 conda activate travis
-conda install -y baton-bin
+conda install -y baton="$BATON_VERSION"
 conda install -y irods-icommands
 
 mkdir -p ~/.irods
@@ -36,6 +36,8 @@ cat <<EOF > ~/.irods/irods_environment.json
     "irods_default_resource": "testResc"
 }
 EOF
+
+cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
 
 # WTSI NPG Perl repo dependencies, only one at the moment
 repos=""

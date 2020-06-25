@@ -877,22 +877,22 @@ sub add_object : Test(9) {
      'Found the new data object with an implicit path');
 
   my $explicit_path = "$irods_tmp_coll/lorem_added.txt";
-  is($irods->add_object($lorem_file, $explicit_path), $explicit_path,
+  is($irods->add_object($lorem_file, $explicit_path,
+                        $WTSI::NPG::iRODS::CALC_CHECKSUM), $explicit_path,
      'Added a data object with an object target path');
   is($irods->list_object($explicit_path), $explicit_path,
      'Found the new data object with an explicit path');
 
   is($irods->checksum($explicit_path), '39a4aa291ca849d601e4e5b8ed627a04',
-       'Checksum created by default');
+       'Checksum created on request');
 
   my $lorem_object_no_checksum = "$irods_tmp_coll/lorem_added_no_checksum.txt";
-  is($irods->add_object($lorem_file, $lorem_object_no_checksum,
-                        $WTSI::NPG::iRODS::SKIP_CHECKSUM),
+  is($irods->add_object($lorem_file, $lorem_object_no_checksum),
      $lorem_object_no_checksum,
      'Added a data object without checksum calculation');
 
   is($irods->checksum($lorem_object_no_checksum), undef,
-       'Checksum not created');
+       'Checksum not created by default');
 
   dies_ok { $irods->add_object }
     'Failed to add an undefined object';

@@ -27,7 +27,7 @@ conda install -y baton"$BATON_VERSION"
 conda install -y irods-icommands"$IRODS_VERSION"
 
 mkdir -p ~/.irods
-if [[ "$IRODS_VERSION" =~ "4.1.12" ]]
+if [[ "$IRODS_VERSION" =~ 4\.1\.12 ]]
 then
     cat <<EOF > ~/.irods/irods_environment.json
 {
@@ -53,30 +53,30 @@ else
 EOF
 fi
 
-cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+cpanm --local-lib=~/perl5 local::lib && eval "$(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)"
 
 # WTSI NPG Perl repo dependencies, only one at the moment
 repos=""
 for repo in perl-dnap-utilities; do
     cd /tmp
     # Always clone master when using depth 1 to get current tag
-    git clone --branch master --depth 1 ${WSI_NPG_GITHUB_URL}/${repo}.git ${repo}.git
-    cd /tmp/${repo}.git
+    git clone --branch master --depth 1 "$WSI_NPG_GITHUB_URL/${repo}.git" "${repo}.git"
+    cd "/tmp/${repo}.git"
     # Shift off master to appropriate branch (if possible)
-    git ls-remote --heads --exit-code origin ${WSI_NPG_BUILD_BRANCH} && git pull origin ${WSI_NPG_BUILD_BRANCH} && echo "Switched to branch ${WSI_NPG_BUILD_BRANCH}"
-    repos=$repos" /tmp/${repo}.git"
+    git ls-remote --heads --exit-code origin "$WSI_NPG_BUILD_BRANCH" && git pull origin "$WSI_NPG_BUILD_BRANCH" && echo "Switched to branch $WSI_NPG_BUILD_BRANCH"
+    repos="$repos /tmp/${repo}.git"
 done
 
 # Finally, bring any common dependencies up to the latest version and
 # install
 for repo in $repos
 do
-    cd $repo
+    cd "$repo"
     cpanm --quiet --notest --installdeps .
     ./Build install
 done
 
-cd $TRAVIS_BUILD_DIR
+cd "$TRAVIS_BUILD_DIR"
 
 cpanm --quiet --notest --installdeps .
 

@@ -1346,7 +1346,7 @@ sub read_object {
                (calculate a checksum on the server side) or
                $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
                checksum on the server side). Defaults to
-               $WTSI::NPG::iRODS::CALC_CHECKSUM
+               $WTSI::NPG::iRODS::SKIP_CHECKSUM
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
@@ -1382,7 +1382,7 @@ sub _add_object {
       $self->logconfess("Invalid checksum action '$checksum_action'");
   }
   else {
-    $checksum_action = $CALC_CHECKSUM;
+    $checksum_action = $SKIP_CHECKSUM;
   }
 
   $target = $self->_ensure_absolute_path($target);
@@ -1406,7 +1406,7 @@ sub _add_object {
                (calculate a checksum on the server side) or
                $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
                checksum on the server side). Defaults to
-               $WTSI::NPG::iRODS::CALC_CHECKSUM
+               $WTSI::NPG::iRODS::SKIP_CHECKSUM
 
   Example    : $irods->replace_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
@@ -1442,7 +1442,7 @@ sub _replace_object {
       $self->logconfess("Invalid checksum action '$checksum_action'");
   }
   else {
-    $checksum_action = $CALC_CHECKSUM;
+    $checksum_action = $SKIP_CHECKSUM;
   }
 
   $target = $self->ensure_object_path($target);

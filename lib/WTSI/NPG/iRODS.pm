@@ -56,18 +56,6 @@ our $STAGING_MAX_TRIES  = 2;
 our $CALC_CHECKSUM = 1;
 our $SKIP_CHECKSUM = 0;
 
-our $IRODS_MAJOR_VERSION_3 = '3';
-our $IRODS_MAJOR_VERSION_4 = '4';
-
-has 'irods_major_version' =>
-  (is            => 'ro',
-   isa           => 'Str',
-   required      => 1,
-   lazy          => 1,
-   builder       => '_build_irods_major_version',
-   init_arg      => undef,
-   documentation => 'The iRODS major version; 3 or 4');
-
 has 'strict_baton_version' =>
   (is            => 'ro',
    isa           => 'Bool',
@@ -350,19 +338,8 @@ sub get_irods_env {
   my %env;
   foreach my $entry (@entries) {
     my ($key, $value);
-
-    my $irods_major_version = $self->irods_major_version;
-    if ($irods_major_version eq $IRODS_MAJOR_VERSION_3) {
-      ($key, $value) = $entry =~ m{^NOTICE:\s+([^=]+)=(.*)}msx;
-    }
-    elsif ($irods_major_version eq $IRODS_MAJOR_VERSION_4) {
-      next if $entry =~ m{is\snot\sdefined$}msx;
-      ($key, $value) = $entry =~ m{^NOTICE:\s+(\S+)\s-\s(.*)}msx;
-    }
-    else {
-      $self->logconfess("Invalid iRODS major version '$irods_major_version'");
-    }
-
+    next if $entry =~ m{is\snot\sdefined$}msx;
+    ($key, $value) = $entry =~ m{^(?:NOTICE:\s+)?(\S+)\s-\s(.*)}msx;
     if (defined $key and defined $value) {
       $env{$key} = $value;
     }
@@ -387,15 +364,7 @@ sub get_irods_env {
 sub get_irods_user {
   my ($self) = @_;
 
-  my $var_name = q[];
-  if ($self->irods_major_version eq $IRODS_MAJOR_VERSION_3) {
-    $var_name = 'irodsUserName';
-  }
-  elsif ($self->irods_major_version eq $IRODS_MAJOR_VERSION_4) {
-    $var_name = 'irods_user_name';
-  }
-
-  my $user = $self->get_irods_env->{$var_name};
+  my $user = $self->get_irods_env->{irods_user_name};
   defined $user or
     $self->logconfess("Failed to obtain the iRODS user name from '$IENV'");
 
@@ -415,15 +384,7 @@ sub get_irods_user {
 sub get_irods_home {
   my ($self) = @_;
 
-  my $var_name = q[];
-  if ($self->irods_major_version eq $IRODS_MAJOR_VERSION_3) {
-    $var_name = 'irodsHome';
-  }
-  elsif ($self->irods_major_version eq $IRODS_MAJOR_VERSION_4) {
-    $var_name = 'irods_home';
-  }
-
-  my $home = $self->get_irods_env->{$var_name};
+  my $home = $self->get_irods_env->{irods_home};
   defined $home or
     $self->logconfess("Failed to obtain the iRODS home from '$IENV'");
 
@@ -2561,32 +2522,6 @@ sub _clear_caches {
   $self->_metadata_cache->remove($path);
 
   return;
-}
-
-sub _build_irods_major_version {
-  my ($self) = @_;
-
-  my @entries = WTSI::DNAP::Utilities::Runnable->new
-    (executable  => $IENV,
-     environment => $self->environment)->run->split_stdout;
-
-  @entries or
-    $self->logconfess("Failed to read any output from '$IENV'");
-
-  my $version_entry = shift @entries;
-
-  my ($irods_major_version) = $version_entry =~
-    m{NOTICE:\s+Release\sVersion\s=\srods(\d)[.]\d[.]\d}msx;
-  defined $irods_major_version or
-    $self->logconfess("Failed to parse a valid iRODS major version ",
-                      "from '$version_entry'");
-
-  any { $irods_major_version eq $_ } ($IRODS_MAJOR_VERSION_3,
-                                      $IRODS_MAJOR_VERSION_4) or
-    $self->logconfess("Failed to parse a valid iRODS major version ",
-                      "from '$version_entry'");
-
-  return $irods_major_version;
 }
 
 sub DEMOLISH {

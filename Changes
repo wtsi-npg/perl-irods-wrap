@@ -1,5 +1,7 @@
+Release 3.8.0
+ - Drop iRODS 3 support, add 4.2 support (ienv parsing)
+ 
 Release 3.7.0
-
  - Requires baton >= 2.0.1
  - Added bqsr_table and tbi to recognised file types.
 

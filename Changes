@@ -1,3 +1,7 @@
+Release 3.9.0
+ - Update tests to use iRODS 4.2.7 clients with 4.2.7 server
+ - Fix data object replacement checksum behaviour in line with test
+
 Release 3.8.0
  - Drop iRODS 3 support, add 4.2 support (ienv parsing)
  

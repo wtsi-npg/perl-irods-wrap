@@ -19,17 +19,13 @@ perl:
 
 env:
   global:
-    - WTSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
+    - WSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
+    - WSI_CONDA_CHANNEL=https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic/
     - NPG_RMQ_CONFIG='./etc/rmq_travis_config.json'
     - NPG_RMQ_HOST='localhost'
-    - BATON_VERSION=2.0.0
   matrix:
-    - DOCKER_IMAGE=wsinpg/ub-16.04-irods-4.2:latest
-    - DOCKER_IMAGE=wsinpg/ub-12.04-irods-4.1:latest
-
-matrix:
-  allow_failures:
-    - env: DOCKER_IMAGE=wsinpg/ub-16.04-irods-4.2:latest
+    - DOCKER_IMAGE="wsinpg/ub-16.04-irods-4.2:latest" IRODS_VERSION="==4.2.7"  BATON_VERSION=">2.0.1"
+    - DOCKER_IMAGE="wsinpg/ub-12.04-irods-4.1:latest" IRODS_VERSION="==4.1.12" BATON_VERSION="==2.0.1"
 
 before_install:
   - docker pull "$DOCKER_IMAGE"

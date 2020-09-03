@@ -57,6 +57,12 @@ has '_out' => (
   'default' => sub {my$t=q{}; return \$t},
 );
 
+has '_running' => (
+    'is'       => 'rw',
+    'isa'      => 'Bool',
+    'required' => 1,
+    'default' => 0,
+);
 
 has '_harness' => (
   'is' => 'ro',
@@ -75,6 +81,7 @@ sub _build__harness {
     $self->logcroak(qq(Command '$IGROUPADMIN' not found));
   }
   my $h = start [abs_path $cmd], q(<pty<), $in_ref, q(>pty>), $out_ref;
+  $self->_running(1);
   $self->_pump_until_prompt($h);
   ${$out_ref}=q();
   return $h;
@@ -83,7 +90,10 @@ sub _build__harness {
 sub _pump_until_prompt {
   my($self,$h)=@_;
   $h ||= $self->_harness;
-  while (1){ $h->pump; last if ${$self->_out}=~s/\r?\n^groupadmin\>//smx; }
+  while ($self->_running){
+    $h->pump;
+    last if ${$self->_out}=~s/\r?\n^groupadmin\>//smx;
+  }
   return;
 }
 
@@ -254,6 +264,7 @@ sub BUILD {
 
 sub DEMOLISH {
   my ($self) = @_;
+  $self->_running(0);
   if($self->_out and $self->_in){
     ${$self->_out}=q();
     ${$self->_in}="quit\n";

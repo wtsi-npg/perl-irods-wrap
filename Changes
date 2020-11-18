@@ -1,3 +1,8 @@
+Upcoming
+
+ - Bugfix: handle listing non-existent collections cleanly.
+   See https://github.com/wtsi-npg/perl-irods-wrap/issues/208
+
 Release 3.9.1
  - Bugfix: stop IPC::Run process pump before exiting
 

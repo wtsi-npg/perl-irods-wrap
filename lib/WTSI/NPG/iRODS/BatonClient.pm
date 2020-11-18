@@ -839,7 +839,7 @@ sub _list_collection {
 
   if ($response->{error} &&
       $response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
-    # Return empty @all_specs;
+    @all_specs = (undef, undef);
   }
   else {
     my @object_specs;

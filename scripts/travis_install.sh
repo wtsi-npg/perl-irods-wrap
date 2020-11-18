@@ -37,7 +37,7 @@ then
     "irods_zone_name": "testZone",
     "irods_home": "/testZone/home/irods",
     "irods_plugins_home": "$HOME/miniconda/envs/travis/lib/irods/plugins/",
-    "irods_default_resource": "testResc"
+    "irods_default_resource": "replResc"
 }
 EOF
 else
@@ -48,7 +48,7 @@ else
     "irods_user_name": "irods",
     "irods_zone_name": "testZone",
     "irods_home": "/testZone/home/irods",
-    "irods_default_resource": "testResc"
+    "irods_default_resource": "replResc"
 }
 EOF
 fi

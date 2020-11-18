@@ -3,6 +3,12 @@ Upcoming
  - Bugfix: handle listing non-existent collections cleanly.
    See https://github.com/wtsi-npg/perl-irods-wrap/issues/208
 
+ - Remove from test matrix iRODS 4.1.12
+ - Add iRODS 4.2.8 to test matrix
+    
+   iRODS 4.2.8 is marked as an expected failure because we have not yet
+   built a Conda package of irods-icommands 4.2.8
+
 Release 3.9.1
  - Bugfix: stop IPC::Run process pump before exiting
 

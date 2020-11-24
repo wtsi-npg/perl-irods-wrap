@@ -336,8 +336,15 @@ sub _publish_file_overwrite {
   $self->info("Remote path '$remote_path' is a data object");
   my $obj = WTSI::NPG::iRODS::DataObject->new($self->irods, $remote_path);
 
-  # Assume that the existing checksum is present and correct
-  my $pre_remote_md5 = $obj->checksum;
+  # Check that the existing checksum is present (assume correct)
+  my $pre_remote_md5;
+  if ($obj->has_checksum){
+    $pre_remote_md5 = $obj->checksum;
+  } else {
+    $pre_remote_md5 = $obj->calculate_checksum;
+    $self->warn("'$remote_path' is missing MD5:",
+                "(checksum changed) remote MD5 is now '$pre_remote_md5'");
+  }
   my $post_remote_md5;
 
   # Ensure that pre-update metadata are correct

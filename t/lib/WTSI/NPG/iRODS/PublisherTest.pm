@@ -97,7 +97,7 @@ sub publish : Test(8) {
   } 'publish, cram no MD5 fails';
 }
 
-sub publish_file : Test(46) {
+sub publish_file : Test(45) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -518,13 +518,12 @@ sub pf_overwrite_no_checksum {
   my $local_path = "$data_path/publish_file/a.txt";
   my $remote_path = "$coll_path/pf_no_remote_md5";
 
-  $publisher->publish_file($local_path, $remote_path) or fail;
+  $publisher->irods->add_object($local_path, $remote_path,
+                                $WTSI::NPG::iRODS::SKIP_CHECKSUM) or fail;
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
 
-  $obj->clear_checksum;
-  ok(!$obj->has_checksum, 'Checksum removed');
   $publisher->publish_file($local_path, $remote_path) or fail;
-  ok($obj->has_checksum, 'Re-upload file to existing path with missing checksum');
+  ok($obj->checksum, 'Checksum defined');
 
   is ($obj->checksum, $publisher->_get_md5($local_path), 'Checksum correct');
 }

@@ -338,13 +338,13 @@ sub _publish_file_overwrite {
 
   # Check that the existing checksum is present (assume correct)
   my $pre_remote_md5;
-  if ($obj->has_checksum){
+  try{
     $pre_remote_md5 = $obj->checksum;
-  } else {
+  } catch {
     $pre_remote_md5 = $obj->calculate_checksum;
     $self->warn("'$remote_path' is missing MD5:",
                 "(checksum changed) remote MD5 is now '$pre_remote_md5'");
-  }
+  };
   my $post_remote_md5;
 
   # Ensure that pre-update metadata are correct

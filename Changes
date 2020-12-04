@@ -1,5 +1,7 @@
 Upcoming
 
+ - Bugfix: handle re-uploading files with no checksum stored
+   in iRODS
 
 Release 3.10.0
 

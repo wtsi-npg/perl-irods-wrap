@@ -97,7 +97,7 @@ sub publish : Test(8) {
   } 'publish, cram no MD5 fails';
 }
 
-sub publish_file : Test(43) {
+sub publish_file : Test(45) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -133,6 +133,10 @@ sub publish_file : Test(43) {
   # publish filewhere the MD5 file is absent, yet where the source
   # directory is read-only
   pf_md5_cache_ro($irods, $tmp_data_path, $irods_tmp_coll);
+
+  # publish file with existing path, but no remote checksum present
+  pf_overwrite_no_checksum($irods, $tmp_data_path, $irods_tmp_coll);
+
 }
 
 sub publish_directory : Test(11) {
@@ -503,6 +507,25 @@ sub pf_md5_cache_ro {
   } finally {
     chmod 0755, "$data_path/publish_file/";
   };
+}
+
+sub pf_overwrite_no_checksum {
+  my ($irods, $data_path, $coll_path) = @_;
+
+  my $publisher = WTSI::NPG::iRODS::Publisher->new(irods => $irods);
+
+  # publish file with existing path, but no remote md5 present
+  my $local_path = "$data_path/publish_file/a.txt";
+  my $remote_path = "$coll_path/pf_no_remote_md5";
+
+  $publisher->irods->add_object($local_path, $remote_path,
+                                $WTSI::NPG::iRODS::SKIP_CHECKSUM) or fail;
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
+
+  $publisher->publish_file($local_path, $remote_path) or fail;
+  ok($obj->checksum, 'Checksum defined');
+
+  is ($obj->checksum, $publisher->_get_md5($local_path), 'Checksum correct');
 }
 
 sub _expire_cache {

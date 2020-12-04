@@ -1,5 +1,12 @@
 Upcoming
 
+ -
+
+Release 3.11.0
+
+ - Bugfix: handle re-uploading files with no checksum stored
+   in iRODS
+ - Bugfix: correct the iRODS 4.2.8 test matrix configuration
 
 Release 3.10.0
 

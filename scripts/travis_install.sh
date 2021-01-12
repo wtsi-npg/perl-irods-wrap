@@ -80,4 +80,3 @@ cd "$TRAVIS_BUILD_DIR"
 
 cpanm --quiet --notest --installdeps .
 
-cpanm --notest Net::AMQP::RabbitMQ

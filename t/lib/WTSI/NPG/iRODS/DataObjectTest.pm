@@ -5,6 +5,7 @@ use warnings;
 use English qw(-no_match_vars);
 use File::Spec;
 use List::MoreUtils qw(all any none);
+use File::Temp qw(tempfile);
 use Log::Log4perl;
 
 use base qw(WTSI::NPG::iRODS::Test);
@@ -130,6 +131,44 @@ sub is_present : Test(2) {
 
   ok(!WTSI::NPG::iRODS::DataObject->new
      ($irods, "no_such_object.txt")->is_present);
+}
+
+sub size: Test(7) {
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  my $obj_path = "$irods_tmp_coll/path/test_dir/test_file.txt";
+
+  # Non-empty data object
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  is($obj->size, 11, 'Data object size');
+  ok($obj->is_consistent_size,
+     'A data object with a checksum and expected size is consistent size');
+
+  my $obj_path2 = "$irods_tmp_coll/test_file2.txt";
+  $irods->add_object("$data_path/test_dir/test_file.txt", $obj_path2,
+                     $WTSI::NPG::iRODS::SKIP_CHECKSUM) or fail;
+
+  my $obj2 = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path2);
+  dies_ok { $obj2->is_consistent_size }
+          'A data object with no checksum errors on checking';
+
+  # Empty data object
+  my $obj_path3 = "$irods_tmp_coll/test_file3.txt";
+  my ($fh, $empty_file) = tempfile(UNLINK => 1);
+  $irods->add_object($empty_file, $obj_path3,
+                     $WTSI::NPG::iRODS::VERIFY_CHECKSUM) or fail;
+
+  my $obj3 = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path3);
+  is($obj3->size, 0, 'Data object size is 0');
+  is($obj3->checksum, $WTSI::NPG::iRODS::DataObject::EMPTY_FILE_CHECKSUM,
+     'Data object has empty file checksum');
+  ok($obj3->is_consistent_size,
+     'A data object with a checksum and expected size is consistent size');
+
+  # Non-existent data object
+  ok(WTSI::NPG::iRODS::DataObject->new
+    ($irods, "no_such_object.txt")->is_consistent_size,
+     'A non-existent data object is consistent size');
 }
 
 sub absolute : Test(3) {

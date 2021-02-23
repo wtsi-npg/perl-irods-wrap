@@ -4,7 +4,6 @@ set -e -u -x
 
 export TEST_AUTHOR=1
 export WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE=$HOME/.irods/irods_environment.json
-export WTSI_NPG_iRODS_Test_Resource=demoResc
 
 . ~/miniconda/etc/profile.d/conda.sh
 conda activate travis

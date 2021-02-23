@@ -52,6 +52,13 @@ sub setup_test : Test(setup) {
 
   $irods_tmp_coll = $irods->add_collection("iRODSTest.$pid.$fixture_counter");
   $fixture_counter++;
+
+  $irods->add_collection("$irods_tmp_coll/empty");
+  $irods->add_collection("$irods_tmp_coll/empty_tree");
+  $irods->add_collection("$irods_tmp_coll/empty_tree/1");
+  $irods->add_collection("$irods_tmp_coll/empty_tree/2");
+  $irods->add_collection("$irods_tmp_coll/empty_tree/3");
+
   $irods->put_collection($data_path, $irods_tmp_coll);
 
   my $test_coll = "$irods_tmp_coll/irods";
@@ -676,6 +683,30 @@ sub remove_collection : Test(4) {
     'Failed to remove an undefined collection';
 }
 
+sub remove_collection_safely : Test(7) {
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+
+  my $empty_coll = "$irods_tmp_coll/empty";
+  is($irods->remove_collection_safely($empty_coll), $empty_coll,
+     'Removed an empty collection');
+  ok(!$irods->list_collection($empty_coll),
+     'Empty collection was removed');
+
+  my $empty_tree = "$irods_tmp_coll/empty_tree";
+  is($irods->remove_collection_safely($empty_tree), $empty_tree,
+     'Removed an empty tree');
+  ok(!$irods->list_collection($empty_tree),
+     'Empty tree was removed');
+
+  dies_ok { $irods->remove_collection_safely('/no_such_collection') }
+          'Failed to remove a non-existent collection';
+  dies_ok { $irods->remove_collection_safely }
+          'Failed to remove an undefined collection';
+  dies_ok { $irods->remove_collection_safely($irods_tmp_coll) }
+          'Failed to remove a non-empty tree';
+}
+
 sub get_collection_meta : Test(2) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
@@ -697,8 +728,9 @@ sub get_collection_meta : Test(2) {
 
   dies_ok { $irods->get_collection_meta('/no_such_collection',
                                         'attr', 'value') }
-    'Failed to get metadata from a non-existent collection';
+          'Failed to get metadata from a non-existent collection';
 }
+
 
 sub add_collection_avu : Test(11) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,

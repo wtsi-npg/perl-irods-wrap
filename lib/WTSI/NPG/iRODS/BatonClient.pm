@@ -625,7 +625,7 @@ sub search_objects {
 
 =head2 read_object
 
-  Arg [1]    : Data object absoloute path
+  Arg [1]    : Data object absolute path
 
   Example    : $reader->read_object('/path/to/object.txt')
   Description: Read UTF-8 content from a data object.
@@ -662,6 +662,44 @@ sub read_object {
   }
 
   return $response->{data};
+}
+
+
+=head2 remove_collection_safely
+
+  Arg [1]    : Collection absolute path
+
+  Example    : $irods->remove_collection_safely('/path/to/collection')
+  Description: Remove a collection if it is empty. Raise an error if it is not
+               empty.
+  Returntype : None
+
+=cut
+
+sub remove_collection_safely {
+  my ($self, $collection, $recurse) = @_;
+
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+
+  $collection =~ m{^/}mxs or
+    $self->logconfess("An absolute collection path argument is required: ",
+                      "received '$collection'");
+
+  $collection = File::Spec->canonpath($collection);
+
+  if ($recurse) {
+    $self->_remove_collection_recur($collection);
+  } else {
+    my $spec = { operation => 'rmdir',
+                 arguments => {},
+                 target    => { collection => $collection } };
+    my $response = $self->communicate($spec);
+    $self->validate_response($response);
+    $self->report_error($response);
+  }
+
+  return;
 }
 
 sub _search {
@@ -894,6 +932,27 @@ sub _list_collection_recur {
   return (\@all_obj_specs, \@all_coll_specs);
 }
 
+sub _remove_collection_recur {
+  my ($self, $collection) = @_;
+
+  $self->debug("Recursing into '$collection'");
+  my ($obj_specs, $coll_specs) = $self->_list_collection($collection);
+
+  my @coll_specs = @$coll_specs;
+  my $this_coll = shift @coll_specs;
+
+  foreach my $sub_coll (@coll_specs) {
+    my $path = $self->path_spec_str($sub_coll);
+    $self->debug("Recursing into sub-collection '$path'");
+    $self->_remove_collection_recur($path);
+  }
+
+  my $path = $self->path_spec_str($this_coll);
+  $self->remove_collection_safely($path);
+
+  return;
+}
+
 sub _list_path_meta {
   my ($self, $spec) = @_;
 
@@ -990,8 +1049,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2017 Genome Research Limited. All
-Rights Reserved.
+Copyright (C) 2013, 2014, 2015, 2017, 2019, 2021 Genome Research
+Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

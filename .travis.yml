@@ -2,15 +2,9 @@ dist: bionic
 
 sudo: required
 
-addons:
-  apt:
-    packages:
-      - rabbitmq-server
-
 services:
   - docker
   - postgresql
-  - rabbitmq
 
 language: perl
 
@@ -21,8 +15,6 @@ env:
   global:
     - WSI_NPG_GITHUB_URL=https://github.com/wtsi-npg
     - WSI_CONDA_CHANNEL=https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic/
-    - NPG_RMQ_CONFIG='./etc/rmq_travis_config.json'
-    - NPG_RMQ_HOST='localhost'
 
 _iRODS_4_2_8: &iRODS_4_2_8
   env: DOCKER_IMAGE="wsinpg/ub-18.04-irods-4.2.8:latest" IRODS_VERSION="==4.2.8" BATON_VERSION=">2.0.1"
@@ -43,9 +35,6 @@ before_install:
 
 install:
   - ./scripts/travis_install.sh
-
-before_script:
-  - ./scripts/rabbitmq_config.sh
 
 script:
   - ./scripts/travis_script.sh

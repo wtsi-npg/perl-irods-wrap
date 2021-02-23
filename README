@@ -8,9 +8,6 @@ The clients wrapped are the iRODS icommand programs
 (https://wiki.irods.org/index.php/icommands) and baton programs
 (https://github.com/wtsi-npg/baton).
 
-The Perl library supports messaging with RabbitMQ (https://www.rabbitmq.com)
-for notification of method calls.
-
 Dependencies:
 
 Perl      https://github.com/wtsi-npg/perl-dnap-utilities
@@ -24,7 +21,3 @@ iRODS     https://github.com/irods/irods
 baton     https://github.com/wtsi-npg/baton
 
           Version >= 1.0.0 only
-
-RabbitMQ  https://www.rabbitmq.com
-
-          Version >= 3.6.9

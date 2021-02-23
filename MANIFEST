@@ -17,14 +17,10 @@ lib/WTSI/NPG/iRODS/Metadata.pm
 lib/WTSI/NPG/iRODS/Path.pm
 lib/WTSI/NPG/iRODS/Publisher.pm
 lib/WTSI/NPG/iRODS/Replicate.pm
-lib/WTSI/NPG/iRODS/Reportable/Base.pm
-lib/WTSI/NPG/iRODS/Reportable/iRODSMQ.pm
-lib/WTSI/NPG/iRODS/Reportable/PublisherMQ.pm
 lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Types.pm
 lib/WTSI/NPG/iRODS/Utilities.pm
 lib/WTSI/NPG/iRODS/Version.pm
-lib/WTSI/NPG/RabbitMQ/Connectable.pm
 MANIFEST			This list of files
 META.json
 META.yml
@@ -65,11 +61,7 @@ t/lib/WTSI/NPG/iRODS/DataObjectTest.pm
 t/lib/WTSI/NPG/iRODS/GroupAdminTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
 t/lib/WTSI/NPG/iRODS/PublisherTest.pm
-t/lib/WTSI/NPG/iRODS/ReporterTest.pm
 t/lib/WTSI/NPG/iRODS/Test.pm
-t/lib/WTSI/NPG/iRODS/TestRabbitMQ.pm
-t/lib/WTSI/NPG/RabbitMQ/TestCommunicator.pm
 t/performance.t
 t/perlcriticrc
 t/publisher.t
-t/reporter.t

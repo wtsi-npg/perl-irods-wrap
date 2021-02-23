@@ -1,6 +1,7 @@
 Upcoming
 
- -Rename GBS_PLEX_NAME = gbs_plex to primer_panel in Metadata 
+- Remove RabbitMQ code
+- Rename GBS_PLEX_NAME = gbs_plex to primer_panel in Metadata 
   to match field in mlwarehouse.
 
 Release 3.11.0

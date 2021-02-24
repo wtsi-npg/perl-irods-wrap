@@ -20,4 +20,5 @@ iRODS     https://github.com/irods/irods
 
 baton     https://github.com/wtsi-npg/baton
 
-          Version >= 1.0.0 only
+          Version >= 2.0.0 only
+

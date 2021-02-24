@@ -27,21 +27,8 @@ conda install -y baton"$BATON_VERSION"
 conda install -y irods-icommands"$IRODS_VERSION"
 
 mkdir -p ~/.irods
-if [[ "$IRODS_VERSION" =~ 4\.1\.12 ]]
-then
-    cat <<EOF > ~/.irods/irods_environment.json
-{
-    "irods_host": "localhost",
-    "irods_port": 1247,
-    "irods_user_name": "irods",
-    "irods_zone_name": "testZone",
-    "irods_home": "/testZone/home/irods",
-    "irods_plugins_home": "$HOME/miniconda/envs/travis/lib/irods/plugins/",
-    "irods_default_resource": "replResc"
-}
-EOF
-else
-    cat <<'EOF' > ~/.irods/irods_environment.json
+
+cat <<'EOF' > ~/.irods/irods_environment.json
 {
     "irods_host": "localhost",
     "irods_port": 1247,
@@ -51,7 +38,6 @@ else
     "irods_default_resource": "replResc"
 }
 EOF
-fi
 
 cpanm --local-lib=~/perl5 local::lib && eval "$(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)"
 
@@ -79,4 +65,3 @@ done
 cd "$TRAVIS_BUILD_DIR"
 
 cpanm --quiet --notest --installdeps .
-

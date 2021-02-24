@@ -656,18 +656,10 @@ sub list_collection {
 
   Example    : $irods->add_collection('/my/path/foo')
   Description: Make a new collection in iRODS. Return the new collection.
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
-
+  Returntype: Str
 =cut
 
 sub add_collection {
-  my ($self, $collection) = @_;
-  return $self->_add_collection($collection);
-}
-
-sub _add_collection {
   my ($self, $collection) = @_;
 
   defined $collection or
@@ -693,20 +685,11 @@ sub _add_collection {
 
   Example    : $irods->put_collection('/my/path/foo', '/archive')
   Description: Make a new collection in iRODS. Return the new collection.
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
-
   Returntype : Str
 
 =cut
 
 sub put_collection {
-  my ($self, $dir, $target) = @_;
-  return $self->_put_collection($dir, $target);
-}
-
-sub _put_collection {
   my ($self, $dir, $target) = @_;
 
   defined $dir or
@@ -739,19 +722,11 @@ sub _put_collection {
 
   Example    : $irods->move_collection('/my/path/a', '/my/path/b')
   Description: Move a collection.
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub move_collection {
-    my ($self, $source, $target) = @_;
-    return $self->_move_collection($source, $target);
-}
-
-sub _move_collection {
   my ($self, $source, $target) = @_;
 
   defined $source or
@@ -818,20 +793,11 @@ sub get_collection {
   Example    : $irods->remove_collection('/my/path/foo')
   Description: Remove a collection and contents, recursively, and return
                self.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : WTSI::NPG::iRODS
 
 =cut
 
 sub remove_collection {
-  my ($self, $collection) = @_;
-  return $self->_remove_collection($collection);
-}
-
-sub _remove_collection {
   my ($self, $collection) = @_;
 
   defined $collection or
@@ -885,21 +851,12 @@ sub get_collection_permissions {
   Example    : $irods->set_collection_permissions('read', 'user1', $path)
   Description: Set access permissions on the collection. Return the collection
                path.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 
 sub set_collection_permissions {
-  my ($self, $level, $owner, $collection) = @_;
-  return $self->_set_collection_permissions($level, $owner, $collection);
-}
-
-sub _set_collection_permissions {
   my ($self, $level, $owner, $collection) = @_;
 
   defined $owner or
@@ -1027,20 +984,11 @@ sub get_collection_meta {
   Example    : $irods->add_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Add metadata to a collection. Return an array of
                the new attribute, value and units.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Array
 
 =cut
 
 sub add_collection_avu {
-  my ($self, $collection, $attribute, $value, $units) = @_;
-  return $self->_add_collection_avu($collection, $attribute, $value, $units);
-}
-
-sub _add_collection_avu {
   my ($self, $collection, $attribute, $value, $units) = @_;
 
   defined $collection or
@@ -1083,21 +1031,11 @@ sub _add_collection_avu {
   Example    : $irods->remove_collection_avu('/my/path/foo', 'id', 'ABCD1234')
   Description: Removes metadata from a collection object. Return the
                collection path.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_collection_avu {
-  my ($self, $collection, $attribute, $value, $units) = @_;
-  return $self->_remove_collection_avu($collection, $attribute,
-                                       $value, $units);
-}
-
-sub _remove_collection_avu {
   my ($self, $collection, $attribute, $value, $units) = @_;
 
   defined $collection or
@@ -1138,7 +1076,7 @@ sub _remove_collection_avu {
 
   Example    : $irods->make_collection_avu_history('/my/path/lorem.txt', 'id');
   Description: Return a new history AVU reflecting the current state of
-               the attribue. i.e. call this method before you change the
+               the attribute. i.e. call this method before you change the
                AVU.
 
                The history will be of the form:
@@ -1149,7 +1087,6 @@ sub _remove_collection_avu {
                values will be sorted and concatenated, separated by commas.
                If there are no AVUs specified attribute, an error will be
                raised.
-
   Returntype : HashRef
 
 =cut
@@ -1350,20 +1287,11 @@ sub read_object {
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub add_object {
-  my ($self, $file, $target, $checksum_action) = @_;
-  return $self->_add_object($file, $target, $checksum_action);
-}
-
-sub _add_object {
   my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
@@ -1410,20 +1338,11 @@ sub _add_object {
 
   Example    : $irods->replace_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub replace_object {
-  my ($self, $file, $target, $checksum_action) = @_;
-  return $self->_replace_object($file, $target, $checksum_action);
-}
-
-sub _replace_object {
   my ($self, $file, $target, $checksum_action) = @_;
 
   defined $file or
@@ -1462,20 +1381,11 @@ sub _replace_object {
   Description: Copy a data object, including all of its metadata. The
                optional third argument is a callback that may be used to
                translate metadata attributes during the copy.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub copy_object {
-  my ($self, $source, $target, $translator) = @_;
-  return $self->_copy_object($source, $target, $translator);
-}
-
-sub _copy_object {
   my ($self, $source, $target, $translator) = @_;
 
   defined $source or
@@ -1516,7 +1426,7 @@ sub _copy_object {
       $attr = $translator->($attr);
     }
 
-    $self->_add_object_avu($target, $attr, $avu->{value}, $avu->{units});
+    $self->add_object_avu($target, $attr, $avu->{value}, $avu->{units});
   }
 
   return $target
@@ -1529,20 +1439,11 @@ sub _copy_object {
 
   Example    : $irods->move_object('/my/path/lorem.txt', '/my/path/ipsum.txt')
   Description: Move a data object.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub move_object {
-  my ($self, $source, $target) = @_;
-  return $self->_move_object($source, $target);
-}
-
-sub _move_object {
   my ($self, $source, $target) = @_;
 
   defined $source or
@@ -1573,10 +1474,6 @@ sub _move_object {
 
   Example    : $irods->get_object('/my/path/lorem.txt', 'lorem.txt')
   Description: Fetch a data object and return the path of the local copy.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
@@ -1611,20 +1508,11 @@ sub get_object {
 
   Example    : $irods->remove_object('/my/path/lorem.txt')
   Description: Remove a data object.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_object {
-  my ($self, $object) = @_;
-  return $self->_remove_object($object);
-}
-
-sub _remove_object {
   my ($self, $object) = @_;
 
   defined $object or
@@ -1715,20 +1603,11 @@ sub get_object_permissions {
   Example    : $irods->set_object_permissions('read', 'user1', $path)
   Description: Set access permissions on the data objecrt. Return the object
                path.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub set_object_permissions {
-  my ($self, $level, $owner, $object) = @_;
-  return $self->_set_object_permissions($level, $owner, $object);
-}
-
-sub _set_object_permissions {
   my ($self, $level, $owner, $object) = @_;
 
   defined $owner or
@@ -1869,19 +1748,11 @@ sub get_object_meta {
 
   Example    : add_object_avu('/my/path/lorem.txt', 'id', 'ABCD1234')
   Description: Add metadata to a data object. Return the object path.
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub add_object_avu {
-  my ($self, $object, $attribute, $value, $units) = @_;
-  return $self->_add_object_avu($object, $attribute, $value, $units);
-}
-
-sub _add_object_avu {
   my ($self, $object, $attribute, $value, $units) = @_;
 
   defined $object or
@@ -1928,20 +1799,11 @@ sub _add_object_avu {
                'ABCD1234')
   Description: Remove metadata from a data object. Return the object
                path.
-
-               Implemented as a wrapper for a private method. The private
-               method can be called by other methods within the same class,
-               without triggering any message queue updates.
   Returntype : Str
 
 =cut
 
 sub remove_object_avu {
-  my ($self, $object, $attribute, $value, $units) = @_;
-  return $self->_remove_object_avu($object, $attribute, $value, $units);
-}
-
-sub _remove_object_avu {
   my ($self, $object, $attribute, $value, $units) = @_;
 
   defined $object or

@@ -1,8 +1,11 @@
 Upcoming
 
-- Remove RabbitMQ code
-- Rename GBS_PLEX_NAME = gbs_plex to primer_panel in Metadata 
-  to match field in mlwarehouse.
+
+ - Order Conda channels for tests so that NPG channels have highest priority
+   and conda-forge the lowest.
+ - Remove RabbitMQ code
+ - Rename GBS_PLEX_NAME = gbs_plex to primer_panel in Metadata 
+   to match field in mlwarehouse.
 
 Release 3.11.0
 

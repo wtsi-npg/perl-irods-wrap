@@ -18,8 +18,8 @@ echo "conda activate base" >> ~/.bashrc
 . ~/miniconda/etc/profile.d/conda.sh
 conda activate base
 conda config --set auto_update_conda False
-conda config --add channels "$WSI_CONDA_CHANNEL"
-conda config --add channels conda-forge
+conda config --prepend channels "$WSI_CONDA_CHANNEL"
+conda config --append channels conda-forge
 
 conda create -y -n travis
 conda activate travis

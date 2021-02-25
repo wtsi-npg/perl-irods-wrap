@@ -7,10 +7,7 @@ use base qw(Test::Class);
 use Test::More;
 
 # Run full tests (requiring a test iRODS server) only if TEST_AUTHOR
-# is true. If full tests are run, require that both irodsEnvFile
-# IRODS_ENVIRONMENT_FILE and be set. This is for safety because we do
-# not know which of 3.x or 4.x clients will be first on the PATH. The
-# unused variable may be set to a dummy value.
+# is true.
 
 sub runtests {
   my ($self) = @_;

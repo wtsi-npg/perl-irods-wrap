@@ -8,7 +8,7 @@ use Data::Dump qw(pp);
 use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename fileparse);
-use File::Spec::Functions qw(canonpath catfile splitdir);
+use File::Spec::Functions qw(abs2rel canonpath catdir catfile splitdir);
 use List::AllUtils qw(any uniq);
 use Log::Log4perl::Level;
 use Moose;
@@ -730,23 +730,62 @@ sub move_collection {
   my ($self, $source, $target) = @_;
 
   defined $source or
-    $self->logconfess('A defined source (collection) argument is required');
+  $self->logconfess('A defined source (collection) argument is required');
   defined $target or
-    $self->logconfess('A defined target (collection) argument is required');
+  $self->logconfess('A defined target (collection) argument is required');
 
   $source eq q{} and
-    $self->logconfess('A non-empty source (collection) argument is required');
+  $self->logconfess('A non-empty source (collection) argument is required');
   $target eq q{} and
-    $self->logconfess('A non-empty target (collection) argument is required');
+  $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = $self->ensure_collection_path($source);
   $target = canonpath($target);
   $target = $self->_ensure_absolute_path($target);
   $self->debug("Moving collection from '$source' to '$target'");
 
-  WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
-                                       arguments   => [$source, $target],
-                                       environment => $self->environment)->run;
+  # Due to a bug in iRODS 4.2.7, imv doesn't work cleanly for collections.
+  # This is especially evident on federated zones. This is a workaround that
+  # serialises the operation.
+
+  my ($source_objs, $source_colls) =
+    $self->list_collection($source, 'RECURSE');
+
+  # Handle collections
+  foreach my $source_coll (@{$source_colls}) {
+    my $rel = abs2rel($source_coll, $source);
+    my $target_coll = catdir($target, $rel);
+
+    $self->debug("Creating target collection $target_coll ",
+                 "for $source_coll");
+    $self->add_collection($target_coll);
+
+    foreach my $avu ($self->get_collection_meta($source_coll)) {
+      my ($attribute, $value, $units) = ($avu->{attribute},
+                                         $avu->{value},
+                                         $avu->{units});
+      my $units_str = defined $units ? "'$units'" : "'undef'";
+
+      $self->debug("Copying AVU ['$attribute', '$value', $units_str] ",
+                   "from '$source_coll' to '$target_coll'");
+      $self->add_collection_avu($target_coll, $attribute, $value, $units);
+    }
+  }
+
+  # Handle data objects
+  foreach my $source_obj (@{$source_objs}) {
+    my $rel = abs2rel($source_obj, $source);
+    my $target_obj = catfile($target, $rel);
+
+    WTSI::DNAP::Utilities::Runnable      ->new
+      (executable  => $IMV,
+       arguments   => [ $source_obj, $target_obj ],
+       environment => $self->environment)->run;
+  }
+
+  # Clean up source collections safely
+  $self->remove_collection_safely($source);
+
   return $target;
 }
 
@@ -812,6 +851,33 @@ sub remove_collection {
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IRM,
                                        arguments   => ['-r', '-f', $collection],
                                        environment => $self->environment)->run;
+  return $collection;
+}
+
+=head2 remove_collection_safely
+
+  Arg [1]    : iRODS collection path.
+
+  Example    : $irods->remove_collection_safely('/my/path/foo')
+  Description: Remove a collection and contents, recursively, and return
+               self. Contents are only removed if they are empty collections.
+  Returntype : WTSI::NPG::iRODS
+
+=cut
+
+sub remove_collection_safely {
+  my ($self, $collection) = @_;
+
+  defined $collection or
+    $self->logconfess('A defined collection argument is required');
+
+  $collection eq q{} and
+    $self->logconfess('A non-empty collection argument is required');
+
+  $collection = $self->ensure_collection_path($collection);
+  $self->debug("Removing collection '$collection'");
+
+  $self->baton_client->remove_collection_safely($collection, 'RECURSE');
   return $collection;
 }
 
@@ -2484,8 +2550,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
-Rights Reserved.
+Copyright (C) 2013, 2014, 2015, 2016, 2017, 2021 Genome Research
+Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

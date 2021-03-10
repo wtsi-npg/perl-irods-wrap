@@ -172,7 +172,7 @@ our $XAHUMAN                   = 'xahuman';
 our $YHUMAN                    = 'yhuman';
 
 # Genotyping by Sequencing (Illumina)
-our $GBS_PLEX_NAME             = 'gbs_plex';
+our $GBS_PLEX_NAME             = 'primer_panel';
 
 # Composition and component JSON strings
 # and a unique product id based on composition

@@ -51,7 +51,6 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'WTSI::DNAP::Utilities'     => '>= 0.5.2',
                          },
    recommends =>         {
-                          'Net::AMQP::RabbitMQ'           => '>= 2.10',
                           'Net::LDAP'                     => '0',
                           'WTSI::DNAP::Warehouse::Schema' => '0',
                          });

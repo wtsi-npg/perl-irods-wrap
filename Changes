@@ -1,11 +1,15 @@
 Upcoming
 
+Release 3.12.0
 
  - Order Conda channels for tests so that NPG channels have highest priority
    and conda-forge the lowest.
  - Remove RabbitMQ code
  - Rename GBS_PLEX_NAME = gbs_plex to primer_panel in Metadata 
    to match field in mlwarehouse.
+ - Due to a bug in iRODS 4.2.7, the imv command doesn't work cleanly for
+   collections. This is especially evident on federated zones. Added
+   move_collection workaround to mitigate this problem.
 
 Release 3.11.0
 

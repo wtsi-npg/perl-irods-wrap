@@ -7,7 +7,7 @@ use MooseX::StrictConstructor;
 use IPC::Run qw(start run);
 use File::Which qw(which);
 use Cwd qw(abs_path);
-use List::AllUtils qw(any none);
+use List::MoreUtils qw(any none);
 use Log::Log4perl;
 use Readonly;
 use Carp;
@@ -300,7 +300,7 @@ Will honour iRODS related environment at time of object creation
 
 =item Cwd
 
-=item List::AllUtils
+=item List::MoreUtils
 
 =item Readonly
 

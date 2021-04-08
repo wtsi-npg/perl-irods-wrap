@@ -2,7 +2,7 @@ package WTSI::NPG::iRODS::Path;
 
 use Data::Dump qw(pp);
 use File::Spec;
-use List::AllUtils qw(any notall uniq);
+use List::MoreUtils qw(any notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;

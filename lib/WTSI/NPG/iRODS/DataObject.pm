@@ -2,7 +2,7 @@ package WTSI::NPG::iRODS::DataObject;
 
 use namespace::autoclean;
 use File::Spec;
-use List::AllUtils qw(none uniq);
+use List::MoreUtils qw(none uniq);
 use Moose;
 use MooseX::StrictConstructor;
 use Set::Scalar;

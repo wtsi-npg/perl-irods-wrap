@@ -39,7 +39,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'IPC::Run'                  => '>= 0.92',
                           'JSON'                      => '>= 2.90',
                           'Log::Log4perl'             => '>= 1.46',
-                          'List::AllUtils'            => '>= 0.09',
+                          'List::MoreUtils'           => '0',
                           'Moose'                     => '>= 2.1',
                           'MooseX::StrictConstructor' => '>= 0.19',
                           'MooseX::Types'             => '>= 0.45',
@@ -47,7 +47,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'Set::Scalar'               => '>= 1.29',
                           'Try::Tiny'                 => '>= 0.22',
                           'URI'                       => '>= 1.67',
-			  'UUID'                      => '>= 0.27',
+			                    'UUID'                      => '>= 0.27',
                           'WTSI::DNAP::Utilities'     => '>= 0.5.2',
                          },
    recommends =>         {

@@ -5,7 +5,7 @@ use warnings;
 use Benchmark qw(:all);
 use English qw(-no_match_vars);
 use File::Temp qw(tempdir);
-use List::AllUtils qw(any);
+use List::MoreUtils qw(any);
 
 use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;

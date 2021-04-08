@@ -1,7 +1,7 @@
 package WTSI::NPG::iRODS::Utilities;
 
 use Digest::MD5;
-use List::AllUtils qw(uniq zip);
+use List::MoreUtils qw(uniq zip);
 use Moose::Role;
 
 use WTSI::DNAP::Utilities::Runnable;

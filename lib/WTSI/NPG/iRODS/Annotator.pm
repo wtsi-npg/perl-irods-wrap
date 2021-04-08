@@ -1,7 +1,7 @@
 package WTSI::NPG::iRODS::Annotator;
 
 use DateTime;
-use List::AllUtils qw[uniq];
+use List::MoreUtils qw[uniq];
 use Moose::Role;
 
 use WTSI::NPG::iRODS::Metadata;

@@ -7,7 +7,7 @@ use lib (-d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib");
 
 use Cwd qw(abs_path getcwd);
 use Getopt::Long;
-use List::AllUtils qw(uniq);
+use List::MoreUtils qw(uniq);
 use Log::Log4perl;
 use Log::Log4perl::Level;
 use Pod::Usage;

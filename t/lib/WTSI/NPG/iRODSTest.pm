@@ -9,7 +9,7 @@ use warnings;
 use English qw(-no_match_vars);
 use File::Spec;
 use File::Temp qw(tempdir);
-use List::AllUtils qw(all any none);
+use List::MoreUtils qw(all any none);
 use Log::Log4perl;
 use Try::Tiny;
 use Unicode::Collate;

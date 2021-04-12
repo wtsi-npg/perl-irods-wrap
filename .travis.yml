@@ -17,11 +17,12 @@ env:
     - WSI_CONDA_CHANNEL=https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic/
 
 _iRODS_4_2_8: &iRODS_4_2_8
-  env: DOCKER_IMAGE="wsinpg/ub-18.04-irods-4.2.8:latest" IRODS_VERSION="==4.2.8" BATON_VERSION=">2.0.1"
+  env: DOCKER_IMAGE="wsinpg/ub-18.04-irods-4.2.8:latest" IRODS_VERSION="==4.2.8" BATON_VERSION="==2.1.0"
 
 jobs:
   include:
     - env: DOCKER_IMAGE="wsinpg/ub-16.04-irods-4.2.7:latest" IRODS_VERSION="==4.2.7" BATON_VERSION=">2.0.1"
+    - env: DOCKER_IMAGE="wsinpg/ub-16.04-irods-4.2.7:latest" IRODS_VERSION="==4.2.7" BATON_VERSION="==2.1.0"
     - <<: *iRODS_4_2_8
 
   allow_failures:

@@ -9,7 +9,7 @@ use Encode qw(decode);
 use English qw(-no_match_vars);
 use File::Basename qw(basename fileparse);
 use File::Spec::Functions qw(abs2rel canonpath catdir catfile splitdir);
-use List::AllUtils qw(any uniq);
+use List::MoreUtils qw(any uniq);
 use Log::Log4perl::Level;
 use Moose;
 use MooseX::StrictConstructor;

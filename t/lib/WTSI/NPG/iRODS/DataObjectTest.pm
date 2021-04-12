@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use English qw(-no_match_vars);
 use File::Spec;
-use List::AllUtils qw(all any none);
+use List::MoreUtils qw(all any none);
 use Log::Log4perl;
 
 use base qw(WTSI::NPG::iRODS::Test);

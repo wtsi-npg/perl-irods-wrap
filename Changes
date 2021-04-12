@@ -1,5 +1,11 @@
 Upcoming
 
+Release 3.13.0
+
+ - Add baton 2.1.0 to the test matrix
+ - Switch from List::AllUtils to List::MoreUtils implementation of 'zip' because
+   of a breaking API change in the former.     
+
 Release 3.12.0
 
  - Order Conda channels for tests so that NPG channels have highest priority

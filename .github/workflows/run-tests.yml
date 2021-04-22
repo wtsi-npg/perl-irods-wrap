@@ -1,0 +1,140 @@
+name: "Unit tests"
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    continue-on-error: ${{ matrix.experimental }} # Experimental builds may fail
+
+    defaults:
+      run:
+        shell: bash -l -e -o pipefail {0}
+
+    env:
+      WSI_CONDA_CHANNEL: "https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic"
+      CONDA_TEST_ENVIRONMENT: "testenv"
+      CACHE: ~/perl5
+
+    strategy:
+      matrix:
+        perl: [ "5.22.4" ]
+        baton: [ "2.1.0" ]
+        experimental: [ false ]
+        include:
+          - irods: "4.2.7"
+            server_image: "wsinpg/ub-16.04-irods-4.2.7:latest"
+            baton: "2.1.0"
+            experimental: false
+          - irods: "4.2.8"
+            server_image: "wsinpg/ub-18.04-irods-4.2.8:latest"
+            baton: "2.1.0"
+            experimental: true
+
+    services:
+      irods:
+        image: ${{ matrix.server_image }}
+        ports:
+          - 1247:1247
+          - 20000-20199:20000-20199
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: "Initialize Miniconda"
+        run: |
+          echo 'source $CONDA/etc/profile.d/conda.sh' >> "$HOME/.bash_profile"
+
+      - name: "Cache Miniconda"
+        id: cache-miniconda
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/conda/pkgs
+            ~/conda/envs
+          key: ${{ runner.os }}-miniconda
+
+      - name: "Configure Miniconda"
+        run: |
+          conda config --prepend pkgs_dirs ~/conda/pkgs
+          conda config --prepend envs_dirs ~/conda/envs
+
+          conda config --set auto_update_conda False
+          conda config --prepend channels "$WSI_CONDA_CHANNEL"
+          conda config --append channels conda-forge
+          conda info
+
+      - name: "Install iRODS clients"
+        run: |
+          conda create -y -n "$CONDA_TEST_ENVIRONMENT"
+          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "irods-icommands ==${{ matrix.irods }}"
+          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "baton ==${{ matrix.baton }}"
+
+      - name: "Configure iRODS clients"
+        run: |
+          conda activate "$CONDA_TEST_ENVIRONMENT"
+
+          mkdir -p "$HOME/.irods"
+          cat <<'EOF' > "$HOME/.irods/irods_environment.json"
+          {
+              "irods_host": "localhost",
+              "irods_port": 1247,
+              "irods_user_name": "irods",
+              "irods_zone_name": "testZone",
+              "irods_home": "/testZone/home/irods",
+              "irods_default_resource": "testResc"
+          }
+          EOF
+
+          echo "irods" | script -q -c "iinit" /dev/null
+          ienv
+          ils
+
+          baton-do --version
+
+      - name: "Cache Perl"
+        id: cache-perl
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.CACHE }}
+          key: ${{ runner.os }}-${{ matrix.perl }}-perl
+
+      - name: "Install Perlbrew"
+        if: steps.cache-perl.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL https://install.perlbrew.pl -o perlbrew.sh
+          sha256sum -c .github/workflows/perlbrew.sha256
+          export PERLBREW_ROOT=${{ env.CACHE }}
+          sh perlbrew.sh
+
+          source ${{ env.CACHE }}/etc/bashrc
+          perlbrew available
+          perlbrew install --notest perl-${{ matrix.perl }}
+          perlbrew use perl-${{ matrix.perl }}
+          perlbrew install-cpanm
+
+      - name: "Initialize Perlbrew"
+        run: |
+          echo "source ${{ env.CACHE }}/etc/bashrc" >> "$HOME/.bash_profile"
+
+      - name: "Install OS dependencies"
+        run: |
+          sudo apt-get install -qq uuid-dev
+
+      - name: "Install CPAN dependencies"
+        run: |
+          cpanm --local-lib=${{ env.CACHE }} local::lib && \
+            eval $(perl -I ${{ env.CACHE }}/lib/perl5/ -Mlocal::lib)
+
+          ./scripts/install_wsi_dependencies.sh
+          cpanm --installdeps --notest .
+
+      - name: "Run tests"
+        run: |
+          conda activate "$CONDA_TEST_ENVIRONMENT"
+          cpanm --local-lib=${{ env.CACHE }} local::lib && \
+            eval $(perl -I ${{ env.CACHE }}/lib/perl5/ -Mlocal::lib)
+          export PERL5LIB="$PWD:$PERL5LIB"
+
+          perl Build.PL
+          ./Build test

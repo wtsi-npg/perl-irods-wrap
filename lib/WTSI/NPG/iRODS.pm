@@ -19,6 +19,8 @@ use WTSI::DNAP::Utilities::Runnable;
 
 use WTSI::NPG::iRODS::Metadata qw($FILE_MD5 $STAGING);
 use WTSI::NPG::iRODS::BatonClient;
+use WTSI::NPG::iRODS::Collection;
+use WTSI::NPG::iRODS::DataObject;
 use WTSI::NPG::iRODS::Types qw(:all);
 
 our $VERSION = '';
@@ -715,13 +717,55 @@ sub put_collection {
   return $target . q{/} . basename($dir);
 }
 
+=head2 copy_collection
+
+  Arg [1]    : iRODS collection path, which must exist.
+  Arg [2]    : iRODS collection path.
+
+  Example    : $irods->move_collection('/my/path/a', '/my/path/b')
+  Description: Copy a collection, its contents and associated metadata.
+  Returntype : Str
+
+=cut
+
+sub copy_collection {
+  my ($self, $source, $target) = @_;
+
+  defined $source or
+    $self->logconfess('A defined source (collection) argument is required');
+  defined $target or
+    $self->logconfess('A defined target (collection) argument is required');
+
+  $source eq q{} and
+    $self->logconfess('A non-empty source (collection) argument is required');
+  $target eq q{} and
+    $self->logconfess('A non-empty target (collection) argument is required');
+
+  $source = $self->ensure_collection_path($source);
+  $target = canonpath($target);
+  $target = $self->_ensure_absolute_path($target);
+
+  # Handle collections
+  $self->_copy_collection($source, $target);
+
+  # Handle data objects
+  my ($source_objs, $ignore) = $self->list_collection($source, 'RECURSE');
+  foreach my $source_obj (@{$source_objs}) {
+    my $rel = abs2rel($source_obj, $source);
+    my $target_obj = catfile($target, $rel);
+    $self->copy_object($source_obj, $target_obj);
+  }
+
+  return $target;
+}
+
 =head2 move_collection
 
   Arg [1]    : iRODS collection path, which must exist.
   Arg [2]    : iRODS collection path.
 
   Example    : $irods->move_collection('/my/path/a', '/my/path/b')
-  Description: Move a collection.
+  Description: Move a collection, its contents and associated metadata.
   Returntype : Str
 
 =cut
@@ -730,14 +774,14 @@ sub move_collection {
   my ($self, $source, $target) = @_;
 
   defined $source or
-  $self->logconfess('A defined source (collection) argument is required');
+    $self->logconfess('A defined source (collection) argument is required');
   defined $target or
-  $self->logconfess('A defined target (collection) argument is required');
+    $self->logconfess('A defined target (collection) argument is required');
 
   $source eq q{} and
-  $self->logconfess('A non-empty source (collection) argument is required');
+    $self->logconfess('A non-empty source (collection) argument is required');
   $target eq q{} and
-  $self->logconfess('A non-empty target (collection) argument is required');
+    $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = $self->ensure_collection_path($source);
   $target = canonpath($target);
@@ -748,39 +792,15 @@ sub move_collection {
   # This is especially evident on federated zones. This is a workaround that
   # serialises the operation.
 
-  my ($source_objs, $source_colls) =
-    $self->list_collection($source, 'RECURSE');
-
   # Handle collections
-  foreach my $source_coll (@{$source_colls}) {
-    my $rel = abs2rel($source_coll, $source);
-    my $target_coll = catdir($target, $rel);
-
-    $self->debug("Creating target collection $target_coll ",
-                 "for $source_coll");
-    $self->add_collection($target_coll);
-
-    foreach my $avu ($self->get_collection_meta($source_coll)) {
-      my ($attribute, $value, $units) = ($avu->{attribute},
-                                         $avu->{value},
-                                         $avu->{units});
-      my $units_str = defined $units ? "'$units'" : "'undef'";
-
-      $self->debug("Copying AVU ['$attribute', '$value', $units_str] ",
-                   "from '$source_coll' to '$target_coll'");
-      $self->add_collection_avu($target_coll, $attribute, $value, $units);
-    }
-  }
+  $self->_copy_collection($source, $target);
 
   # Handle data objects
+  my ($source_objs, $ignore) = $self->list_collection($source, 'RECURSE');
   foreach my $source_obj (@{$source_objs}) {
     my $rel = abs2rel($source_obj, $source);
     my $target_obj = catfile($target, $rel);
-
-    WTSI::DNAP::Utilities::Runnable      ->new
-      (executable  => $IMV,
-       arguments   => [ $source_obj, $target_obj ],
-       environment => $self->environment)->run;
+    $self->move_object($source_obj, $target_obj);
   }
 
   # Clean up source collections safely
@@ -875,7 +895,7 @@ sub remove_collection_safely {
     $self->logconfess('A non-empty collection argument is required');
 
   $collection = $self->ensure_collection_path($collection);
-  $self->debug("Removing collection '$collection'");
+  $self->info("Removing collection '$collection'");
 
   $self->baton_client->remove_collection_safely($collection, 'RECURSE');
   return $collection;
@@ -1485,14 +1505,17 @@ sub copy_object {
 
   $self->debug("Copying metadata from '$source' to '$target'");
 
+  my $obj = WTSI::NPG::iRODS::DataObject->new($self, $target);
+
   my @source_meta = $self->get_object_meta($source);
   foreach my $avu (@source_meta) {
-    my $attr = $avu->{attribute};
+    my ($attribute, $value, $units) = ($avu->{attribute},
+                                       $avu->{value},
+                                       $avu->{units});
     if ($translator) {
-      $attr = $translator->($attr);
+      $attribute = $translator->($attribute);
     }
-
-    $self->add_object_avu($target, $attr, $avu->{value}, $avu->{units});
+    $obj->add_avu($attribute, $value, $units);
   }
 
   return $target
@@ -1524,7 +1547,7 @@ sub move_object {
 
   $source = $self->ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
-  $self->debug("Moving object from '$source' to '$target'");
+  $self->info("Moving object from '$source' to '$target'");
   $self->_clear_caches($source);
 
   WTSI::DNAP::Utilities::Runnable->new(executable  => $IMV,
@@ -2408,6 +2431,34 @@ sub _make_avu_history {
   return {attribute => $history_attribute,
           value     => $history_value,
           units     => undef};
+}
+
+# Copy collection recursively from source to target, including metadata
+sub _copy_collection {
+  my ($self, $source, $target) = @_;
+
+  my ($ignore, $source_colls) = $self->list_collection($source, 'RECURSE');
+  foreach my $source_coll (@{$source_colls}) {
+    my $rel = abs2rel($source_coll, $source);
+    my $target_coll = catdir($target, $rel);
+
+    $self->info("Copying collection from '$source_coll' to '$target_coll'");
+    $self->add_collection($target_coll);
+
+    my $coll = WTSI::NPG::iRODS::Collection->new($self, $target);
+
+    foreach my $avu ($self->get_collection_meta($source_coll)) {
+      my ($attribute, $value, $units) = ($avu->{attribute},
+                                         $avu->{value},
+                                         $avu->{units});
+      my $units_str = defined $units ? "'$units'" : "'undef'";
+      $self->info("Copying AVU ['$attribute', '$value', $units_str] ",
+                  "from '$source_coll' to '$target_coll'");
+      $coll->add_avu($attribute, $value, $units);
+    }
+  }
+
+  return;
 }
 
 sub _build_groups {

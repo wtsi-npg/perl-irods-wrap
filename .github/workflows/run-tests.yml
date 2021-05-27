@@ -14,7 +14,8 @@ jobs:
     env:
       WSI_CONDA_CHANNEL: "https://dnap.cog.sanger.ac.uk/npg/conda/devel/generic"
       CONDA_TEST_ENVIRONMENT: "testenv"
-      CACHE: ~/perl5
+      PERL_CACHE: ~/perl5 # Perlbrew and CPAN modules installed here, cached
+      NPG_LIB: ~/perl5npg # NPG modules installed here, not cached
 
     strategy:
       matrix:
@@ -22,13 +23,15 @@ jobs:
         baton: [ "2.1.0" ]
         experimental: [ false ]
         include:
-          - irods: "4.2.7"
+          - perl: "5.22.4"
+            baton: "2.1.0"
+            irods: "4.2.7"
             server_image: "wsinpg/ub-16.04-irods-4.2.7:latest"
-            baton: "2.1.0"
             experimental: false
-          - irods: "4.2.8"
+          - perl: "5.22.4"
+            baton: "3.0.0"
+            irods: "4.2.8"
             server_image: "wsinpg/ub-18.04-irods-4.2.8:latest"
-            baton: "2.1.0"
             experimental: true
 
     services:
@@ -40,6 +43,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: "Install OS dependencies"
+        run: |
+          sudo apt-get install -qq uuid-dev
 
       - name: "Initialize Miniconda"
         run: |
@@ -96,7 +103,7 @@ jobs:
         id: cache-perl
         uses: actions/cache@v2
         with:
-          path: ${{ env.CACHE }}
+          path: ${{ env.PERL_CACHE }}
           key: ${{ runner.os }}-${{ matrix.perl }}-perl
 
       - name: "Install Perlbrew"
@@ -104,10 +111,10 @@ jobs:
         run: |
           curl -sSL https://install.perlbrew.pl -o perlbrew.sh
           sha256sum -c .github/workflows/perlbrew.sha256
-          export PERLBREW_ROOT=${{ env.CACHE }}
+          export PERLBREW_ROOT=${{ env.PERL_CACHE }}
           sh perlbrew.sh
 
-          source ${{ env.CACHE }}/etc/bashrc
+          source ${{ env.PERL_CACHE }}/etc/bashrc
           perlbrew available
           perlbrew install --notest perl-${{ matrix.perl }}
           perlbrew use perl-${{ matrix.perl }}
@@ -115,25 +122,27 @@ jobs:
 
       - name: "Initialize Perlbrew"
         run: |
-          echo "source ${{ env.CACHE }}/etc/bashrc" >> "$HOME/.bash_profile"
+          echo "source ${{ env.PERL_CACHE }}/etc/bashrc" >> "$HOME/.bash_profile"
 
-      - name: "Install OS dependencies"
+      - name: "Install Perl dependencies"
         run: |
-          sudo apt-get install -qq uuid-dev
+          cpanm --local-lib=${{ env.PERL_CACHE }} local::lib
+          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib)
+          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib="$NPG_LIB")
 
-      - name: "Install CPAN dependencies"
-        run: |
-          cpanm --local-lib=${{ env.CACHE }} local::lib && \
-            eval $(perl -I ${{ env.CACHE }}/lib/perl5/ -Mlocal::lib)
-
-          ./scripts/install_wsi_dependencies.sh
+          ./scripts/install_wsi_dependencies.sh "$NPG_LIB" perl-dnap-utilities
           cpanm --installdeps --notest .
+
+      - name: "Log install failure"
+        if: ${{ failure() }}
+        run: |
+          find ~/.cpanm/work -cmin -1 -name '*.log' -exec tail -n20  {} \;
 
       - name: "Run tests"
         run: |
           conda activate "$CONDA_TEST_ENVIRONMENT"
-          cpanm --local-lib=${{ env.CACHE }} local::lib && \
-            eval $(perl -I ${{ env.CACHE }}/lib/perl5/ -Mlocal::lib)
+
+          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib="$NPG_LIB")
           export PERL5LIB="$PWD:$PERL5LIB"
 
           perl Build.PL

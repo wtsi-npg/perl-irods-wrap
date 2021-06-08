@@ -127,8 +127,8 @@ jobs:
       - name: "Install Perl dependencies"
         run: |
           cpanm --local-lib=${{ env.PERL_CACHE }} local::lib
-          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib)
           eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib="$NPG_LIB")
+          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib)
 
           ./scripts/install_wsi_dependencies.sh "$NPG_LIB" perl-dnap-utilities
           cpanm --installdeps --notest .
@@ -142,6 +142,7 @@ jobs:
         run: |
           conda activate "$CONDA_TEST_ENVIRONMENT"
 
+          eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib)
           eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib="$NPG_LIB")
           export PERL5LIB="$PWD:$PERL5LIB"
 

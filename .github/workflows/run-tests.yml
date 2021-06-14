@@ -20,19 +20,13 @@ jobs:
     strategy:
       matrix:
         perl: [ "5.22.4" ]
-        baton: [ "2.1.0" ]
+        baton: [ "3.0.0" ]
         experimental: [ false ]
         include:
-          - perl: "5.22.4"
-            baton: "2.1.0"
-            irods: "4.2.7"
+          - irods: "4.2.7"
             server_image: "wsinpg/ub-16.04-irods-4.2.7:latest"
-            experimental: false
-          - perl: "5.22.4"
-            baton: "3.0.0"
-            irods: "4.2.8"
+          - irods: "4.2.8"
             server_image: "wsinpg/ub-18.04-irods-4.2.8:latest"
-            experimental: true
 
     services:
       irods:
@@ -68,7 +62,6 @@ jobs:
 
           conda config --set auto_update_conda False
           conda config --prepend channels "$WSI_CONDA_CHANNEL"
-          conda config --append channels conda-forge
           conda info
 
       - name: "Install iRODS clients"

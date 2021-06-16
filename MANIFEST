@@ -1,6 +1,8 @@
 .github/workflows/run-tests.yml
 .github/workflows/perlbrew.sha256
 bin/miget.pl
+bin/npg_copy_collection.pl
+bin/npg_move_collection.pl
 bin/populate_wtsi_irods_groups.pl
 Build.PL
 Changes

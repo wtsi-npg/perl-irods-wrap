@@ -1,5 +1,9 @@
 Upcoming
 
+Release 3.14.0
+
+ - Move from Travis CI to GitHub Actions.
+
 Release 3.13.0
 
  - Add baton 2.1.0 to the test matrix

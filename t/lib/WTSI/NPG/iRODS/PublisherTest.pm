@@ -97,7 +97,7 @@ sub publish : Test(8) {
   } 'publish, cram no MD5 fails';
 }
 
-sub publish_file : Test(45) {
+sub publish_file : Test(44) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -136,7 +136,6 @@ sub publish_file : Test(45) {
 
   # publish file with existing path, but no remote checksum present
   pf_overwrite_no_checksum($irods, $tmp_data_path, $irods_tmp_coll);
-
 }
 
 sub publish_directory : Test(11) {
@@ -269,7 +268,7 @@ sub pf_exist_full_path_no_meta_no_stamp_match {
 
   is($publisher->publish_file($local_path_a, $remote_path)->str(),
      $remote_path,
-     'publish_file, existing full path, MD5 match');
+     'publish_file,S existing full path, MD5 match');
 
   $obj->clear_metadata;
   ok(!$obj->get_avu($DCTERMS_MODIFIED), 'No modification AVU after') or
@@ -333,7 +332,7 @@ sub pf_exist_full_path_no_meta_no_stamp_no_match {
   my $timestamp_regex = '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}';
   my $local_path_a = "$data_path/publish_file/a.txt";
   my $remote_path =
-    "$irods_tmp_coll/pf_exist_full_path_no_meta_no_stamp_no_match";
+    "$irods_tmp_coll/pf_exist_full_path_no_meta_no_stamp_no_match.txt";
   $publisher->publish_file($local_path_a, $remote_path) or fail;
   my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
   ok(!$obj->get_avu($DCTERMS_MODIFIED), 'No modification timestamp before');
@@ -516,14 +515,13 @@ sub pf_overwrite_no_checksum {
 
   # publish file with existing path, but no remote md5 present
   my $local_path = "$data_path/publish_file/a.txt";
-  my $remote_path = "$coll_path/pf_no_remote_md5";
+  my $remote_path = "$coll_path/pf_no_remote_md5.txt";
 
   $publisher->irods->add_object($local_path, $remote_path,
                                 $WTSI::NPG::iRODS::SKIP_CHECKSUM) or fail;
-  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
 
   $publisher->publish_file($local_path, $remote_path) or fail;
-  ok($obj->checksum, 'Checksum defined');
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $remote_path);
 
   is ($obj->checksum, $publisher->_get_md5($local_path), 'Checksum correct');
 }

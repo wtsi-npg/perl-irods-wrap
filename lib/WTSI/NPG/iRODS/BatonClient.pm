@@ -108,8 +108,17 @@ sub put_object {
   my ($file_name, $directory, $suffix) = fileparse($local_path);
   my ($data_object, $collection) = fileparse($remote_path);
 
+  my $checksum_args = {};
+  if ($checksum == $WTSI::NPG::iRODS::SKIP_CHECKSUM) {
+    $checksum_args->{checksum} = JSON::false;
+  } elsif ($checksum == $WTSI::NPG::iRODS::CALC_CHECKSUM) {
+    $checksum_args->{checksum} = JSON::true;
+  } elsif ($checksum == $WTSI::NPG::iRODS::VERIFY_CHECKSUM) {
+    $checksum_args->{verify} = JSON::true;
+  }
+
   my $spec = {operation => 'put',
-              arguments => $self->_map_json_args({checksum => $checksum}),
+              arguments => $self->_map_json_args($checksum_args),
               target    => {collection  => $collection,
                             data_object => $data_object,
                             directory   => $directory,
@@ -257,7 +266,8 @@ sub list_collection_checksums {
 
   Example    : my $checksum = $irods->list_object_checksum('/path/to/object')
   Description: Return the checksum of the data object. This method uses
-               the same iRODS API as the 'ichksum' client program.
+               the same iRODS API as the 'ichksum' client program. Return undef
+               if no checksum has been calculated.
   Returntype : Str
 
 =cut
@@ -300,7 +310,7 @@ sub calculate_object_checksum {
                                   "received '$object'");
 
   my $spec = {operation => 'checksum',
-              arguments => {},
+              arguments => {checksum => JSON::true},
               target    => {collection  => $collection,
                             data_object => $data_name}};
   my $response = $self->communicate($spec);
@@ -319,6 +329,38 @@ sub calculate_object_checksum {
   }
 
   return $checksum;
+}
+
+=head2 list_object_size
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : my size = $irods->list_object_size('/path/to/object')
+  Description: Return the size of the data object. This method returns the
+               value from the iRODS catalog, not the size on disk.
+  Returntype : Int
+
+=cut
+
+sub list_object_size {
+  my ($self, $object) = @_;
+
+  my $response = $self->_list_path($object, {size => 1});
+  my $size;
+
+  if (exists $response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      # Continue to return undef
+    }
+    else {
+      $self->report_error($response);
+    }
+  }
+  else {
+    $size = $response->{size};
+  }
+
+  return $size;
 }
 
 =head2 list_object_replicates

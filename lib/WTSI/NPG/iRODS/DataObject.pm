@@ -16,6 +16,8 @@ use WTSI::NPG::iRODS::Types qw(ArrayRefOfReplicate);
 
 our $VERSION = '';
 
+our $EMPTY_FILE_CHECKSUM = q[d41d8cd98f00b204e9800998ecf8427e];
+
 with 'WTSI::NPG::iRODS::Path';
 
 has 'data_object' =>
@@ -35,6 +37,18 @@ has 'checksum' =>
    predicate     => 'has_checksum',
    clearer       => 'clear_checksum',
    documentation => 'The checksum of the data object.');
+
+has 'size' =>
+  (is            => 'ro',
+   isa           => 'Int',
+   lazy          => 1,
+   builder       => '_build_size',
+   predicate     => 'has_size',
+   clearer       => 'clear_size',
+   documentation => 'The size in bytes of the data object in the catalog. ' .
+                    'This is the value that iRODS reports for the whole ' .
+                    'data object. Each replicate, if any, also has its own ' .
+                    'size value.');
 
 # TODO: Add a check so that a DataObject cannot be built from a path
 # that is in fact a collection.
@@ -62,6 +76,13 @@ sub _build_checksum {
   my ($self) = @_;
 
   return $self->irods->checksum($self->str);
+}
+
+# Lazily load size from iRODS
+sub _build_size {
+  my ($self) = @_;
+
+  return $self->irods->size($self->str);
 }
 
 =head2 replicates
@@ -200,7 +221,7 @@ sub get_metadata {
 
   Example    : $path->is_present && print $path->str
   Description: Return true if the data object file exists in iRODS.
-  Returntype : WTSI::NPG::iRODS::DataObject
+  Returntype : Bool
 
 =cut
 
@@ -208,6 +229,65 @@ sub is_present {
   my ($self) = @_;
 
   return $self->irods->list_object($self->str);
+}
+
+=head2 is_consistent_size
+
+  Arg [1]    : None
+
+  Example    : $path->is_consistent_size && print $path->str
+  Description: Return true if the data object in iRODS is internally
+               consistent. This is defined as:
+
+               1. If the file is zero length, it has the checksum of an
+                  empty file.
+               2. If the file is not zero length, it does not have the checksum
+                  of an empty file.
+
+               This method looks for data object size and checksum consistency.
+               It checks the values that iRODS reports for the whole data
+               object; it does not check individual replicates.
+
+               If the data object is absent, this method returns true as there
+               can be no conflict where neither value exists.
+
+               If the data object has no checksum, this method returns true as
+               there is no evidence to dispute its reported size.
+
+               In iRODS <= 4.2.8 it is possible for a data object to get into a
+               bad state where it has zero length, but still reports as not
+               stale and having the checksum of the full-length file.
+
+               We can trigger this behaviour in iRODS by having more than one
+               client uploading to a single path. iRODS does not support any
+               form of locking, allows uncoordinated writes to the
+               filesystem. It does recognise this as a failure, but does not
+               clean up the damaged file.
+
+  Returntype : Bool
+
+=cut
+
+sub is_consistent_size {
+  my ($self) = @_;
+
+  if (not $self->is_present) {
+    return 1;
+  }
+
+  if (not $self->checksum) {
+    # This return is redundant as the checksum method call will trigger an
+    # exception if no checksum is present in iRODS (due to the isa
+    # constraint on the checksum attribute).
+    return 1;
+  }
+
+  if ($self->size == 0) {
+    return $self->checksum eq $EMPTY_FILE_CHECKSUM;
+  }
+  else {
+    return $self->checksum ne $EMPTY_FILE_CHECKSUM;
+  }
 }
 
 =head2 absolute
@@ -622,7 +702,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
+Copyright (C) 2013, 2014, 2015, 2016, 2021 Genome Research Limited. All
 Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

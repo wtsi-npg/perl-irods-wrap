@@ -53,8 +53,9 @@ our $COLLECTION_PATH    = 'COLLECTION';
 our $STAGING_RAND_MAX   = 1024 * 1024 * 1024;
 our $STAGING_MAX_TRIES  = 2;
 
-our $CALC_CHECKSUM = 1;
-our $SKIP_CHECKSUM = 0;
+our $SKIP_CHECKSUM   = 0;
+our $CALC_CHECKSUM   = 1;
+our $VERIFY_CHECKSUM = 2;
 
 has 'strict_baton_version' =>
   (is            => 'ro',
@@ -730,14 +731,14 @@ sub move_collection {
   my ($self, $source, $target) = @_;
 
   defined $source or
-  $self->logconfess('A defined source (collection) argument is required');
+    $self->logconfess('A defined source (collection) argument is required');
   defined $target or
-  $self->logconfess('A defined target (collection) argument is required');
+    $self->logconfess('A defined target (collection) argument is required');
 
   $source eq q{} and
-  $self->logconfess('A non-empty source (collection) argument is required');
+    $self->logconfess('A non-empty source (collection) argument is required');
   $target eq q{} and
-  $self->logconfess('A non-empty target (collection) argument is required');
+    $self->logconfess('A non-empty target (collection) argument is required');
 
   $source = $self->ensure_collection_path($source);
   $target = canonpath($target);
@@ -1345,11 +1346,19 @@ sub read_object {
 
   Arg [1]    : Path of file to add to iRODs.
   Arg [2]    : iRODS data object path.
-  Arg [3]    : Checksum action, either $WTSI::NPG::iRODS::CALC_CHECKSUM
-               (calculate a checksum on the server side) or
+  Arg [3]    : Checksum action, one of
+
+               $WTSI::NPG::iRODS::CALC_CHECKSUM (calculate a checksum on the
+               server side)
+
+               $WTSI::NPG::iRODS::VERIFY_CHECKSUM (calculate a checksum on
+               the server side and validate it against a checksum calculated
+               on the client side)
+
                $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
-               checksum on the server side). Defaults to
-               $WTSI::NPG::iRODS::SKIP_CHECKSUM
+               checksum on the server side)
+
+               Defaults to $WTSI::NPG::iRODS::SKIP_CHECKSUM.
 
   Example    : $irods->add_object('lorem.txt', '/my/path/lorem.txt')
   Description: Add a file to iRODS.
@@ -1372,7 +1381,9 @@ sub add_object {
 
   if (defined $checksum_action) {
     ($checksum_action =~ m{^\d$}msx and
-     any { $checksum_action == $_ } ($CALC_CHECKSUM, $SKIP_CHECKSUM)) or
+     any { $checksum_action == $_ } ($SKIP_CHECKSUM,
+                                     $CALC_CHECKSUM,
+                                     $VERIFY_CHECKSUM)) or
       $self->logconfess("Invalid checksum action '$checksum_action'");
   }
   else {
@@ -1396,11 +1407,19 @@ sub add_object {
 
   Arg [1]    : Path of file to add to iRODs.
   Arg [2]    : iRODS data object path.
-  Arg [3]    : Checksum action, either $WTSI::NPG::iRODS::CALC_CHECKSUM
-               (calculate a checksum on the server side) or
+  Arg [3]    : Checksum action, one of
+
+               $WTSI::NPG::iRODS::CALC_CHECKSUM (calculate a checksum on the
+               server side)
+
+               $WTSI::NPG::iRODS::VERIFY_CHECKSUM (calculate a checksum on
+               the server side and validate it against a checksum calculated
+               on the client side)
+
                $WTSI::NPG::iRODS::SKIP_CHECKSUM (skip calculation of a
-               checksum on the server side). Defaults to
-               $WTSI::NPG::iRODS::SKIP_CHECKSUM
+               checksum on the server side)
+
+               Defaults to $WTSI::NPG::iRODS::SKIP_CHECKSUM.
 
   Example    : $irods->replace_object('lorem.txt', '/my/path/lorem.txt')
   Description: Replace a file in iRODS.
@@ -1423,7 +1442,9 @@ sub replace_object {
 
   if (defined $checksum_action) {
     ($checksum_action =~ m{^\d$}msx and
-     any { $checksum_action == $_ } ($CALC_CHECKSUM, $SKIP_CHECKSUM)) or
+     any { $checksum_action == $_ } ($SKIP_CHECKSUM,
+                                     $CALC_CHECKSUM,
+                                     $VERIFY_CHECKSUM)) or
       $self->logconfess("Invalid checksum action '$checksum_action'");
   }
   else {
@@ -2034,6 +2055,33 @@ sub checksum {
 
   return $self->baton_client->list_object_checksum($object);
 }
+
+=head2 size
+
+  Arg [1]    : iRODS data object path.
+
+  Example    : $cs = $irods->size('/my/path/lorem.txt')
+  Description: Return the size in bytes of an iRODS data object. The size
+               returned is the iRODS catalog value, which may be different
+               from the actual size on disk.
+  Returntype : Int
+
+=cut
+
+sub size {
+  my ($self, $object) = @_;
+
+  defined $object or
+    $self->logconfess('A defined object argument is required');
+
+  $object eq q{} and
+    $self->logconfess('A non-empty object argument is required');
+
+  $object = $self->ensure_object_path($object);
+
+  return $self->baton_client->list_object_size($object);
+}
+
 
 =head2 collection_checksums
 

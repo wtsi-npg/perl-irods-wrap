@@ -295,11 +295,10 @@ sub _publish_file_create {
   $self->info("Publishing new object '$remote_path'");
 
   $self->irods->add_object($local_path, $remote_path,
-                           $WTSI::NPG::iRODS::SKIP_CHECKSUM);
+                           $WTSI::NPG::iRODS::VERIFY_CHECKSUM);
 
   my $obj = WTSI::NPG::iRODS::DataObject->new($self->irods, $remote_path);
-  # Calculate checksum post-upload to ensure that iRODS reports errors
-  my $remote_md5 = $obj->calculate_checksum;
+  my $remote_md5 = $obj->checksum;
 
   my $num_meta_errors =
     $self->_supersede($obj,
@@ -336,23 +335,25 @@ sub _publish_file_overwrite {
   $self->info("Remote path '$remote_path' is a data object");
   my $obj = WTSI::NPG::iRODS::DataObject->new($self->irods, $remote_path);
 
-  # Check that the existing checksum is present (assume correct)
-  my $pre_remote_md5;
-  try{
-    $pre_remote_md5 = $obj->checksum;
-  } catch {
-    $pre_remote_md5 = $obj->calculate_checksum;
-    $self->warn("'$remote_path' is missing MD5:",
-                "(checksum changed) remote MD5 is now '$pre_remote_md5'");
-  };
+  # Preemptively fix any missing checksums. As of iRODS 4.2.8 it is possible
+  # for some data object replicates to be missing their checksum due to a
+  # previous failed or interrupted upload. This method call will not update
+  # any checksums already present in the catalog, but will create any that
+  # are missing according to the data already on disk.
+  my $pre_remote_md5 = $obj->calculate_checksum;
   my $post_remote_md5;
 
-  # Ensure that pre-update metadata are correct
-  my $num_meta_errors =
-    $self->_supersede($obj, $self->make_type_metadata($remote_path),
-                      $self->make_md5_metadata($pre_remote_md5));
+  my $num_meta_errors  = 0;
+  my $num_write_errors = 0;
 
-  if ($local_md5 eq $pre_remote_md5) {
+  if (not $obj->is_consistent_size) {
+    my $remote_size = $obj->size;
+    $self->warn("Re-publishing '$local_path' to '$remote_path' ",
+      "(remote size and checksum inconsistent): local MD5 is '$local_md5', ",
+      "remote is MD5: '$pre_remote_md5' and size $remote_size");
+  }
+
+  if ($local_md5 eq $pre_remote_md5 and $obj->is_consistent_size) {
     $self->info("Skipping publication of '$local_path' to '$remote_path': ",
                 "(checksum unchanged): local MD5 is '$local_md5', ",
                 "remote is MD5: '$pre_remote_md5'");
@@ -361,14 +362,18 @@ sub _publish_file_overwrite {
     $self->info("Re-publishing '$local_path' to '$remote_path' ",
                 "(checksum changed): local MD5 is '$local_md5', ",
                 "remote is MD5: '$pre_remote_md5'");
-    my $num_write_errors = 0;
-
     try {
-      $self->irods->replace_object($local_path, $obj->str,
-                                   $WTSI::NPG::iRODS::SKIP_CHECKSUM);
+      # Ensure that pre-update metadata are correct
+      $num_meta_errors +=
+        $self->_supersede($obj, $self->make_type_metadata($remote_path),
+          $self->make_md5_metadata($pre_remote_md5));
 
-      # Calculate checksum post-upload to ensure that iRODS reports errors
-      $post_remote_md5 = $obj->calculate_checksum;
+      $self->irods->replace_object($local_path, $obj->str,
+                                   $WTSI::NPG::iRODS::VERIFY_CHECKSUM);
+
+      $post_remote_md5 =
+        WTSI::NPG::iRODS::DataObject->new($self->irods,
+                                          $remote_path)->checksum;
 
       # Add modification metadata only if successful
       $num_meta_errors +=
@@ -640,7 +645,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2015, 2016 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2015, 2016, 2017, 2019, 2021 Genome Research Limited. All Rights
+Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

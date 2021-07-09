@@ -1,3 +1,4 @@
+[-Miscellanea::RequireRcsKeywords]
 
 [-CodeLayout::RequireTidyCode]
 [-CodeLayout::RequireTrailingCommas]

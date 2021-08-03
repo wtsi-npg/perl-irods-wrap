@@ -634,6 +634,32 @@ sub put_collection : Test(2) {
     or diag explain \@contents;
 }
 
+sub copy_collection : Test(6) {
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+
+  my $coll_to_copy = "$irods_tmp_coll/irods";
+  my $coll_copied = "$irods_tmp_coll/irods_copied";
+
+  my $subtree_before = fetch_subtree($irods, $coll_to_copy, $coll_to_copy,
+                                     'INCLUDE_METADATA');
+  is($irods->copy_collection($coll_to_copy, $coll_copied), $coll_copied,
+     'Copied a collection');
+  ok($irods->list_collection($coll_to_copy), 'Collection was copied 1');
+  ok($irods->list_collection($coll_copied), 'Collection was copied 2');
+
+  my $subtree_after = fetch_subtree($irods, $coll_copied, $coll_copied,
+                                    'INCLUDE_METADATA');
+
+  is_deeply($subtree_before, $subtree_after,
+            'Collection and metadata copied') or diag explain $subtree_after;
+
+  dies_ok { $irods->copy_collection($coll_to_copy, undef) }
+          'Failed to copy a collection to an undefined place';
+  dies_ok { $irods->copy_collection(undef, $coll_copied) }
+          'Failed to copy an undefined collection';
+}
+
 sub move_collection : Test(5) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
@@ -641,11 +667,17 @@ sub move_collection : Test(5) {
   my $coll_to_move = "$irods_tmp_coll/irods";
   my $coll_moved = "$irods_tmp_coll/irods_moved";
 
+  my $subtree_before = fetch_subtree($irods, $coll_to_move, $coll_to_move,
+                                     'INCLUDE_METADATA');
   is($irods->move_collection($coll_to_move, $coll_moved), $coll_moved,
      'Moved a collection');
-
   ok(!$irods->list_collection($coll_to_move), 'Collection was moved 1');
-  ok($irods->list_collection($coll_moved), 'Collection was moved 2');
+
+  my $subtree_after = fetch_subtree($irods, $coll_moved, $coll_moved,
+                                    'INCLUDE_METADATA');
+
+  is_deeply($subtree_before, $subtree_after,
+            'Collection and metadata moved') or diag explain $subtree_after;
 
   dies_ok { $irods->move_collection($coll_to_move, undef) }
     'Failed to move a collection to an undefined place';
@@ -1586,7 +1618,6 @@ sub make_avus_from_objects: Test(4) {
 
 }
 
-
 sub remote_duplicate_avus : Test(4) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
@@ -1662,6 +1693,37 @@ sub avus_equal : Test(9) {
   ok(!$irods->avus_equal({attribute => 'a', value => 'v'},
                          {attribute => 'a', value => 'w'}),
      'AVs != on u');
+}
+
+sub fetch_subtree {
+  my ($irods, $path, $root, $include_metadata) = @_;
+
+  my $recurse = 1;
+  my ($objs, $colls) = $irods->list_collection($path, $recurse);
+
+  my %relative_colls;
+  foreach my $coll (@{$colls}) {
+    my $key = File::Spec->abs2rel($coll, $root);
+    if ($include_metadata) {
+      $relative_colls{$key} = [$irods->get_collection_meta($coll)];
+    }
+    else {
+       $relative_colls{$key} = 1;
+    }
+  }
+
+  my %relative_objs;
+  foreach my $obj (@{$objs}) {
+    my $key = File::Spec->abs2rel($obj, $root);
+    if ($include_metadata) {
+      $relative_objs{$key} = [$irods->get_object_meta($obj)];
+    }
+    else {
+      $relative_objs{$key} = 1;
+    }
+  }
+
+  return [\%relative_colls, \%relative_objs];
 }
 
 1;

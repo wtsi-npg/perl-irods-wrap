@@ -143,4 +143,4 @@ jobs:
           export PERL5LIB="$PWD:$PERL5LIB"
 
           perl Build.PL
-          ./Build test
+          WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE="$HOME/.irods/irods_environment.json" WTSI_NPG_iRODS_Test_Resource=testResc TEST_AUTHOR=1 ./Build test --verbose

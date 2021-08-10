@@ -22,11 +22,7 @@ sub runtests {
   $env_copy{$file} = $env_file || 'DUMMY_VALUE';
 
   if (not $env_file) {
-    if ($ENV{TEST_AUTHOR}) {
-      die "Environment variable WTSI_NPG_iRODS_Test_$file was not set";
-    }
-
-    $self->SKIP_CLASS('TEST_AUTHOR environment variable is false');
+    die "Environment variable WTSI_NPG_iRODS_Test_$file was not set";
   }
 
   {
@@ -46,6 +42,9 @@ sub have_admin_rights {
 
   if (defined $have_rights) {
     $self->{_have_admin_rights} = $have_rights;
+  }
+  else {
+    $self->{_have_admin_rights} = system("iadmin lu > /dev/null") == 0;
   }
 
   return $self->{_have_admin_rights};

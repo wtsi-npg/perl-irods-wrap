@@ -1,5 +1,11 @@
 Upcoming
 
+Release 3.14.0
+
+ - Move from Travis CI to GitHub Actions.
+ - add copy and move colleciton utilities
+ - baton version required >= 2.1.0 < 4
+
 Release 3.13.0
 
  - Add baton 2.1.0 to the test matrix

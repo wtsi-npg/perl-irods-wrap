@@ -1,5 +1,8 @@
-.travis.yml
+.github/workflows/run-tests.yml
+.github/workflows/perlbrew.sha256
 bin/miget.pl
+bin/npg_copy_collection.pl
+bin/npg_move_collection.pl
 bin/populate_wtsi_irods_groups.pl
 Build.PL
 Changes
@@ -25,6 +28,7 @@ MANIFEST			This list of files
 META.json
 META.yml
 README
+scripts/install_wsi_dependencies.sh
 t/annotator.t
 t/critic.t
 t/drirods.t

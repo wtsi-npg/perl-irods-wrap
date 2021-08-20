@@ -625,7 +625,8 @@ sub is_collection {
   Example    : my ($objs, $colls) = $irods->list_collection($coll)
   Description: Return the contents of the collection as two arrayrefs,
                the first listing data objects, the second listing nested
-               collections.
+               collections. The collection argument is included as the first
+               element of the list of collections.
   Returntype : Array
 
 =cut
@@ -2445,7 +2446,7 @@ sub _copy_collection {
     $self->info("Copying collection from '$source_coll' to '$target_coll'");
     $self->add_collection($target_coll);
 
-    my $coll = WTSI::NPG::iRODS::Collection->new($self, $target);
+    my $coll = WTSI::NPG::iRODS::Collection->new($self, $target_coll);
 
     foreach my $avu ($self->get_collection_meta($source_coll)) {
       my ($attribute, $value, $units) = ($avu->{attribute},

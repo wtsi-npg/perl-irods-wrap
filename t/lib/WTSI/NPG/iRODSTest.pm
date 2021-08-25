@@ -29,11 +29,6 @@ my $fixture_counter = 0;
 my $data_path = './t/data/irods';
 my $irods_tmp_coll;
 
-my $repl_resource = $ENV{WTSI_NPG_iRODS_Test_Repl_Resource};
-$repl_resource ||= 'replResc';
-my $alt_resource = $ENV{WTSI_NPG_iRODS_Test_Resource};
-$alt_resource ||= 'demoResc';
-
 # Prefix for test iRODS data access groups
 my $group_prefix = 'ss_';
 # Groups to be added to the test iRODS
@@ -93,7 +88,7 @@ sub require : Test(1) {
   require_ok('WTSI::NPG::iRODS');
 }
 
-sub compatible_baton_versions : Test(12) {
+sub compatible_baton_versions : Test(13) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -113,7 +108,7 @@ sub compatible_baton_versions : Test(12) {
        "Incompatible with baton $version");
   }
 
-  my @compatible_versions = qw(2.1.0 3.0.1);
+  my @compatible_versions = qw(2.1.0 3.0.1 3.1.0);
   foreach my $version (@compatible_versions) {
     ok($irods->match_baton_version($version),
        "Compatible with baton $version");
@@ -968,11 +963,13 @@ sub add_object : Test(9) {
     'Failed on invalid checksum option';
 }
 
-sub replace_object : Test(14) {
+sub replace_object : Test(12) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
+  # MD5: 39a4aa291ca849d601e4e5b8ed627a04
   my $lorem_file = "$data_path/lorem.txt";
+  # MD5: d41d8cd98f00b204e9800998ecf8427e
   my $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
   my $tmp = File::Temp->new;
@@ -981,38 +978,39 @@ sub replace_object : Test(14) {
   $irods->add_object($lorem_file, $to_replace);
   my $checksum_before = $irods->calculate_checksum($to_replace);
 
-  is($irods->replace_object($empty_file, $to_replace), $to_replace,
-     'Replaced a data object');
-
+  is($irods->replace_object($empty_file, $to_replace,
+                            $WTSI::NPG::iRODS::CALC_CHECKSUM),
+     $to_replace, 'Replaced a data object');
   my $checksum_after = $irods->checksum($to_replace);
-  ok($checksum_after, 'Checksum created by default');
+
+  ok($checksum_after, 'Checksum created');
   isnt($checksum_after, $checksum_before, 'Data object was replaced');
   is($checksum_after, 'd41d8cd98f00b204e9800998ecf8427e',
     'Data object was replaced with an empty file');
 
-  ok($irods->replace_object($empty_file, $to_replace,
-                         $WTSI::NPG::iRODS::SKIP_CHECKSUM));
-  ok($irods->checksum($to_replace), 'checksum exists in case ' .
-     'when it existed for the original file');
+  SKIP: {
+     skip 'outcome depends on iRODS server version', 5;
 
-  my $to_replace_no_checksum =
-    "$irods_tmp_coll/lorem_to_replace_no_checksum.txt";
-  $irods->add_object($lorem_file, $to_replace_no_checksum,
-                     $WTSI::NPG::iRODS::SKIP_CHECKSUM);
-  is($irods->checksum($to_replace_no_checksum),
-    undef,'checksum is not created');
+         my $to_replace_no_checksum =
+           "$irods_tmp_coll/lorem_to_replace_no_checksum.txt";
+         $irods->add_object($lorem_file, $to_replace_no_checksum,
+                            $WTSI::NPG::iRODS::CALC_CHECKSUM);
+         ok($irods->checksum($to_replace_no_checksum),
+            'Checksum present to start');
 
-  is($irods->replace_object($empty_file, $to_replace_no_checksum,
-                            $WTSI::NPG::iRODS::SKIP_CHECKSUM),
-     $to_replace_no_checksum, 'Replaced a data object without checksum');
+         is($irods->replace_object($empty_file, $to_replace_no_checksum,
+                                   $WTSI::NPG::iRODS::SKIP_CHECKSUM),
+            $to_replace_no_checksum,
+            'Replaced a data object without checksum');
 
-  is($irods->checksum($to_replace_no_checksum), undef,
-       'Checksum not created');
+         is($irods->checksum($to_replace_no_checksum), undef,
+            'Checksum not created');
 
-  ok($irods->replace_object($empty_file, $to_replace_no_checksum));
-  ok(!$irods->checksum($to_replace_no_checksum),
-     'Checksum is not created by default if the replaced object ' .
-     'did not have a checksum');
+         ok($irods->replace_object($empty_file, $to_replace_no_checksum));
+         ok(!$irods->checksum($to_replace_no_checksum),
+            'Checksum is not created by default if the replaced object ' .
+            'did not have a checksum');
+       };
 
   $to_replace = "$irods_tmp_coll/lorem_to_replace.txt";
 
@@ -1362,90 +1360,13 @@ sub replicates : Test(9) {
   }
 }
 
-sub invalid_replicates : Test(5) {
+sub invalid_replicates : Test(1) {
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
 
- SKIP: {
-    if (system("ilsresc $alt_resource >/dev/null") != 0) {
-      skip "iRODS resource $alt_resource is unavailable", 3;
-    }
-
-    my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                      strict_baton_version => 0);
-
-    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
-    my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
-    system("ichksum -f -a $lorem_object >/dev/null") == 0
-      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
-
-    # Make the original replicates on the replication resource stale
-    my $other_object = "$data_path/test.txt";
-    system("irepl -S $repl_resource -R $alt_resource $lorem_object >/dev/null") == 0
-     or die "Failed to replicate $lorem_object from " .
-            "$repl_resource to $alt_resource: $ERRNO";
-    system("iput -f -R $alt_resource $other_object $lorem_object >/dev/null") == 0 or
-      die "Failed to update a replicate of $lorem_object on $alt_resource: $ERRNO";
-
-    my @invalid_replicates = $irods->invalid_replicates($lorem_object);
-    cmp_ok(scalar @invalid_replicates, '==', 2,
-           'Two invalid replicate present in the replication resource');
-
-    foreach my $replicate (@invalid_replicates) {
-      is($replicate->{checksum}, $expected_checksum,
-        'Invalid replicate checksum is correct') or
-        diag explain $replicate;
-      ok(!$replicate->{valid}, 'Invalid replicate is not valid') or
-        diag explain $replicate;
-    }
-  }
-}
-
-sub prune_replicates : Test(8) {
-
-  SKIP: {
-    if (system("ilsresc $alt_resource >/dev/null") != 0) {
-      skip "iRODS resource $alt_resource is unavailable", 6;
-    }
-
-    my $irods = WTSI::NPG::iRODS->new(environment => \%ENV,
-      strict_baton_version                        => 0);
-
-    my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
-    my $expected_checksum = '39a4aa291ca849d601e4e5b8ed627a04';
-
-    # system("irepl $lorem_object -R $alt_resource >/dev/null") == 0
-    #   or die "Failed to replicate $lorem_object to $alt_resource: $ERRNO";
-    system("ichksum -f -a $lorem_object >/dev/null") == 0
-      or die "Failed to update checksum on replicates of $lorem_object: $ERRNO";
-
-    # Make the original replicates on the replication resource stale
-    my $other_object = "$data_path/test.txt";
-    system("irepl -S $repl_resource -R $alt_resource $lorem_object >/dev/null") == 0
-      or die "Failed to replicate $lorem_object from " .
-             "$repl_resource to $alt_resource: $ERRNO";
-    system("iput -f -R $alt_resource $other_object $lorem_object >/dev/null") == 0 or
-      die "Failed to update a replicate of $lorem_object on $alt_resource:
-$ERRNO";
-
-    my @pruned_replicates = $irods->prune_replicates($lorem_object);
-    cmp_ok(scalar @pruned_replicates, '==', 2,
-      'Two pruned replicates are present');
-
-    foreach my $pruned_replicate (@pruned_replicates) {
-      is($pruned_replicate->{checksum}, $expected_checksum,
-        "Pruned replicate checksum is correct");
-      ok(!$pruned_replicate->{valid}, 'Pruned replicate is not valid') or
-        diag explain $pruned_replicate;
-    }
-
-    my @replicates = $irods->valid_replicates($lorem_object);
-    cmp_ok(scalar @replicates, '==', 1, 'One valid replicate remains');
-    my $replicate = $replicates[0];
-    isnt($replicate->{checksum}, $expected_checksum,
-      'Remaining valid replicate checksum has changed') or
-      diag explain $replicate;
-    ok($replicate->{valid}, 'Remaining valid replicate is valid') or
-      diag explain $replicate;
-  }
+  my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
+  my @invalid_replicates = $irods->invalid_replicates($lorem_object);
+  is_deeply(\@invalid_replicates, []) or diag explain \@invalid_replicates;
 }
 
 sub md5sum : Test(1) {

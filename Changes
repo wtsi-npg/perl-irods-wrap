@@ -1,5 +1,11 @@
 Upcoming
 
+Release 3.15.0
+
+ - Add iRODS 4.2.10 to the test matrix
+ - Remove remove_replicate and prune_replicates methods
+ - Bugfix: Typo in copy_collection method
+
 Release 3.14.0
 
  - Move from Travis CI to GitHub Actions.

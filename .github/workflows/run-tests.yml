@@ -26,10 +26,10 @@ jobs:
             baton: "2.1.0"
             experimental: false
           - perl: "5.22.4"
-            irods: "4.2.8"
-            server_image: "wsinpg/ub-18.04-irods-4.2.8:latest"
-            baton: "3.0.1"
-            experimental: true
+            irods: "4.2.10"
+            server_image: "wsinpg/ub-18.04-irods-4.2.10:latest"
+            baton: "3.1.0"
+            experimental: false
 
     services:
       irods:
@@ -70,8 +70,8 @@ jobs:
       - name: "Install iRODS clients"
         run: |
           conda create -y -n "$CONDA_TEST_ENVIRONMENT"
-          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "irods-icommands ==${{ matrix.irods }}"
-          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "baton ==${{ matrix.baton }}"
+          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "baton=${{ matrix.baton }}"
+          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "irods-icommands=${{ matrix.irods }}"
 
       - name: "Configure iRODS clients"
         run: |
@@ -85,7 +85,7 @@ jobs:
               "irods_user_name": "irods",
               "irods_zone_name": "testZone",
               "irods_home": "/testZone/home/irods",
-              "irods_default_resource": "testResc"
+              "irods_default_resource": "replResc"
           }
           EOF
 
@@ -142,5 +142,6 @@ jobs:
           eval $(perl -I ${{ env.PERL_CACHE }}/lib/perl5/ -Mlocal::lib="$NPG_LIB")
           export PERL5LIB="$PWD:$PERL5LIB"
 
+          export WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE="$HOME/.irods/irods_environment.json"
           perl Build.PL
           ./Build test

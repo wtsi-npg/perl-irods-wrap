@@ -151,6 +151,9 @@ sub put_object {
                ArrayRef of contained data objects, the second being
                an ArrayRef of contained collections, the third a HashRef
                mapping of the contained data object paths to their checksums.
+
+               The collection argument is returned as the first element of the
+               contained collections.
   Returntype : ArrayRef[Str], ArrayRef[Str], HashRef[Str]
 
 =cut
@@ -917,7 +920,7 @@ sub _list_collection_recur {
   my $this_coll = shift @coll_specs;
 
   my @all_obj_specs  = @$obj_specs;
-  my @all_coll_specs = ($this_coll);
+  my @all_coll_specs = ($this_coll); # Include current collection in results
 
   foreach my $sub_coll (@coll_specs) {
     my $path = $self->path_spec_str($sub_coll);

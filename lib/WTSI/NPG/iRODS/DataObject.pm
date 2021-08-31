@@ -124,70 +124,6 @@ sub invalid_replicates {
   return @invalid_replicates;
 }
 
-=head2 prune_replicates
-
-  Arg [1]    : None.
-
-  Example    : my @pruned = $obj->prune_replicates
-  Description: Remove any replicates of a data object that are marked as
-               stale in the ICAT.  Return an array of descriptors of the
-               pruned replicates.  Raise an error if there are only
-               invalid replicates; there should always be a valid replicate
-               and pruning in this case would be equivalent to deletion.
-  Returntype : Array[WTSI::NPG::iRODS::Replicate]
-
-=cut
-
-sub prune_replicates {
-  my ($self) = @_;
-
-  my @invalid_replicates = $self->invalid_replicates;
-  my $path = $self->str;
-
-  my @pruned;
-  if ($self->valid_replicates) {
-
-    foreach my $rep (@invalid_replicates) {
-      my $resource = $rep->resource;
-      my $checksum = $rep->checksum;
-      my $number   = $rep->number;
-      $self->debug("Pruning invalid replicate $number with checksum ",
-                   "'$checksum' from resource '$resource' for ",
-                   "data object '$path'");
-      $self->irods->remove_replicate($path, $number);
-      push @pruned, $rep;
-    }
-
-    $self->calculate_checksum;
-  }
-  else {
-    $self->logconfess("Failed to prune invalid replicates from '$path': ",
-                      "there and no valid replicates of this data object; ",
-                      "pruning would be equivalent to deletion");
-  }
-
-  return @pruned;
-}
-
-=head2 remove_replicate
-
-  Arg [1]    : Replicate number, Int.
-
-  Example    : $obj->remove_replicate($replicate_num)
-  Description: Remove a replicate of a data object.  Return $self.
-  Returntype : WTSI::NPG::iRODS::DataObject
-
-=cut
-
-sub remove_replicate {
-  my ($self, $replicate_num) = @_;
-
-  $self->irods->remove_replicate($self->str, $replicate_num);
-  $self->calculate_checksum;
-
-  return $self;
-}
-
 sub get_metadata {
   my ($self) = @_;
 
@@ -622,7 +558,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
+Copyright (C) 2013, 2014, 2015, 2016, 2021 Genome Research Limited. All
 Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

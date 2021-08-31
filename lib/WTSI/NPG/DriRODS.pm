@@ -27,7 +27,6 @@ my @dry_run_methods = qw(
                           remove_group
                           remove_object
                           remove_object_avu
-                          remove_replicate
                           replace_object
                           set_collection_permissions
                           set_object_permissions
@@ -70,7 +69,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2015 Genome Research Limited. All Rights Reserved.
+Copyright (C) 2015, 2021 Genome Research Limited. All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

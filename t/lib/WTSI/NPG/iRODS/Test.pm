@@ -6,24 +6,20 @@ use warnings;
 use base qw(Test::Class);
 use Test::More;
 
-# Run full tests (requiring a test iRODS server) only if TEST_AUTHOR
-# is true.
+# Run full tests (requiring a test iRODS server)
 
 sub runtests {
   my ($self) = @_;
 
+  my $default_irods_env = 'IRODS_ENVIRONMENT_FILE';
+  my $test_irods_env = "WTSI_NPG_iRODS_Test_$default_irods_env";
+  defined $ENV{$test_irods_env} or
+    die "iRODS test environment variable $test_irods_env was not set";
+
   my %env_copy = %ENV;
 
-  my $file = qw(IRODS_ENVIRONMENT_FILE);
-  my $env_file = $ENV{"WTSI_NPG_iRODS_Test_$file"} || q[];
-
-  # Ensure that the iRODS connection details are a nonsense value if
-  # they are not set explicitly via WTSI_NPG_iRODS_Test_*
-  $env_copy{$file} = $env_file || 'DUMMY_VALUE';
-
-  if (not $env_file) {
-    die "Environment variable WTSI_NPG_iRODS_Test_$file was not set";
-  }
+  # Ensure that the iRODS connection details are set to the test environment
+  $env_copy{$default_irods_env} = $ENV{$test_irods_env};
 
   {
     local %ENV = %env_copy;

@@ -23,12 +23,12 @@ jobs:
           - perl: "5.22.4"
             irods: "4.2.7"
             server_image: "wsinpg/ub-16.04-irods-4.2.7:latest"
-            baton: "2.1.0"
+            baton: "3.2.0"
             experimental: false
           - perl: "5.22.4"
             irods: "4.2.10"
             server_image: "wsinpg/ub-18.04-irods-4.2.10:latest"
-            baton: "3.1.0"
+            baton: "3.2.0"
             experimental: false
 
     services:
@@ -85,7 +85,8 @@ jobs:
               "irods_user_name": "irods",
               "irods_zone_name": "testZone",
               "irods_home": "/testZone/home/irods",
-              "irods_default_resource": "replResc"
+              "irods_default_resource": "replResc",
+              "irods_default_hash_scheme": "MD5"
           }
           EOF
 

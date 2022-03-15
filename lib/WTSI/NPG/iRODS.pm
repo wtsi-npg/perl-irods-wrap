@@ -1605,7 +1605,7 @@ sub get_object {
   $source = $self->ensure_object_path($source);
   $target = $self->_ensure_absolute_path($target);
 
-  my @args = ('-f', '-T', $source, $target);
+  my @args = ('-f', $source, $target);
   my $runnable = WTSI::DNAP::Utilities::Runnable->new
     (executable  => $IGET,
      arguments   => \@args)->run;

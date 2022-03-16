@@ -1602,8 +1602,16 @@ sub get_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (file) argument is required');
 
+  my $onlywhitespaces_rgx = qr/\A[\s]+\z/msx;
+  if ($source =~ $onlywhitespaces_rgx) {
+    $self->logconfess('Only white spaces in source (data object) argument provided');
+  }
+
+  if ($target =~ $onlywhitespaces_rgx) {
+    $self->logconfess('Only white spaces in target (file) argument provided');
+  }
+
   $source = $self->ensure_object_path($source);
-  $target = $self->_ensure_absolute_path($target);
 
   my @args = ('-f', '-T', $source, $target);
   my $runnable = WTSI::DNAP::Utilities::Runnable->new

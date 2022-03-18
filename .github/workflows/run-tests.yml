@@ -75,8 +75,8 @@ jobs:
       - name: "Install iRODS clients"
         run: |
           conda create -y -n "$CONDA_TEST_ENVIRONMENT"
-          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "baton=${{ matrix.baton }}"
           conda install -y -n "$CONDA_TEST_ENVIRONMENT" "irods-icommands=${{ matrix.irods }}"
+          conda install -y -n "$CONDA_TEST_ENVIRONMENT" "baton=${{ matrix.baton }}"
 
       - name: "Configure iRODS clients"
         run: |

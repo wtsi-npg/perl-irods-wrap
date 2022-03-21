@@ -1097,13 +1097,19 @@ sub move_object : Test(5) {
     'Failed to move an undefined object';
 }
 
-sub get_object : Test(4) {
+sub get_object : Test(7) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
   my $lorem_object = "$irods_tmp_coll/irods/lorem.txt";
   my $tmpdir = tempdir(CLEANUP => 1);
 
+  dies_ok { $irods->get_object($lorem_object, " \t   ") } 
+    'Failed due to only whitespaces in target name';
+  dies_ok { $irods->get_object(" \t   ", $tmpdir) } 
+    'Failed due to only whitespaces in object name';
+  dies_ok { $irods->get_object(" \t \t", "\t \t ") } 
+    'Failed due to only whitespaces in both object names';
   ok($irods->get_object($lorem_object, $tmpdir), 'Got an object');
   ok(-f "$tmpdir/lorem.txt", 'Object was downloaded');
 

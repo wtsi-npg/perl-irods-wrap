@@ -1602,7 +1602,7 @@ sub get_object {
   $target eq q{} and
     $self->logconfess('A non-empty target (file) argument is required');
 
-  my $onlywhitespaces_rgx = qr/\A[\s]+\z/msx;
+  my $onlywhitespaces_rgx = qr/^\s+$/msx;
   if ($source =~ $onlywhitespaces_rgx) {
     $self->logconfess('Only white spaces in source (data object) argument provided');
   }

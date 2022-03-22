@@ -13,6 +13,7 @@ use List::MoreUtils qw(all any none);
 use Log::Log4perl;
 use Try::Tiny;
 use Unicode::Collate;
+use Cwd;
 
 use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
@@ -1097,7 +1098,7 @@ sub move_object : Test(5) {
     'Failed to move an undefined object';
 }
 
-sub get_object : Test(4) {
+sub get_object : Test(8) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
@@ -1111,6 +1112,12 @@ sub get_object : Test(4) {
     'Failed to download a non-existent object';
   dies_ok { $irods->get_object(undef, $tmpdir) }
     'Failed to download an undefined object';
+
+  my $local_path = cwd();
+  ok ( $irods->get_object($lorem_object, './lorem_rel_currdir.txt'), 'Got an object' );
+  ok(-f "$local_path/lorem_rel_currdir.txt", 'Object was downloaded to a relative path (./)');
+  ok ( $irods->get_object($lorem_object, 'lorem_rel.txt'), 'Got an object' );
+  ok(-f "$local_path/lorem_rel.txt", 'Object was downloaded to the current path');
 }
 
 sub remove_object : Test(4) {

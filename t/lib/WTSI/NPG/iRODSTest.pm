@@ -1114,9 +1114,9 @@ sub get_object : Test(8) {
     'Failed to download an undefined object';
 
   my $local_path = cwd();
-  ok ( $irods->get_object($lorem_object, './lorem_rel_currdir.txt'), 'Got an object' );
+  ok($irods->get_object($lorem_object, './lorem_rel_currdir.txt'), 'Got an object');
   ok(-f "$local_path/lorem_rel_currdir.txt", 'Object was downloaded to a relative path (./)');
-  ok ( $irods->get_object($lorem_object, 'lorem_rel.txt'), 'Got an object' );
+  ok($irods->get_object($lorem_object, 'lorem_rel.txt'), 'Got an object');
   ok(-f "$local_path/lorem_rel.txt", 'Object was downloaded to the current path');
 }
 

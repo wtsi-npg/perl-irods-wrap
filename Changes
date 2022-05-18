@@ -1,3 +1,10 @@
+Release 3.17.0
+
+ - Add SamHaplotag files
+ - Remove -T option from icommands execution
+ - Add iRODS 4.2.11 to github actions workflow
+ - Bug fix: Correctly resolve local paths in get_object
+
 Release 3.16.0
 
  - Add data object size and verify checksum support

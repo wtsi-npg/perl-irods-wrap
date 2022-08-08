@@ -1,3 +1,8 @@
+Release 3.18.0
+
+ - Update baton version in github actions workflow to 4.0.0
+ - baton version required >= 2.1.0 < 5
+
 Release 3.17.1
 
  - Update baton version in github actions workflow to 3.3.0

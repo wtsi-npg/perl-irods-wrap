@@ -1,3 +1,6 @@
+Release 3.18.1
+ - Change CI runner from Ubuntu 18.04 to ubuntu-latest
+
 Release 3.18.0
 
  - Update baton version in github actions workflow to 4.0.0

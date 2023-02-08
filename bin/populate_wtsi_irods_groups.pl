@@ -22,9 +22,9 @@ my $what_on_earth =<<'WOE';
 Script to update WTSI iRODS systems with groups corresponding to
 Sequencescape studies.
 
-Appropriate iRODS environment variables (e.g. irodsEnvFile) and files
-should be set and configured to allow access and update of the desired
-iRODS system.
+Appropriate iRODS environment variables (e.g. IRODS_ENVIRONMENT_FILE)
+and files should be set and configured to allow access and update of
+the desired iRODS system.
 
 The Sequencescape warehouse database is used to find the set of
 studies. iRODS groups are created for each study with names of the
@@ -41,8 +41,8 @@ iRODS group.
 If no data_access_group is set on the study, then if the study is
 associated with sequencing the members of the iRODS group will be set
 to the public group, else if the study is not associated with
-sequencing the iRODS group will be left empty (except for the iRODS
-groupadmin user).
+sequencing tracked in the ML warehouse, the iRODS group will be left
+empty (except for the iRODS groupadmin user).
 
 Script runs to perform such updates when no arguments are given.
 

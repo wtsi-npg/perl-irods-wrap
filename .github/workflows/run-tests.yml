@@ -39,7 +39,7 @@ jobs:
           - 20000-20199:20000-20199
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: "Install OS dependencies"
         run: |
@@ -51,7 +51,7 @@ jobs:
 
       - name: "Cache Miniconda"
         id: cache-miniconda
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/conda/pkgs

@@ -1,3 +1,7 @@
+Release 3.18.2
+ - Update version of github actions
+ - Update iRODS permissions policy documentation
+
 Release 3.18.1
  - Change CI runner from Ubuntu 18.04 to ubuntu-latest
 

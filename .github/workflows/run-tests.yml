@@ -22,12 +22,12 @@ jobs:
         include:
           - perl: "5.22.4"
             irods: "4.2.7"
-            server_image: "wsinpg/ub-16.04-irods-4.2.7:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-16.04-irods-4.2.7:latest"
             baton: "4.0.0"
             experimental: false
           - perl: "5.22.4"
             irods: "4.2.11"
-            server_image: "wsinpg/ub-18.04-irods-4.2.11:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
             baton: "4.0.0"
             experimental: false
 

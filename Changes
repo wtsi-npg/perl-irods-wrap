@@ -1,3 +1,6 @@
+Release 3.18.3
+ - Use github hosted images for ci
+
 Release 3.18.2
  - Update version of github actions
  - Update iRODS permissions policy documentation

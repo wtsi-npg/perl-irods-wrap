@@ -32,10 +32,11 @@ my $tmp_data_path;
 my $irods_tmp_coll;
 my $cwc;
 
+my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                       strict_baton_version => 0);
+
 sub setup_test : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-  $cwc = $irods->working_collection;
+  $cwc = $test_irods->working_collection;
 
   # Prepare a copy of the test data because the tests will modify it
   $tmp_data_path = File::Temp->newdir(TEMPLATE => 'publishertest.XXXXXX',
@@ -43,18 +44,16 @@ sub setup_test : Test(setup) {
   dircopy($data_path, $tmp_data_path) or
     croak "Failed to copy test data from $data_path to $tmp_data_path";
 
-  $irods_tmp_coll = $irods->add_collection("PublisherTest.$pid.$test_counter");
+  $irods_tmp_coll = $test_irods->add_collection("PublisherTest.$pid.$test_counter");
   $test_counter++;
 }
 
 sub teardown_test : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
   # Delete the copy of the test data
   undef $tmp_data_path;
 
-  $irods->working_collection($cwc);
-  $irods->remove_collection($irods_tmp_coll);
+  $test_irods->working_collection($cwc);
+  $test_irods->remove_collection($irods_tmp_coll);
 }
 
 sub require : Test(1) {

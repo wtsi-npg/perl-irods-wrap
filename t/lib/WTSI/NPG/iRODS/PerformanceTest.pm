@@ -32,20 +32,18 @@ sub is_test_zone {
   return any { $_ eq $zone } @test_hosting_zones;
 }
 
+my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                       strict_baton_version => 0);
+
 sub setup_test : Test(setup) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
 
   $irods_tmp_coll =
-    $irods->add_collection("CollectionTest.$pid.$fixture_counter");
+    $test_irods->add_collection("CollectionTest.$pid.$fixture_counter");
   $fixture_counter++;
 }
 
 sub teardown_test : Test(teardown) {
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-
-  $irods->remove_collection($irods_tmp_coll);
+  $test_irods->remove_collection($irods_tmp_coll);
 }
 
 # These tests are intended to warn of any massive regressions in

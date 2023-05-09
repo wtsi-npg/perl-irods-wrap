@@ -31,37 +31,34 @@ my @irods_groups = map { $group_prefix . $_ } (10, 100);
 # Groups added to the test iRODS in fixture setup
 my @groups_added;
 
+my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                       strict_baton_version => 0);
+
 sub setup_test : Test(setup) {
   my ($self) = @_;
 
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-
   $irods_tmp_coll =
-    $irods->add_collection("CollectionTest.$pid.$fixture_counter");
+    $test_irods->add_collection("CollectionTest.$pid.$fixture_counter");
   $fixture_counter++;
-  $irods->put_collection($data_path, $irods_tmp_coll);
+  $test_irods->put_collection($data_path, $irods_tmp_coll);
 
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
       my $test_coll = "$irods_tmp_coll/path/test_dir";
       my $units = $value eq 'x' ? 'cm' : undef;
 
-      $irods->add_collection_avu($test_coll, $attr, $value, $units);
+      $test_irods->add_collection_avu($test_coll, $attr, $value, $units);
     }
   }
 
-  @groups_added = $self->add_irods_groups($irods, @irods_groups);
+  @groups_added = $self->add_irods_groups($test_irods, @irods_groups);
 }
 
 sub teardown_test : Test(teardown) {
   my ($self) = @_;
 
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-
-  $irods->remove_collection($irods_tmp_coll);
-  $self->remove_irods_groups($irods, @groups_added);
+  $test_irods->remove_collection($irods_tmp_coll);
+  $self->remove_irods_groups($test_irods, @groups_added);
 }
 
 sub require : Test(1) {

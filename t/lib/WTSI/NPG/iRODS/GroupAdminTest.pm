@@ -23,15 +23,16 @@ my $group_prefix = 'ss_';
 my @irods_groups = map { $group_prefix . $_ } (0 .. 100);
 my @irods_users = qw(user_foo user_bar);
 
+my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                       strict_baton_version => 0);
+
 sub setup_test : Test(setup) {
   my ($self) = @_;
 
   $self->have_admin_rights($have_admin_rights);
 
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
 
-  $self->add_irods_groups($irods, @irods_groups);
+  $self->add_irods_groups($test_irods, @irods_groups);
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
       system(qq{$WTSI::NPG::iRODS::IADMIN mkuser '$user' rodsuser}) == 0 or
@@ -43,10 +44,7 @@ sub setup_test : Test(setup) {
 sub teardown_test : Test(teardown) {
   my ($self) = @_;
 
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-
-  $self->remove_irods_groups($irods, @irods_groups);
+  $self->remove_irods_groups($test_irods, @irods_groups);
 
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
@@ -69,7 +67,7 @@ sub constructor : Test(2) {
       $ENV{PATH} = q();
 
       WTSI::NPG::iRODS::GroupAdmin->new;
-    } qr/Command 'i\S+' not found/sm, 'No igroupadmin';
+    } qr/command not found|no such file/smi, 'No igroupadmin';
   }
 }
 

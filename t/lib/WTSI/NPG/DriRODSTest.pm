@@ -37,16 +37,17 @@ my @groups_added;
 # Enable group tests
 my $group_tests_enabled = 0;
 
+my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                       strict_baton_version => 0);
+
 sub setup_test: Test(setup) {
   my ($self) = @_;
 
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-  $cwc = $irods->working_collection;
+  $cwc = $test_irods->working_collection;
 
-  $irods_tmp_coll = $irods->add_collection("DriRODSTest.$pid.$fixture_counter");
+  $irods_tmp_coll = $test_irods->add_collection("DriRODSTest.$pid.$fixture_counter");
   $fixture_counter++;
-  $irods->put_collection($data_path, $irods_tmp_coll);
+  $test_irods->put_collection($data_path, $irods_tmp_coll);
 
   my $test_coll = "$irods_tmp_coll/irods";
   my $test_obj = File::Spec->join($test_coll, 'lorem.txt');
@@ -54,12 +55,12 @@ sub setup_test: Test(setup) {
   foreach my $attr (qw(a b c)) {
     foreach my $value (qw(x y)) {
       my $units = $value eq 'x' ? 'cm' : undef;
-      $irods->add_collection_avu($test_coll, $attr, $value, $units);
-      $irods->add_object_avu($test_obj, $attr, $value, $units);
+      $test_irods->add_collection_avu($test_coll, $attr, $value, $units);
+      $test_irods->add_object_avu($test_obj, $attr, $value, $units);
     }
   }
 
-  @groups_added = $self->add_irods_groups($irods, @irods_groups);
+  @groups_added = $self->add_irods_groups($test_irods, @irods_groups);
   if (scalar @groups_added == scalar @irods_groups) {
     $group_tests_enabled = 1;
   }
@@ -67,13 +68,10 @@ sub setup_test: Test(setup) {
 
 sub teardown_test : Test(teardown) {
   my ($self) = @_;
-
-  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
-                                    strict_baton_version => 0);
-
-  $irods->working_collection($cwc);
-  $irods->remove_collection($irods_tmp_coll);
-  $self->remove_irods_groups($irods, @groups_added);
+  
+  $test_irods->working_collection($cwc);
+  $test_irods->remove_collection($irods_tmp_coll);
+  $self->remove_irods_groups($test_irods, @groups_added);
 }
 
 sub add_group : Test(3) {

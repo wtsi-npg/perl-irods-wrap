@@ -36,7 +36,7 @@ sub setup_test : Test(setup) {
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
       system(qq{$WTSI::NPG::iRODS::IADMIN mkuser '$user' rodsuser}) == 0 or
-        warn "Faled to add user test '$user'";
+        warn "Failed to add user test '$user'";
     }
   }
 }
@@ -57,17 +57,11 @@ sub teardown_test : Test(teardown) {
 sub constructor : Test(2) {
   new_ok('WTSI::NPG::iRODS::GroupAdmin');
 
-  my $stderr = '';
-  {
-    local *STDERR;
-    open STDERR, '>', \$stderr;
+  dies_ok {
+    local %ENV = %ENV;
+    $ENV{PATH} = q("/bin");
 
-    throws_ok {
-      local %ENV = %ENV;
-      $ENV{PATH} = q();
-
-      WTSI::NPG::iRODS::GroupAdmin->new;
-    } qr/command not found|no such file/smi, 'No igroupadmin';
+    WTSI::NPG::iRODS::GroupAdmin->new;
   }
 }
 

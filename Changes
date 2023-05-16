@@ -1,3 +1,6 @@
+Release 3.18.5
+ - Fix failure due to a fragile test
+
 Release 3.18.4
  - Add Singularity container support for iRODS clients
 

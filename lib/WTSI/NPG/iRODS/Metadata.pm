@@ -70,6 +70,7 @@ our @EXPORT = qw(
                   $PACBIO_DATA_LEVEL
                   $PACBIO_INSTRUMENT_NAME
                   $PACBIO_MULTIPLEX
+                  $PACBIO_PLATE_NUMBER
                   $PACBIO_PRODUCTION
                   $PACBIO_RUN
                   $PACBIO_SAMPLE_LOAD_NAME
@@ -186,6 +187,7 @@ our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
 our $PACBIO_DATA_LEVEL         = 'data_level';
 our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
 our $PACBIO_MULTIPLEX          = 'multiplex';
+our $PACBIO_PLATE_NUMBER       = 'plate_number';
 our $PACBIO_PRODUCTION         = 'production';
 our $PACBIO_RUN                = 'run';
 our $PACBIO_SAMPLE_LOAD_NAME   = 'sample_load_name';
@@ -248,8 +250,8 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2015, 2016, 2017, 2018 Genome Research Limited. All
-Rights Reserved.
+Copyright (C) 2015, 2016, 2017, 2018, 2023 Genome Research Limited.
+All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Perl Artistic License or the GNU General

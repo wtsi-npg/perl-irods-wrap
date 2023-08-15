@@ -1,4 +1,5 @@
 
+Release 3.19.0
  - Add PACBIO_PLATE_NUMBER to Metadata - required for
    multi plate Revio runs
 

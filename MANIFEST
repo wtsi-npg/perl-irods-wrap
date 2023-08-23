@@ -24,6 +24,7 @@ lib/WTSI/NPG/iRODS/Storable.pm
 lib/WTSI/NPG/iRODS/Types.pm
 lib/WTSI/NPG/iRODS/Utilities.pm
 lib/WTSI/NPG/iRODS/Version.pm
+lib/WTSI/NPG/iRODS/icommands.pm
 MANIFEST			This list of files
 META.json
 META.yml
@@ -32,6 +33,7 @@ scripts/install_wsi_dependencies.sh
 t/annotator.t
 t/critic.t
 t/drirods.t
+t/icommands.t
 t/irods.t
 t/data/irods/collect_files/a/10.txt
 t/data/irods/collect_files/a/x/1.txt
@@ -66,6 +68,7 @@ t/lib/WTSI/NPG/iRODS/GroupAdminTest.pm
 t/lib/WTSI/NPG/iRODS/PerformanceTest.pm
 t/lib/WTSI/NPG/iRODS/PublisherTest.pm
 t/lib/WTSI/NPG/iRODS/Test.pm
+t/lib/WTSI/NPG/iRODS/icommandsTest.pm
 t/performance.t
 t/perlcriticrc
 t/publisher.t

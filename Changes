@@ -1,3 +1,5 @@
+Release 3.20.0
+ - Add iquest wrapper
 
 Release 3.19.0
  - Add PACBIO_PLATE_NUMBER to Metadata - required for
@@ -332,4 +334,3 @@ Release 1.8.0
    data object.
 
  - Metadata values are now able to be set to '0' (bug fix).
-

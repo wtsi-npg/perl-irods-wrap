@@ -54,6 +54,13 @@ jobs:
           --health-retries 6
 
     steps:
+      - name: "Set environmental variables based on other environmental variables"
+        run: |
+          echo "SINGULARITY_CACHEDIR=$HOME/.singularity-cache" >> $GITHUB_ENV
+          # '~' in SINGULARITY_CACHEDIR value (from say a env: section in this YAML) is not expanded by
+          # singularity so that paths used are misleading/unclear
+
+
       - uses: actions/checkout@v3
 
       - name: "Install OS dependencies"
@@ -79,24 +86,22 @@ jobs:
       - name: "Cache Singularity images"
         uses: actions/cache@v3
         with:
-          path: ${{ github.workspace }}/.singularity-cache
+          path: ${{ env.SINGULARITY_CACHEDIR }}
           key: ${{ runner.os }}-singularity
 
       - name: "Install iRODS client wrappers"
         env:
           DOCKER_IMAGE: ${{ matrix.client_image }}
-          PREFIX: ${{ github.workspace }}
-          SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity-cache
         run: |
           # Use -s option for the wrappers to enable re-usable service instances
-          singularity exec docker://$DOCKER_IMAGE singularity-wrapper -s -p $PREFIX install
-          echo "$PREFIX/bin" >> $GITHUB_PATH
+          # Install is to HOME rather than workspace to avoid clashes with repo e.g. in bin/
+          singularity exec docker://$DOCKER_IMAGE singularity-wrapper -s -p $HOME/.local install
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: "Configure iRODS clients"
         env:
           DOCKER_IMAGE: ${{ matrix.client_image }}
           PREFIX: ${{ github.workspace }}
-          SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity-cache
         run: |
           mkdir -p "$HOME/.irods"
           cat <<'EOF' > "$HOME/.irods/irods_environment.json"

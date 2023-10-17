@@ -21,10 +21,15 @@ jobs:
         include:
           - perl: "5.22.4"
             irods: "4.2.7"
-            client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
+            client_image: "ghcr.io/wtsi-npg/ub-16.04-irods-clients-4.2.7:latest"
             server_image: "ghcr.io/wtsi-npg/ub-16.04-irods-4.2.7:latest"
             experimental: false
           - perl: "5.22.4"
+            irods: "4.2.11"
+            client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
+            experimental: false
+          - perl: "5.34.1"
             irods: "4.2.11"
             client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
             server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
@@ -34,10 +39,10 @@ jobs:
             client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.12:latest"
             server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.12:latest"
             experimental: false
-          - perl: "5.34.1"
-            irods: "4.2.11"
-            client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
-            server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
+          - perl: "5.22.4"
+            irods: "4.3.0"
+            client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3-nightly:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3-nightly:latest"
             experimental: true
 
     services:
@@ -101,7 +106,6 @@ jobs:
       - name: "Configure iRODS clients"
         env:
           DOCKER_IMAGE: ${{ matrix.client_image }}
-          PREFIX: ${{ github.workspace }}
         run: |
           mkdir -p "$HOME/.irods"
           cat <<'EOF' > "$HOME/.irods/irods_environment.json"

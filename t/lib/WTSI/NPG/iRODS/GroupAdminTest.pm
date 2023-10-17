@@ -20,7 +20,7 @@ my $have_admin_rights =
 my $group_prefix = 'ss_';
 
 # Groups to be added to the test iRODS
-my @irods_groups = map { $group_prefix . $_ } (0 .. 100);
+my @irods_groups = map { $group_prefix . $_ } (0 .. 5);
 my @irods_users = qw(user_foo user_bar);
 
 my $test_irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
@@ -76,8 +76,9 @@ sub lg : Test(5) {
       skip 'No admin rights to create test groups', 2;
     }
 
-    my @observed_groups = sort $iga->lg;
-    my @expected_groups = sort ('public', 'rodsadmin', @irods_groups);
+    # Ignore the rodsadmin group as it is not present in iRODS >4.3.0
+    my @observed_groups = sort grep { $_ ne 'rodsadmin' } $iga->lg;
+    my @expected_groups = sort ('public', @irods_groups);
     is_deeply(\@observed_groups, \@expected_groups, 'Expected groups found') or
       diag explain \@observed_groups;
 

@@ -231,14 +231,14 @@ sub list_groups : Test(1) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  ok(grep { /^rodsadmin$/ } $irods->list_groups, 'Listed the rodsadmin group');
+  ok(grep { /^public/ } $irods->list_groups, 'Listed the public group');
 }
 
 sub group_exists : Test(2) {
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
 
-  ok($irods->group_exists('rodsadmin'), 'The rodsadmin group exists');
+  ok($irods->group_exists('public'), 'The public group exists');
   ok(!$irods->group_exists('no_such_group'), 'An absent group does not exist');
 }
 

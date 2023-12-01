@@ -21,10 +21,15 @@ jobs:
         include:
           - perl: "5.22.4"
             irods: "4.2.7"
-            client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
+            client_image: "ghcr.io/wtsi-npg/ub-16.04-irods-clients-4.2.7:latest"
             server_image: "ghcr.io/wtsi-npg/ub-16.04-irods-4.2.7:latest"
             experimental: false
           - perl: "5.22.4"
+            irods: "4.2.11"
+            client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
+            experimental: false
+          - perl: "5.34.1"
             irods: "4.2.11"
             client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.11:latest"
             server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
@@ -34,6 +39,16 @@ jobs:
             client_image: "ghcr.io/wtsi-npg/ub-18.04-irods-clients-4.2.12:latest"
             server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.12:latest"
             experimental: false
+          - perl: "5.22.4"
+            irods: "4.3.1"
+            client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3.1:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3.1:latest"
+            experimental: false
+          - perl: "5.22.4"
+            irods: "4.3.0"
+            client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3-nightly:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3-nightly:latest"
+            experimental: true
 
     services:
       irods-server:
@@ -49,6 +64,13 @@ jobs:
           --health-retries 6
 
     steps:
+      - name: "Set environmental variables based on other environmental variables"
+        run: |
+          echo "SINGULARITY_CACHEDIR=$HOME/.singularity-cache" >> $GITHUB_ENV
+          # '~' in SINGULARITY_CACHEDIR value (from say a env: section in this YAML) is not expanded by
+          # singularity so that paths used are misleading/unclear
+
+
       - uses: actions/checkout@v3
 
       - name: "Install OS dependencies"
@@ -74,24 +96,21 @@ jobs:
       - name: "Cache Singularity images"
         uses: actions/cache@v3
         with:
-          path: ${{ github.workspace }}/.singularity-cache
+          path: ${{ env.SINGULARITY_CACHEDIR }}
           key: ${{ runner.os }}-singularity
 
       - name: "Install iRODS client wrappers"
         env:
           DOCKER_IMAGE: ${{ matrix.client_image }}
-          PREFIX: ${{ github.workspace }}
-          SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity-cache
         run: |
           # Use -s option for the wrappers to enable re-usable service instances
-          singularity exec docker://$DOCKER_IMAGE singularity-wrapper -s -p $PREFIX install
-          echo "$PREFIX/bin" >> $GITHUB_PATH
+          # Install is to HOME rather than workspace to avoid clashes with repo e.g. in bin/
+          singularity exec docker://$DOCKER_IMAGE singularity-wrapper -s -p $HOME/.local install
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: "Configure iRODS clients"
         env:
           DOCKER_IMAGE: ${{ matrix.client_image }}
-          PREFIX: ${{ github.workspace }}
-          SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity-cache
         run: |
           mkdir -p "$HOME/.irods"
           cat <<'EOF' > "$HOME/.irods/irods_environment.json"

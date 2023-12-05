@@ -34,7 +34,8 @@ my $have_admin_rights =
 # Prefix for test iRODS data access groups
 my $group_prefix = 'ss_';
 # Groups to be added to the test iRODS
-my @irods_groups = map { $group_prefix . $_ } (10, 100);
+my @irods_groups = map { $group_prefix . $_, $group_prefix . $_ . '_human' }
+                   (10, 100);
 # Groups added to the test iRODS in fixture setup
 my @groups_added;
 

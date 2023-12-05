@@ -52,7 +52,6 @@ my $build = WTSI::DNAP::Utilities::Build->new
                          },
    recommends =>         {
                           'Net::LDAP'                     => '0',
-                          'WTSI::DNAP::Warehouse::Schema' => '0',
                          });
 
 $build->create_build_script;

@@ -191,15 +191,22 @@ sub _op_g_u {
   return;
 }
 
-sub _ensure_existence_of_group {
+=head2 ensure_group_exists
+
+Given a group ensure that it exists in iRODS by making it if it does not, and adding this admin user to it to ensure admin rights on it are retained. Return true if a group is created.
+
+=cut
+
+sub ensure_group_exists {
   my($self,$group)=@_;
   $self->__croak_on_bad_group_name($group);
   if ( any {$group eq $_} $self->lg){ return;}
   if ($self->dry_run) {
-    $self->info("Dry run: mkgroup '$group'");
+    $self->info("Dry run: mkgroup '$group' and then atg...");
   }
   else {
     $self->_push_pump_trim_split(qq(mkgroup "$group"\n));
+    $self->_op_g_u('atg',$group, $self->_user); #add this user to empty group (first) so admin rights to operate on it are retained
   }
   return 1; #return true if we make a group
 }
@@ -212,7 +219,7 @@ Given a group and list of members will ensure that the group exists and contains
 
 sub set_group_membership {
   my($self,$group,@members)=@_;
-  my $altered = $self->_ensure_existence_of_group($group);
+  my $altered = $self->ensure_group_exists($group);
   my @orig_members = $self->lg($group);
   $self->debug("Members of $group: ", join q(, ), @orig_members);
   if (@orig_members){

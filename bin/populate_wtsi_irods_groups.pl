@@ -44,6 +44,11 @@ to the public group, else if the study is not associated with
 sequencing tracked in the ML warehouse, the iRODS group will be left
 empty (except for the iRODS groupadmin user).
 
+Studies which are marked as have samples contaminated with human which
+should be removed will have an ss_<study_id>_human iRODS group created
+when they do not exist - population of this group is performed outside
+this process and should be tracked in an auditable manner by a ticket.
+
 Script runs to perform such updates when no arguments are given.
 
 Options:
@@ -72,7 +77,7 @@ GetOptions('debug'                   => \$debug,
              exit 0;
            },
            'logconf=s'               => \$log4perl_config,
-           'study=i'                 => \@study_ids,
+           'study_id=i'              => \@study_ids,
            'verbose'                 => \$verbose) or die "\n$what_on_earth\n";
 
 if ($log4perl_config) {
@@ -141,7 +146,7 @@ my $query = @study_ids ? {id_study_lims => \@study_ids} : {};
 my $studies = $mlwh->resultset('Study')->search($query,
                                                 {order_by => 'id_study_lims'});
 
-my ($group_count, $altered_count) = (0, 0);
+my ($group_count, $altered_count, $altered_human_count) = (0, 0, 0);
 while (my $study = $studies->next){
   my $study_id = $study->id_study_lims;
   my $dag_str  = $study->data_access_group || q();
@@ -172,14 +177,21 @@ while (my $study = $studies->next){
     $altered_count++;
   }
 
+  if ($study->contaminated_human_dna) {
+    $altered_human_count += $iga->ensure_group_exists("ss_$study_id".'_human');
+  }
+
   $group_count++;
 }
 
 $log->debug("Altered $altered_count groups");
+$log->debug("Created $altered_human_count _human groups");
 
 $log->info("When considering $group_count Sequencescape studies, ",
-           "$altered_count iRODS groups were created or their ",
-           'membership altered (by ', $iga->_user, ')');
+           $altered_count.' iRODS "ss_*" groups were created or their ',
+           'membership altered, and '.$altered_human_count,
+           ' "ss_?????_human" groups were created (by ',
+           $iga->_user, ')');
 
 # Find both gid and member uids for each group
 sub find_group_ids {

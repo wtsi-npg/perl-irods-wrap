@@ -426,7 +426,7 @@ sub set_permissions {
                $WTSI::NPG::iRODS::OWN_PERMISSION or
                $WTSI::NPG::iRODS::NULL_PERMISSION. Optional.
 
-  Example    : $obj->get_object_groups($WTSI::NPG::iRODS::READ_PERMISSION)
+  Example    : $obj->get_groups($WTSI::NPG::iRODS::READ_PERMISSION)
   Description: Return a list of the data access groups in the object's ACL.
                If a permission level argument is supplied, only groups with
                that level of access will be returned. Only groups having a

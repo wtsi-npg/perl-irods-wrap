@@ -695,7 +695,7 @@ sub update_group_permissions : Test(12) {
   }
 }
 
-sub update_group_permissions_for_nc_human_data : Test(49) {
+sub update_group_permissions_for_nc_human_data : Test(43) {
 
   my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
                                     strict_baton_version => 0);
@@ -772,11 +772,11 @@ sub update_group_permissions_for_nc_human_data : Test(49) {
   ok($obj->add_avu($ALIGNMENT_FILTER, 'human'));
   ok($obj->update_group_permissions);
   @permissions = $obj->get_permissions; 
-  $outcome = any {
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_10' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Retained ss_10 read access');
+  ok($outcome, 'Lost ss_10 read access');
   $outcome = any {
     exists $_->{owner} && $_->{owner} eq 'ss_10_human' &&
     exists $_->{level} && $_->{level} eq 'read' 
@@ -787,11 +787,11 @@ sub update_group_permissions_for_nc_human_data : Test(49) {
   ok($obj->add_avu($ALIGNMENT_FILTER, 'phix'));
   ok($obj->update_group_permissions);
   @permissions = $obj->get_permissions;
-  $outcome = any {
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_10' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Retained ss_10 read access');
+  ok($outcome, 'Lost ss_10 read access');
   $outcome = any {
     exists $_->{owner} && $_->{owner} eq 'ss_10_human'
   } @permissions;
@@ -801,16 +801,16 @@ sub update_group_permissions_for_nc_human_data : Test(49) {
   ok($obj->add_avu($STUDY_ID, '100'));
   ok($obj->update_group_permissions);
   @permissions = $obj->get_permissions;
-  $outcome = any {
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_10' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Retained ss_10 read access');
-  $outcome = any {
+  ok($outcome, 'No ss_10 read access');
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_100' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Added ss_100 read access');
+  ok($outcome, 'No ss_100 read access');
   $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_10_human'
   } @permissions;
@@ -838,30 +838,11 @@ sub update_group_permissions_for_nc_human_data : Test(49) {
   ok($obj->add_avu($STUDY_ID, '100'));  
   ok($obj->update_group_permissions);
   @permissions = $obj->get_permissions;
-  $outcome = any {
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_100' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Added ss_100 read access');
-  $outcome = any {
-    exists $_->{owner} && $_->{owner} eq 'ss_100_human' &&
-    exists $_->{level} && $_->{level} eq 'read'
-  } @permissions;
-  ok($outcome, 'Added ss_100_human read access');
-
-  # Single study metadata and conflicting alignment filter
-  ok($obj->add_avu($ALIGNMENT_FILTER, 'phix'));
-  ok($obj->update_group_permissions);
-  @permissions = $obj->get_permissions;
-  $outcome = none {
-    exists $_->{owner} && $_->{owner} eq 'ss_100_human'
-  } @permissions;
-  ok($outcome, 'ss_100_human access is not present');
-  
-  # Drop conflicting alignment filter metadata
-  ok($obj->remove_avu($ALIGNMENT_FILTER, 'phix'));
-  ok($obj->update_group_permissions);
-  @permissions = $obj->get_permissions;
+  ok($outcome, 'ss_100 read access is not added');
   $outcome = any {
     exists $_->{owner} && $_->{owner} eq 'ss_100_human' &&
     exists $_->{level} && $_->{level} eq 'read'
@@ -872,16 +853,16 @@ sub update_group_permissions_for_nc_human_data : Test(49) {
   ok($obj->add_avu($STUDY_ID, '10'));
   ok($obj->update_group_permissions);
   @permissions = $obj->get_permissions; 
-  $outcome = any {
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_100' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Retained ss_100 read access');
-  $outcome = any {
+  ok($outcome, 'ss_100 read access is not added');
+  $outcome = none {
     exists $_->{owner} && $_->{owner} eq 'ss_10' &&
     exists $_->{level} && $_->{level} eq 'read'
   } @permissions;
-  ok($outcome, 'Added ss_10 read access'); 
+  ok($outcome, 'ss_10 read access is not added'); 
   $outcome = none {
     exists $_->{owner} && $_->{owner} =~ /_human\Z/xms
   } @permissions;

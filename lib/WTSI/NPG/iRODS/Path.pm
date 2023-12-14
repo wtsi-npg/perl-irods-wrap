@@ -6,7 +6,7 @@ use List::MoreUtils qw(any notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
-use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID $ALIGNMENT_FILTER);
 
 our $VERSION = '';
 
@@ -292,6 +292,22 @@ sub expected_groups {
     my $study_id = $avu->{value};
     my $group = $self->irods->make_group_name($study_id);
     push @groups, $group;
+  }
+
+  # For nonconsented split-out human data add a special group.
+  # Give preference to the 'alignment_filter' metadata attribute.
+  # If this attrbute is not defined, examine the path of the object.
+  if (@groups == 1) { # Do not give access to nc human data to multiple groups.
+    my $give_human_subset_access = 0;
+    my @af_avus = $self->find_in_metadata($ALIGNMENT_FILTER);
+    if (not @af_avus and $self->str =~ /_human[.]/xms) {
+      $give_human_subset_access = 1;
+    } elsif (@af_avus and any { $_->{value} eq 'human' } @af_avus) {
+      $give_human_subset_access = 1;
+    }
+    if ($give_human_subset_access) {
+      push @groups, $groups[0] . '_human';
+    }
   }
 
   return @groups;

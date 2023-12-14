@@ -15,7 +15,7 @@ use Test::Exception;
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
 use WTSI::NPG::iRODS::DataObject;
-use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID $ALIGNMENT_FILTER);
 
 my $fixture_counter = 0;
 my $data_path = './t/data/path';
@@ -676,7 +676,7 @@ sub update_group_permissions : Test(12) {
     ok($r2, 'Removed ss_0 read access');
 
     # Add a study 0 AVU and use it to update (add) permissions
-    # in the presence of anAVU that will infer a non-existent group
+    # in the presence of an AVU that will infer a non-existent group
     ok($obj->add_avu($STUDY_ID, '0'));
     ok($obj->add_avu($STUDY_ID, 'no_such_study'));
     ok($obj->update_group_permissions);
@@ -693,6 +693,199 @@ sub update_group_permissions : Test(12) {
       $obj->update_group_permissions($strict_groups);
     } 'An unknown iRODS group causes failure';
   }
+}
+
+sub update_group_permissions_for_nc_human_data : Test(49) {
+
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+  my ($fh, $empty_file) = tempfile(UNLINK => 1);
+
+  #####
+  # Object with a name that should not trigger _human group assignment
+  my $obj_path = "$irods_tmp_coll/test_file_human_no.txt";
+  $irods->add_object($empty_file, $obj_path) or fail;
+  my $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  ok($obj->add_avu($STUDY_ID, '10'));
+  ok($obj->update_group_permissions);
+  my @permissions = $obj->get_permissions;
+  my $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_10 read access');
+  $outcome = none { exists $_->{owner} && $_->{owner} eq 'ss_10_human' }
+             @permissions;
+  ok($outcome, 'ss_10_human access is not added');
+
+  #####
+  # Object with a name that should not trigger _human group assignment
+  $obj_path = "$irods_tmp_coll/test_file_nohuman.txt";
+  $irods->add_object($empty_file, $obj_path) or fail;
+  $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+ 
+  # No alignment filter metadata
+  ok($obj->add_avu($STUDY_ID, '10'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_10 read access');
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human'
+  } @permissions;
+  ok($outcome, 'ss_10_human access is not added');
+
+  # phix alignment filter metadata
+  ok($obj->add_avu($ALIGNMENT_FILTER, 'phix'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_10 read access');
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human'
+  } @permissions;
+  ok($outcome, 'ss_10_human access is not retained');
+  
+  # yhuman alignment filter metadata 
+  ok($obj->remove_avu($ALIGNMENT_FILTER, 'phix'));
+  ok($obj->add_avu($ALIGNMENT_FILTER, 'yhuman'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_10 read access');
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human'
+  } @permissions;
+  ok($outcome, 'ss_10_human access is not added');
+
+  # human alignment filter metadata
+  ok($obj->remove_avu($ALIGNMENT_FILTER, 'yhuman'));
+  ok($obj->add_avu($ALIGNMENT_FILTER, 'human'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions; 
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_10 read access');
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human' &&
+    exists $_->{level} && $_->{level} eq 'read' 
+  } @permissions;
+  ok($outcome, 'Added ss_10_human read access');
+
+  # Multiple alignment filter metadata
+  ok($obj->add_avu($ALIGNMENT_FILTER, 'phix'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_10 read access');
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human'
+  } @permissions;
+  ok($outcome, 'ss_10_human access is retained');
+ 
+  # Metadata for two studies
+  ok($obj->add_avu($STUDY_ID, '100'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_10 read access');
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_100' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_100 read access');
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_10_human'
+  } @permissions;
+  ok($outcome, 'ss_10_human access is not retained');
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_100_human'
+  } @permissions;
+  ok($outcome, 'ss_100_human access is not added');
+  
+  #####
+  # Object with a name that should trigger _human group assignment
+  $obj_path = "$irods_tmp_coll/test_file_human.txt";
+  $obj = WTSI::NPG::iRODS::DataObject->new($irods, $obj_path);
+  $irods->add_object($empty_file, $obj_path) or fail;
+  
+  # No study metadata
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} =~ /_human\Z/xms
+  } @permissions;
+  ok($outcome, 'None of _human access groups is added');
+  
+  # Single study metadata
+  ok($obj->add_avu($STUDY_ID, '100'));  
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_100' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_100 read access');
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_100_human' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_100_human read access');
+
+  # Single study metadata and conflicting alignment filter
+  ok($obj->add_avu($ALIGNMENT_FILTER, 'phix'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} eq 'ss_100_human'
+  } @permissions;
+  ok($outcome, 'ss_100_human access is not present');
+  
+  # Drop conflicting alignment filter metadata
+  ok($obj->remove_avu($ALIGNMENT_FILTER, 'phix'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions;
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_100_human' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_100_human read access');
+
+  # Metadata for two studies
+  ok($obj->add_avu($STUDY_ID, '10'));
+  ok($obj->update_group_permissions);
+  @permissions = $obj->get_permissions; 
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_100' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Retained ss_100 read access');
+  $outcome = any {
+    exists $_->{owner} && $_->{owner} eq 'ss_10' &&
+    exists $_->{level} && $_->{level} eq 'read'
+  } @permissions;
+  ok($outcome, 'Added ss_10 read access'); 
+  $outcome = none {
+    exists $_->{owner} && $_->{owner} =~ /_human\Z/xms
+  } @permissions;
+  ok($outcome, 'None of _human access groups is added');
 }
 
 1;

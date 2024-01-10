@@ -279,9 +279,9 @@ sub supersede_multivalue_avus {
   Arg [1]    : None
 
   Example    : @groups = $path->expected_groups
-  Description: Return a list of iRODS group names given metadata containing
-               >=1 study_id. The list might be empty.
-   
+  Description: Return a list of iRODS group names. The list might be empty or
+               contain either one or multiple iRODS group names.
+
                An empty list is returned if the concent has been withdrawn or
                for split-out xa-human data, for which the consent does not
                exist by definition, or for split-out human data that is
@@ -293,6 +293,11 @@ sub supersede_multivalue_avus {
                In all other cases if data is associated with a list of studies,
                a list of groups is returned, a group per study, the group name
                pattern being ss_<STUDY_ID>.
+
+               The logic is based on examining such iRODS metadata as
+               'study_id', 'alignment_filter', 'sample_consent',
+               'sample_consent_withdrawn'. Neither object's path nor file name
+               is considered.
        
   Returntype : List
 
@@ -303,8 +308,8 @@ sub expected_groups {
 
   my @af_avus = $self->find_in_metadata($ALIGNMENT_FILTER);
   my @ss_study_avus = $self->find_in_metadata($STUDY_ID);
-  my $human_subset = (any { $_->{value} eq 'human' } @af_avus) ||
-                     ($self->str =~ /_human[.]/xms);
+  my $human_subset   = any { $_->{value} eq 'human' }   @af_avus;
+  my $xahuman_subset = any { $_->{value} eq 'xahuman' } @af_avus;
 
   my $info;
   my $true  = 1;
@@ -313,7 +318,7 @@ sub expected_groups {
   if ($self->get_avu($SAMPLE_CONSENT,          $false) ||
       $self->get_avu($SAMPLE_CONSENT_WITHDRAWN, $true)) {
     $info = 'Data is marked as CONSENT WITHDRAWN';
-  } elsif (any { $_->{value} eq 'xahuman' } @af_avus) {
+  } elsif ($xahuman_subset) {
     $info = 'Data belongs to xahuman subset';
   } elsif ($human_subset && (@ss_study_avus > 1)) {
     $info = 'Data belongs to human subset and multiple studies';
@@ -485,7 +490,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016, 2023 Genome Research Limited. All
+Copyright (C) 2013, 2014, 2015, 2016, 2023, 2024 Genome Research Limited. All
 Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

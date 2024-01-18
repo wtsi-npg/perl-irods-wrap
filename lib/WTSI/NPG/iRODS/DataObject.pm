@@ -9,8 +9,6 @@ use Set::Scalar;
 use Try::Tiny;
 
 use WTSI::NPG::iRODS;
-use WTSI::NPG::iRODS::Metadata qw($SAMPLE_CONSENT
-                                  $SAMPLE_CONSENT_WITHDRAWN);
 use WTSI::NPG::iRODS::Replicate;
 use WTSI::NPG::iRODS::Types qw(ArrayRefOfReplicate);
 
@@ -452,18 +450,13 @@ sub get_groups {
                logged only.
 
   Example    : $obj->update_group_permissions
-  Description: Modify a data objects ACL with respect to its study_id and
-               sample_consent / consent_withdrawn metadata and return the
-               data object.
+  Description: Modify a data objects ACL.
 
                The target group membership is determined by the result of
                calling $self->expected_groups. The current group membership
                is determined and any difference calculated. Unwanted
                group memberships are pruned, then missing group memberships
                are added.
-
-               If there are sample_consent or consent_withdrawn metadata,
-               access for all groups is removed.
 
                This method does not add or remove access for the 'public'
                group.
@@ -488,16 +481,6 @@ sub update_group_permissions {
   $self->debug('Updated annotations: [', join(', ', @groups_annotated), ']');
 
   my $path = $self->str;
-
-  my $true  = 1;
-  my $false = 0;
-  if ($self->get_avu($SAMPLE_CONSENT,          $false) or
-      $self->get_avu($SAMPLE_CONSENT_WITHDRAWN, $true)) {
-    $self->info('Data is marked as CONSENT WITHDRAWN; ',
-                'all permissions will be withdrawn');
-    @groups_annotated = (); # Emptying this means all will be removed
-  }
-
   my $perms = Set::Scalar->new(@groups_permissions);
   my $annot = Set::Scalar->new(@groups_annotated);
   my @to_remove = $perms->difference($annot)->members;
@@ -638,7 +621,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016, 2021 Genome Research Limited. All
+Copyright (C) 2013, 2014, 2015, 2016, 2021, 2023 Genome Research Limited. All
 Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

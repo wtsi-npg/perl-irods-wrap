@@ -1,3 +1,17 @@
+Release 3.22.0
+
+ - Introduced ss_<STUDY_ID>_human iRODS group to provide limited
+   access to split-out human data. Specific changes:
+     - exposed ensure_group_exists method from iRODS::GroupAdmin
+     - populate_wtsi_irods_groups creates _human iRODS groups
+     - tests fixtures extended to include these new iRODS groups
+     - reimplemented expected_groups from WTSI::NPG::irods::Path
+       to return all groups that are appropriate for an object or
+       a collection; this method consolidates all logic about
+       study-related access to data, this logic was previously split
+       between WTSI::NPG::irods::Path and WTSI::NPG::irods::DataObject
+ - Fixed incorrect example in POD
+
 Release 3.21.0
 
  - Add iRODS 4.3.1 Ubuntu 22.04 as a required test target

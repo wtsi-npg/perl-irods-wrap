@@ -6,7 +6,10 @@ use List::MoreUtils qw(any notall uniq);
 use Moose::Role;
 
 use WTSI::NPG::iRODS;
-use WTSI::NPG::iRODS::Metadata qw($STUDY_ID);
+use WTSI::NPG::iRODS::Metadata qw($STUDY_ID
+                                  $ALIGNMENT_FILTER
+                                  $SAMPLE_CONSENT
+                                  $SAMPLE_CONSENT_WITHDRAWN);
 
 our $VERSION = '';
 
@@ -276,22 +279,61 @@ sub supersede_multivalue_avus {
   Arg [1]    : None
 
   Example    : @groups = $path->expected_groups
-  Description: Return an array of iRODS group names given metadata containing
-               >=1 study_id.
-  Returntype : Array
+  Description: Return a list of iRODS group names. The list might be empty or
+               contain either one or multiple iRODS group names.
+
+               An empty list is returned if the concent has been withdrawn or
+               for split-out xa-human data, for which the consent does not
+               exist by definition, or for split-out human data that is
+               associated with multiple studies.
+
+               Special study-related 'human' group ss_<STUDY_ID>_human is
+               returned for split-out human data associated with a single study.
+
+               In all other cases if data is associated with a list of studies,
+               a list of groups is returned, a group per study, the group name
+               pattern being ss_<STUDY_ID>.
+
+               The logic is based on examining such iRODS metadata as
+               'study_id', 'alignment_filter', 'sample_consent',
+               'sample_consent_withdrawn'. Neither object's path nor file name
+               is considered.
+       
+  Returntype : List
 
 =cut
 
 sub expected_groups {
   my ($self) = @_;
 
+  my @af_avus = $self->find_in_metadata($ALIGNMENT_FILTER);
   my @ss_study_avus = $self->find_in_metadata($STUDY_ID);
+  my $human_subset   = any { $_->{value} eq 'human' }   @af_avus;
+  my $xahuman_subset = any { $_->{value} eq 'xahuman' } @af_avus;
 
+  my $info;
+  my $true  = 1;
+  my $false = 0;
   my @groups;
-  foreach my $avu (@ss_study_avus) {
-    my $study_id = $avu->{value};
-    my $group = $self->irods->make_group_name($study_id);
-    push @groups, $group;
+  if ($self->get_avu($SAMPLE_CONSENT,          $false) ||
+      $self->get_avu($SAMPLE_CONSENT_WITHDRAWN, $true)) {
+    $info = 'Data is marked as CONSENT WITHDRAWN';
+  } elsif ($xahuman_subset) {
+    $info = 'Data belongs to xahuman subset';
+  } elsif ($human_subset && (@ss_study_avus > 1)) {
+    $info = 'Data belongs to human subset and multiple studies';
+  } else {
+    @groups = map { $self->irods->make_group_name($_) }
+              map { $_->{value} }
+              @ss_study_avus;
+    if (@groups == 1 and $human_subset) {
+      $self->info('Data belongs to human subset');
+      @groups = ($groups[0] . '_human'); # Reset the list
+    }
+  }
+
+  if ($info) {
+    $self->info("${info}:\n no study-associated iRODS groups are applicable");
   }
 
   return @groups;
@@ -448,7 +490,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2013, 2014, 2015, 2016 Genome Research Limited. All
+Copyright (C) 2013, 2014, 2015, 2016, 2023, 2024 Genome Research Limited. All
 Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

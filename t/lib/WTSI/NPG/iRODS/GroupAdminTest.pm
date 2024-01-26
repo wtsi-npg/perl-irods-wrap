@@ -44,7 +44,7 @@ sub setup_test : Test(setup) {
 sub teardown_test : Test(teardown) {
   my ($self) = @_;
 
-  $self->remove_irods_groups($test_irods, @irods_groups);
+  $self->remove_irods_groups($test_irods, @irods_groups, q(ss_newempty));
 
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
@@ -91,6 +91,45 @@ sub lg : Test(5) {
 
   throws_ok { $iga->lg(q()); } qr/empty string/sm,
     'Empty string group throw';
+}
+
+sub ensure_group_exists: Test(6) {
+  my ($self) = @_;
+
+  my $irods = WTSI::NPG::iRODS->new(environment          => \%ENV,
+                                    strict_baton_version => 0);
+ SKIP: {
+    if (not $self->have_admin_rights) {
+      skip 'No admin rights to create test groups', 5;
+    }
+
+    my $zone = $irods->find_zone_name($irods->working_collection);
+    my $user = $irods->get_irods_user;
+
+    my $iga = WTSI::NPG::iRODS::GroupAdmin->new;
+
+    throws_ok { $iga->lg('ss_newempty') } qr/does not exist/sm,
+           'Non-existent group throw for ss_newempty';
+
+    my$created=0;
+    lives_ok {
+      $created=$iga->ensure_group_exists('ss_newempty');
+    } 'Create new group ss_newempty';
+    ok($created, "Reports that group has been created");
+
+    my @observed_members = sort $iga->lg('ss_newempty');
+    my @expected_members = ("$user#$zone");
+    is_deeply(\@observed_members, \@expected_members,
+              'Has expected admin user automatically added') or
+                diag explain \@observed_members;
+
+    $created=1;
+    lives_ok {
+      $created=$iga->ensure_group_exists('ss_newempty');
+    } 'Safe to run on existing group';
+
+    ok(!$created, "Reports that group has not been created");
+  }
 }
 
 sub set_group_membership : Test(5) {

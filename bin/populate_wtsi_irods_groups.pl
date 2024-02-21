@@ -178,7 +178,7 @@ while (my $study = $studies->next){
   }
 
   if ($study->contaminated_human_dna) {
-    $altered_human_count += $iga->ensure_group_exists("ss_$study_id".'_human');
+    $altered_human_count += $iga->ensure_group_exists("ss_$study_id".'_human')||0;
   }
 
   $group_count++;

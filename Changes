@@ -1,3 +1,7 @@
+Release 3.22.1
+
+ - avoid uninitialized value in addition when human group not created
+
 Release 3.22.0
 
  - Introduced ss_<STUDY_ID>_human iRODS group to provide limited

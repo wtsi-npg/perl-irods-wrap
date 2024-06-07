@@ -72,7 +72,7 @@ sub hts_data_suffixes {
 =cut
 
 sub hts_ancillary_suffixes {
-  return (qw[bam_stats bcfstats bamcheck bed bqsr_table fasta flagstat hops json quant 
+  return (qw[bam_stats bcfstats bamcheck bed bqsr_table fasta fastq flagstat gff hops json quant 
              seqchksum stats tab txt xml _SamHaplotag_Clear_BC _SamHaplotag_UnClear_BC _SamHaplotag_Missing_BC_QT_tags
             ]
          );

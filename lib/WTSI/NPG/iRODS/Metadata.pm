@@ -69,6 +69,7 @@ our @EXPORT = qw(
                   $PACBIO_COLLECTION_NUMBER
                   $PACBIO_DATA_LEVEL
                   $PACBIO_INSTRUMENT_NAME
+                  $PACBIO_ISOSEQ_PRIMERS
                   $PACBIO_MULTIPLEX
                   $PACBIO_PLATE_NUMBER
                   $PACBIO_PRODUCTION
@@ -186,6 +187,7 @@ our $PACBIO_CELL_INDEX         = 'cell_index';
 our $PACBIO_COLLECTION_NUMBER  = 'collection_number';
 our $PACBIO_DATA_LEVEL         = 'data_level';
 our $PACBIO_INSTRUMENT_NAME    = 'instrument_name';
+our $PACBIO_ISOSEQ_PRIMERS     = 'isoseq_primers';
 our $PACBIO_MULTIPLEX          = 'multiplex';
 our $PACBIO_PLATE_NUMBER       = 'plate_number';
 our $PACBIO_PRODUCTION         = 'production';
@@ -250,7 +252,7 @@ Keith James <kdj@sanger.ac.uk>
 
 =head1 COPYRIGHT AND DISCLAIMER
 
-Copyright (C) 2015, 2016, 2017, 2018, 2023 Genome Research Limited.
+Copyright (C) 2015 - 2018, 2023, 2024 Genome Research Limited.
 All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify

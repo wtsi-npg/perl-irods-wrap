@@ -1,4 +1,6 @@
 
+Release 3.23.0 (2024-07-25)
+
  - Add PACBIO_ISOSEQ_PRIMERS to Metadata - required for archiving
    analysis output from IsoSeq analysis jobs
  - Add fastq and gff as a standard ancillary file type

@@ -17,6 +17,8 @@ use WTSI::NPG::iRODS::GroupAdmin;
 
 our $VERSION = '';
 
+Readonly::Scalar my $MANAGED_TYPE => q{managed};
+
 my $what_on_earth =<<'WOE';
 
 Script to update WTSI iRODS systems with groups corresponding to
@@ -163,7 +165,7 @@ while (my $study = $studies->next){
     @members = map { _uid_to_irods_uid($_) }
                map { @{ $group2uids->{$_} || [$_] } } @dags;
   }
-  elsif ($is_seq) {
+  elsif ($study->data_release_strategy ne $MANAGED_TYPE) {
     @members = @public;
   }
   else {

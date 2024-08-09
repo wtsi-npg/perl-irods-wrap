@@ -40,11 +40,11 @@ the intersection of the members of the corresponding WTSI unix group
 and iRODS public group is used as the membership of the corresponding
 iRODS group.
 
-If no data_access_group is set on the study, then if the study is
-associated with sequencing the members of the iRODS group will be set
-to the public group, else if the study is not associated with
-sequencing tracked in the ML warehouse, the iRODS group will be left
-empty (except for the iRODS groupadmin user).
+If no data_access_group is set on the Sequencescape study, then if the 
+study doesn't have a data release type of managed the members of the 
+iRODS group will be set to the public group, else if the study has a 
+data release type of managed the iRODS group will be left empty (except
+for the iRODS groupadmin user).
 
 Studies which are marked as have samples contaminated with human which
 should be removed will have an ss_<study_id>_human iRODS group created

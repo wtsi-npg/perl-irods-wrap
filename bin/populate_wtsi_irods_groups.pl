@@ -202,7 +202,7 @@ while (my $study = $studies->next){
 
   $log->info("Study $study_id has ", scalar @ch_members, ' contaminated human data access members');
   $log->debug('Contaminated human data access members: ', join q(, ), @ch_members);
- 
+  
   $group_count++;
 }
 

@@ -1,5 +1,12 @@
- - populate_wtsi_irods_groups now sets ss_<STUDY_ID>_human group membership if these have been 
+Unreleased 
+
+-  populate_wtsi_irods_groups now sets ss_<STUDY_ID>_human group membership if these have been 
    set in the contaminated_human_data_access_group field  
+
+ - Change populate_wtsi_irods_groups.pl to only populate iRODS
+   study access groups with all seq iRODS users for SS studies
+   with empty data access where the study is not managed e.g.
+   submitted to EGA not ENA
 
 Release 3.23.0 (2024-07-25)
 

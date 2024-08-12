@@ -1,3 +1,5 @@
+ - populate_wtsi_irods_groups now sets ss_<STUDY_ID>_human group membership if these have been 
+   set in the contaminated_human_data_access_group field  
 
 Release 3.23.0 (2024-07-25)
 

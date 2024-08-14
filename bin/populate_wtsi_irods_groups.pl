@@ -197,7 +197,7 @@ while (my $study = $studies->next){
     # group created and any existing members removed
      if ($iga->set_group_membership("ss_$study_id".'_human', @ch_members)) {
          $altered_human_count++;
-     }   
+     }
   }
   else {
    # if contaminated_human_dna was removed as well as previously added groups

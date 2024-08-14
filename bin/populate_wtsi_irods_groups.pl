@@ -193,16 +193,18 @@ while (my $study = $studies->next){
     }
   }
   elsif ($study->contaminated_human_dna) {
-    # contaminated_human_dna is set but no access groups set
-     $altered_human_count += $iga->ensure_group_exists("ss_$study_id".'_human')||0;
+    # no public access when no groups are specified
+    # group created and any existing members removed
+    $altered_human_count += $iga->set_group_membership("ss_$study_id".'_human',@ch_members)||0;
   }
   else {
-   # remains empty,  no public access when no groups are specified
+   # if contaminated_human_dna was removed as well as previously added groups
+   # handle this within the SS interface 
   }
 
   $log->info("Study $study_id has ", scalar @ch_members, ' contaminated human data access members');
   $log->debug('Contaminated human data access members: ', join q(, ), @ch_members);
- 
+
   $group_count++;
 }
 

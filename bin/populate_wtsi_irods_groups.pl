@@ -48,8 +48,8 @@ for the iRODS groupadmin user).
 
 Studies which are marked as have samples contaminated with human which
 should be removed will have an ss_<study_id>_human iRODS group created
-when they do not exist - population of this group is performed outside
-this process and should be tracked in an auditable manner by a ticket.
+when they do not exist.  If no contaminated_human_data_access_group is set 
+on the study the iRODS group will be left empty (except for the iRODS groupadmin user). 
 
 Script runs to perform such updates when no arguments are given.
 
@@ -152,10 +152,11 @@ my ($group_count, $altered_count, $altered_human_count) = (0, 0, 0);
 while (my $study = $studies->next){
   my $study_id = $study->id_study_lims;
   my $dag_str  = $study->data_access_group || q();
+  my $ch_dag_str  = $study->contaminated_human_data_access_group || q();
   my $is_seq   = $study->iseq_flowcells->count ||
                  $study->pac_bio_runs->count   ||
                  $study->oseq_flowcells->count;
-  $log->debug("Working on study $study_id, SScape data access: '$dag_str'");
+  $log->debug("Working on study $study_id, SScape data access: '$dag_str', Contaminated human data access: '$ch_dag_str'");
 
   my @members;
   my @dags = $dag_str =~ m/\S+/smxg;
@@ -172,6 +173,7 @@ while (my $study = $studies->next){
     # remains empty
   }
 
+
   $log->info("Study $study_id has ", scalar @members, ' members');
   $log->debug('Members: ', join q(, ), @members);
 
@@ -179,20 +181,41 @@ while (my $study = $studies->next){
     $altered_count++;
   }
 
-  if ($study->contaminated_human_dna) {
-    $altered_human_count += $iga->ensure_group_exists("ss_$study_id".'_human')||0;
+  my @ch_members;
+  my @ch_dags = $ch_dag_str =~ m/\S+/smxg;
+  if (@ch_dags) {
+    # if strings from data access group don't match any group name try
+    # treating as usernames
+    @ch_members = map { _uid_to_irods_uid($_) }
+               map { @{ $group2uids->{$_} || [$_] } } @ch_dags;
+    if ($iga->set_group_membership("ss_$study_id".'_human', @ch_members)) {
+        $altered_human_count++;
+    }
+  }
+  elsif ($study->contaminated_human_dna) {
+    # no public access when no groups are specified
+    # group created and any existing members removed
+     if ($iga->set_group_membership("ss_$study_id".'_human', @ch_members)) {
+         $altered_human_count++;
+     }
+  }
+  else {
+   # if contaminated_human_dna was removed as well as previously added groups
+   # handle this within the SS interface 
   }
 
+  $log->info("Study $study_id has ", scalar @ch_members, ' contaminated human data access members');
+  $log->debug('Contaminated human data access members: ', join q(, ), @ch_members);
   $group_count++;
 }
 
 $log->debug("Altered $altered_count groups");
-$log->debug("Created $altered_human_count _human groups");
+$log->debug("Altered $altered_human_count _human groups");
 
 $log->info("When considering $group_count Sequencescape studies, ",
            $altered_count.' iRODS "ss_*" groups were created or their ',
            'membership altered, and '.$altered_human_count,
-           ' "ss_?????_human" groups were created (by ',
+           ' "ss_?????_human" groups were created or their membership altered (by ',
            $iga->_user, ')');
 
 # Find both gid and member uids for each group

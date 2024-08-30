@@ -1,7 +1,9 @@
 Unreleased 
 
--  populate_wtsi_irods_groups now sets ss_<STUDY_ID>_human group membership if these have been 
-   set in the contaminated_human_data_access_group field  
+Release 3.24.0 (2024-08-30)
+
+ - populate_wtsi_irods_groups now sets ss_<STUDY_ID>_human group membership if
+   these have been set in the contaminated_human_data_access_group field
 
  - Change populate_wtsi_irods_groups.pl to only populate iRODS
    study access groups with all seq iRODS users for SS studies

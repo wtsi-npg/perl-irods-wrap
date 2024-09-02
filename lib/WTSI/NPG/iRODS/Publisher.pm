@@ -357,6 +357,10 @@ sub _publish_file_overwrite {
     $self->info("Skipping publication of '$local_path' to '$remote_path': ",
                 "(checksum unchanged): local MD5 is '$local_md5', ",
                 "remote is MD5: '$pre_remote_md5'");
+    # Ensure the metadata are up-to-date, for consistency
+    $self->_supersede($obj,
+                      $self->make_md5_metadata($pre_remote_md5),
+                      $self->make_type_metadata($remote_path));
   }
   else {
     $self->info("Re-publishing '$local_path' to '$remote_path' ",
@@ -378,8 +382,9 @@ sub _publish_file_overwrite {
       # Add modification metadata only if successful
       $num_meta_errors +=
         $self->_supersede($obj,
+                          $self->make_modification_metadata($timestamp),
                           $self->make_md5_metadata($post_remote_md5),
-                          $self->make_modification_metadata($timestamp));
+                          $self->make_type_metadata($remote_path));
     } catch {
       $num_write_errors++;
       $self->error(q[Failed to overwrite existing data object at '],

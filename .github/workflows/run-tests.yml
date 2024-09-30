@@ -142,10 +142,8 @@ jobs:
       - name: "Install Perlbrew"
         if: steps.cache-perl.outputs.cache-hit != 'true'
         run: |
-          curl -sSL https://install.perlbrew.pl -o perlbrew.sh
-          sha256sum -c .github/workflows/perlbrew.sha256
           export PERLBREW_ROOT=${{ env.PERL_CACHE }}
-          sh perlbrew.sh
+          ./scripts/install_perlbrew.sh
 
           source ${{ env.PERL_CACHE }}/etc/bashrc
           perlbrew available

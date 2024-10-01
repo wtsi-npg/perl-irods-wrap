@@ -166,7 +166,8 @@ while (my $study = $studies->next){
     @members = map { _uid_to_irods_uid($_) }
                map { @{ $group2uids->{$_} || [$_] } } @dags;
   }
-  elsif ($study->data_release_strategy ne $MANAGED_TYPE) {
+  elsif (defined $study->data_release_strategy and
+    $study->data_release_strategy ne $MANAGED_TYPE) {
     @members = @public;
   }
   else {

@@ -71,7 +71,7 @@ jobs:
           # singularity so that paths used are misleading/unclear
 
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: "Install OS dependencies"
         run: |
@@ -94,7 +94,7 @@ jobs:
           echo DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" >> $GITHUB_ENV
 
       - name: "Cache Singularity images"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.SINGULARITY_CACHEDIR }}
           key: ${{ runner.os }}-singularity
@@ -134,7 +134,7 @@ jobs:
 
       - name: "Cache Perl"
         id: cache-perl
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.PERL_CACHE }}
           key: ${{ runner.os }}-${{ matrix.perl }}-perl
@@ -142,10 +142,8 @@ jobs:
       - name: "Install Perlbrew"
         if: steps.cache-perl.outputs.cache-hit != 'true'
         run: |
-          curl -sSL https://install.perlbrew.pl -o perlbrew.sh
-          sha256sum -c .github/workflows/perlbrew.sha256
           export PERLBREW_ROOT=${{ env.PERL_CACHE }}
-          sh perlbrew.sh
+          ./scripts/install_perlbrew.sh
 
           source ${{ env.PERL_CACHE }}/etc/bashrc
           perlbrew available

@@ -918,37 +918,35 @@ sub _list_collection {
   my $response = $self->communicate($spec);
   $self->validate_response($response);
 
-  my @all_specs;
-
-  if ($response->{error} &&
-      $response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
-    @all_specs = (undef, undef);
-  }
-  else {
-    my @object_specs;
-    my @collection_specs;
-
-    if (!exists $response->{contents}) {
-      $self->logconfess('The returned path spec did not have ',
-                        'a "contents" key: ', $self->encode($response));
+  if ($response->{error}) {
+    if ($response->{error}->{code} == $ITEM_DOES_NOT_EXIST) {
+      return (undef, undef);
     }
 
-    my @contents = @{delete $response->{contents}};
-    push @collection_specs, $response;
-
-    foreach my $path (@contents) {
-      if (exists $path->{data_object}) {
-        push @object_specs, $path;
-      }
-      else {
-        push @collection_specs, $path;
-      }
-    }
-
-    @all_specs = (\@object_specs, \@collection_specs);
+    $self->logconfess('Error listing collection: ', $self->encode($response));
   }
 
-  return @all_specs;
+  my @object_specs;
+  my @collection_specs;
+
+  if (!exists $response->{contents}) {
+    $self->logconfess('The returned path spec did not have ',
+      'a "contents" key: ', $self->encode($response));
+  }
+
+  my @contents = @{delete $response->{contents}};
+  push @collection_specs, $response;
+
+  foreach my $path (@contents) {
+    if (exists $path->{data_object}) {
+      push @object_specs, $path;
+    }
+    else {
+      push @collection_specs, $path;
+    }
+  }
+
+  return (\@object_specs, \@collection_specs);
 }
 
 # Return two arrays of path specs, given a collection path to recurse

@@ -1,5 +1,9 @@
 Unreleased 
 
+Release 3.25.0 (2024-10-25)
+
+ - Added csi index file type to WTSI::NPG::iRODS::Annotator
+  
 Release 3.24.1 (2024-10-04)
 
  - Fix handling of undefined data release strategy

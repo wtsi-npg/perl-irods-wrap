@@ -56,7 +56,7 @@ sub genotype_data_suffixes {
 =cut
 
 sub hts_data_suffixes {
-  return (qw[bam cram bai crai pbi tbi]);
+  return (qw[bam cram bai crai csi pbi tbi]);
 }
 
 =head2 hts_ancillary_suffixes

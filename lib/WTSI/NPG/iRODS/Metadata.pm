@@ -28,9 +28,11 @@ our @EXPORT = qw(
                   $SAMPLE_CONTROL
                   $SAMPLE_DONOR_ID
                   $SAMPLE_ID
+                  $SAMPLE_LIMS
                   $SAMPLE_NAME
                   $SAMPLE_PUBLIC_NAME
                   $SAMPLE_SUPPLIER_NAME
+                  $SAMPLE_UUID
                   $STUDY_ACCESSION_NUMBER
                   $STUDY_ID
                   $STUDY_NAME
@@ -141,9 +143,11 @@ our $SAMPLE_CONSENT_WITHDRAWN  = 'sample_consent_withdrawn';
 our $SAMPLE_CONTROL            = 'sample_control';
 our $SAMPLE_DONOR_ID           = 'sample_donor_id';
 our $SAMPLE_ID                 = 'sample_id';
+our $SAMPLE_LIMS               = 'sample_lims';
 our $SAMPLE_NAME               = 'sample';
 our $SAMPLE_PUBLIC_NAME        = 'sample_public_name';
 our $SAMPLE_SUPPLIER_NAME      = 'sample_supplier_name';
+our $SAMPLE_UUID               = 'sample_uuid';
 our $STUDY_ACCESSION_NUMBER    = 'study_accession_number';
 our $STUDY_ID                  = 'study_id';
 our $STUDY_NAME                = 'study';

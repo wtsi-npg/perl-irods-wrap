@@ -75,7 +75,8 @@ jobs:
 
       - name: "Install OS dependencies"
         run: |
-          sudo apt-get install -qq uuid-dev
+          # libdevel-patchperl-perl is needed for perlbrew
+          sudo apt-get install -qq uuid-dev libdevel-patchperl-perl
 
       - name: "Install Singularity"
         run: |

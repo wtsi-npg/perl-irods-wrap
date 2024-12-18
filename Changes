@@ -59,6 +59,8 @@ Release 3.22.0
 
 Release 3.21.0
 
+ - Fixed perlbrew installation by installing libdevel-patchperl-perl in
+   GitHub runner.
  - Add iRODS 4.3.1 Ubuntu 22.04 as a required test target
  - Handle optional rodsadmin group
  - Update test matrix iRODS versions

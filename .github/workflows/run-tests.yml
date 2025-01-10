@@ -12,7 +12,7 @@ jobs:
         shell: bash -l -e -o pipefail {0}
 
     env:
-      SINGULARITY_VERSION: "3.11.1"
+      SINGULARITY_VERSION: "4.2.2"
       PERL_CACHE: ~/perl5 # Perlbrew and CPAN modules installed here, cached
       NPG_LIB: ~/perl5npg # NPG modules installed here, not cached
 

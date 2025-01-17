@@ -1,5 +1,11 @@
 Unreleased 
 
+Release 3.26.0 (2025-01-17)
+ - Fixed perlbrew installation by installing libdevel-patchperl-perl in
+   GitHub runner.
+ - Add sample_lims and sample_uuid to metadata variables
+ - Bump Singularity to 4.2.2
+
 Release 3.25.0 (2024-10-25)
 
  - Added csi index file type to WTSI::NPG::iRODS::Annotator

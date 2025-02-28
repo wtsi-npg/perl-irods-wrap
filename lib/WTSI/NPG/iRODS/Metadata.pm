@@ -113,6 +113,8 @@ our @EXPORT = qw(
                   $EXPRESSION_NORM_METHOD
                   $EXPRESSION_SUMMARY_GROUP
                   $EXPRESSION_SUMMARY_TYPE
+
+                  $DEHUMANISED
                );
 ## use critic
 
@@ -237,6 +239,8 @@ our $EXPRESSION_NORM_METHOD      = 'normalisation_method';
 our $EXPRESSION_SUMMARY_GROUP    = 'summary_group';
 our $EXPRESSION_SUMMARY_TYPE     = 'summary_type';
 
+# Additional target product processing/transformation, any platform
+our $DEHUMANISED = 'dehumanised';
 
 1;
 

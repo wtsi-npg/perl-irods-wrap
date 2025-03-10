@@ -25,7 +25,7 @@ use WTSI::NPG::iRODS::Types qw(:all);
 
 our $VERSION = '';
 
-our $MAX_BATON_VERSION = '4.99.99';
+our $MAX_BATON_VERSION = '5.99.99';
 our $MIN_BATON_VERSION = '2.1.0';
 
 our $IADMIN      = 'iadmin';

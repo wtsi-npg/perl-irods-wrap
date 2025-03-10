@@ -1,5 +1,9 @@
 Unreleased 
 
+Release 3.27.0 (2025-03-10)
+ - Registered new metadata, 'dehumanised'.
+ - Add support for baton 5
+
 Release 3.26.0 (2025-01-17)
  - Fixed perlbrew installation by installing libdevel-patchperl-perl in
    GitHub runner.

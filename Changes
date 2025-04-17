@@ -1,5 +1,9 @@
 Unreleased 
 
+Release 3.27.1 (2025-04-17)
+ - Add new iRODS versions 4.3.3 and 4.3.4 to CI
+ - Removes iRODS versions 4.2.12 and 4.3.1 from CI
+
 Release 3.27.0 (2025-03-10)
  - Registered new metadata, 'dehumanised'.
  - Add support for baton 5

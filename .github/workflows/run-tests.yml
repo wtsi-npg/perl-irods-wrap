@@ -35,15 +35,20 @@ jobs:
             server_image: "ghcr.io/wtsi-npg/ub-18.04-irods-4.2.11:latest"
             experimental: false
           - perl: "5.22.4"
+            irods: "4.3.1"
+            client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3.1:latest"
+            server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3.1:latest"
+            experimental: false
+          - perl: "5.22.4"
             irods: "4.3.3"
             client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3.3:latest"
             server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3.3:latest"
-            experimental: true
+            experimental: false
           - perl: "5.22.4"
             irods: "4.3.4"
             client_image: "ghcr.io/wtsi-npg/ub-22.04-irods-clients-4.3.4:latest"
             server_image: "ghcr.io/wtsi-npg/ub-22.04-irods-4.3.4:latest"
-            experimental: true
+            experimental: false
 
     services:
       irods-server:

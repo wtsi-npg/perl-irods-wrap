@@ -1,5 +1,7 @@
 Unreleased 
 
+ - pin version of IPC::Run to 20250809.0
+
 Release 3.28.1 (2026-02-18)
  - CI updates
 

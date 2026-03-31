@@ -6,7 +6,6 @@ use Moose;
 use MooseX::StrictConstructor;
 use IPC::Run qw(start run);
 use File::Which qw(which);
-use Cwd qw(abs_path);
 use List::MoreUtils qw(any none);
 use Log::Log4perl;
 use Readonly;
@@ -76,7 +75,7 @@ sub _build__harness {
   ${$in_ref} = "\n"; #prevent initial hang - fetch the chicken...
   my $out_ref = $self->_out;
 
-  my $h = start [abs_path $IGROUPADMIN], q(<pty<), $in_ref, q(>pty>), $out_ref;
+  my $h = start [$IGROUPADMIN], q(<pty<), $in_ref, q(>pty>), $out_ref;
   $self->_running(1);
   $self->_pump_until_prompt($h);
   ${$out_ref}=q();

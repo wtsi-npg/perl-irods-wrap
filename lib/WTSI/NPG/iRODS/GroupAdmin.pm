@@ -71,11 +71,13 @@ has '_harness' => (
 
 sub _build__harness {
   my ($self) = @_;
+
   my $in_ref = $self->_in;
   ${$in_ref} = "\n"; #prevent initial hang - fetch the chicken...
   my $out_ref = $self->_out;
 
   my $h = start [$IGROUPADMIN], q(<pty<), $in_ref, q(>pty>), $out_ref;
+
   $self->_running(1);
   $self->_pump_until_prompt($h);
   ${$out_ref}=q();

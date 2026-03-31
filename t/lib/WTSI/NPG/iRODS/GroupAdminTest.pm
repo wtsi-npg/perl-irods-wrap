@@ -7,6 +7,7 @@ use Log::Log4perl;
 use base qw(WTSI::NPG::iRODS::Test);
 use Test::More;
 use Test::Exception;
+use Try::Tiny;
 
 Log::Log4perl::init('./etc/log4perl_tests.conf');
 
@@ -30,8 +31,6 @@ sub setup_test : Test(setup) {
   my ($self) = @_;
 
   $self->have_admin_rights($have_admin_rights);
-
-
   $self->add_irods_groups($test_irods, @irods_groups);
   if ($self->have_admin_rights) {
     foreach my $user (@irods_users) {
@@ -54,15 +53,14 @@ sub teardown_test : Test(teardown) {
   }
 }
 
-sub constructor : Test(2) {
+sub constructor :Test(2) {
   new_ok('WTSI::NPG::iRODS::GroupAdmin');
 
-  dies_ok {
-    local %ENV = %ENV;
-    $ENV{PATH} = q("/bin");
-
-    WTSI::NPG::iRODS::GroupAdmin->new;
-  }
+  throws_ok {
+      local %ENV = %ENV;
+      $ENV{PATH} = q("/no_such_path");
+      WTSI::NPG::iRODS::GroupAdmin->new;
+  } qr/no_such_path/sm;
 }
 
 sub lg : Test(5) {

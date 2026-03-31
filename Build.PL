@@ -35,7 +35,7 @@ my $build = WTSI::DNAP::Utilities::Build->new
                           'File::Which'               => '>= 1.09',
                           'DateTime'                  => '>= 1.18',
                           'File::Slurp'               => '>= 9999.19',
-                          'IO::Pty'                   => '>= 1.10',
+                          'IO::Pty'                   => '<= 1.20',
                           'IPC::Run'                  => '>= 20260322.0',
                           'JSON'                      => '>= 2.90',
                           'Log::Log4perl'             => '>= 1.46',

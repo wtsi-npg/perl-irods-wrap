@@ -163,11 +163,4 @@ jobs:
 
           export WTSI_NPG_iRODS_Test_IRODS_ENVIRONMENT_FILE="$HOME/.irods/irods_environment.json"
           perl Build.PL
-          
-          perl -MIPC::Run -MIO::Pty -e 'print "IPC::Run=$IPC::Run::VERSION IO::Pty=$IO::Pty::VERSION\n"'
-          cat /etc/os-release
-          ls -l /home/runner/.local/bin/igroupadmin
-          head -n 20 /home/runner/.local/bin/igroupadmin
-          
-          echo Current PATH is $PATH
-          ./Build test --test-files t/irods_groupadmin_test.t
+          ./Build test

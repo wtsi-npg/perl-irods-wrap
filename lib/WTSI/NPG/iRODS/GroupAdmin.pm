@@ -75,12 +75,8 @@ sub _build__harness {
   my $in_ref = $self->_in;
   ${$in_ref} = "\n"; #prevent initial hang - fetch the chicken...
   my $out_ref = $self->_out;
-  # workaround Run::IPC caching : https://rt.cpan.org/Public/Bug/Display.html?id=57393
-  my $cmd = which $IGROUPADMIN;
-  if (not $cmd) {
-    $self->logcroak(qq(Command '$IGROUPADMIN' not found));
-  }
-  my $h = start [abs_path $cmd], q(<pty<), $in_ref, q(>pty>), $out_ref;
+
+  my $h = start [abs_path $IGROUPADMIN], q(<pty<), $in_ref, q(>pty>), $out_ref;
   $self->_running(1);
   $self->_pump_until_prompt($h);
   ${$out_ref}=q();

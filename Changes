@@ -1,5 +1,13 @@
 Unreleased 
 
+Release 3.28.2 (2026-04-16)
+ - Remove workaround for IPC::Run caching bug fixed in 20260322.0
+ - Do not hard code Cwd as the igroupadmin executable location
+ - Requires IPC::Run to be 20260322.0 or higher
+ - Pin IO::Pty to 1.20 because of breakage on >=1.21
+   cpan-authors/IO-Tty#62
+ - Update CI matrix for Perl and iRODS versions
+
 Release 3.28.1 (2026-02-18)
  - CI updates
 
